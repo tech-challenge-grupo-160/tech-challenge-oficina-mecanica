@@ -25,6 +25,7 @@ public class OficinaDbContext : DbContext
         // Cliente
         modelBuilder.Entity<Cliente>(entity =>
         {
+            entity.ToTable("Cliente");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Nome).IsRequired().HasMaxLength(255);
             entity.Property(e => e.CpfCnpj).IsRequired().HasMaxLength(20);
@@ -39,6 +40,7 @@ public class OficinaDbContext : DbContext
         // Veiculo
         modelBuilder.Entity<Veiculo>(entity =>
         {
+            entity.ToTable("Veiculo");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Placa).IsRequired().HasMaxLength(10);
             entity.Property(e => e.Marca).IsRequired().HasMaxLength(100);
@@ -50,16 +52,19 @@ public class OficinaDbContext : DbContext
         // Servico
         modelBuilder.Entity<Servico>(entity =>
         {
+            entity.ToTable("Servico");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Nome).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Descricao).IsRequired();
             entity.Property(e => e.Preco).HasPrecision(18, 2);
+            entity.Property(e => e.TempoEstimado).HasColumnName("TempoEstimadoMinutos");
             entity.HasMany(e => e.OrdensDeServico).WithOne(os => os.Servico).HasForeignKey(os => os.ServicoId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // Peca
         modelBuilder.Entity<Peca>(entity =>
         {
+            entity.ToTable("Peca");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Nome).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Preco).HasPrecision(18, 2);
@@ -69,6 +74,7 @@ public class OficinaDbContext : DbContext
         // OrdemDeServico
         modelBuilder.Entity<OrdemDeServico>(entity =>
         {
+            entity.ToTable("OrdemServico");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Numero).IsRequired().HasMaxLength(50);
             entity.Property(e => e.Status).IsRequired();
@@ -82,14 +88,19 @@ public class OficinaDbContext : DbContext
         // OrdemDeServicoServico
         modelBuilder.Entity<OrdemDeServicoServico>(entity =>
         {
+            entity.ToTable("OrdemServicoItemServico");
             entity.HasKey(e => new { e.OrdemDeServicoId, e.ServicoId });
+            entity.Property(e => e.OrdemDeServicoId).HasColumnName("OrdemServicoId");
             entity.Property(e => e.Preco).HasPrecision(18, 2);
+            entity.Property(e => e.TempoEstimado).HasColumnName("TempoEstimadoMinutos");
         });
 
         // OrdemDeServicoPeca
         modelBuilder.Entity<OrdemDeServicoPeca>(entity =>
         {
+            entity.ToTable("OrdemServicoItemPeca");
             entity.HasKey(e => new { e.OrdemDeServicoId, e.PecaId });
+            entity.Property(e => e.OrdemDeServicoId).HasColumnName("OrdemServicoId");
             entity.Property(e => e.Preco).HasPrecision(18, 2);
         });
     }

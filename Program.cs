@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using oficina_mecanica.Application.Services;
 using oficina_mecanica.Domain.Repositories;
 using oficina_mecanica.Infrastructure.Data;
+using oficina_mecanica.Infrastructure.Extensions;
 using oficina_mecanica.Infrastructure.HealthChecks;
 using oficina_mecanica.Infrastructure.Repositories;
 
@@ -81,11 +82,7 @@ app.MapControllers();
 // Health Checks
 app.UseHealthChecks();
 
-// Database migrations / ensure database with retry (handles DB startup order in Docker)
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
-    db.Database.Migrate();
-}
+// Database migrations and seeding with retry
+await app.MigrateAndSeedAsync(app.Environment.IsDevelopment());
 
 app.Run();
