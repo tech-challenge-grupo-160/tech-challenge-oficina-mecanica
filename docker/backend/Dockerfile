@@ -1,3 +1,23 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS development
+WORKDIR /app
+
+# copy csproj and restore
+COPY ["oficina-mecanica.csproj", "./"]
+RUN dotnet restore "./oficina-mecanica.csproj"
+
+# copy everything
+COPY . .
+
+# Enable hot reload
+ENV DOTNET_WATCH_RESTART_ON_RUDE_EDIT=true
+
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Development
+
+ENTRYPOINT ["dotnet", "watch", "run", "--urls", "http://+:8080"]
+
+
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
