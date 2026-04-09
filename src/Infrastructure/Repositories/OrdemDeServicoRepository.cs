@@ -14,69 +14,69 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
         _context = context;
     }
 
-    public async Task<OrdemDeServico?> ObterPorIdAsync(Guid id)
+    public async Task<OrdemDeServico?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico
             .Include(o => o.Servicos)
             .Include(o => o.Pecas)
-            .FirstOrDefaultAsync(o => o.Id == id);
+            .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
     }
 
-    public async Task<OrdemDeServico?> ObterPorNumeroAsync(string numero)
+    public async Task<OrdemDeServico?> ObterPorNumeroAsync(string numero, CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico
             .Include(o => o.Servicos)
             .Include(o => o.Pecas)
-            .FirstOrDefaultAsync(o => o.Numero == numero);
+            .FirstOrDefaultAsync(o => o.Numero == numero, cancellationToken);
     }
 
-    public async Task<IEnumerable<OrdemDeServico>> ObterPorClienteAsync(Guid clienteId)
+    public async Task<IEnumerable<OrdemDeServico>> ObterPorClienteAsync(Guid clienteId, CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico
             .Where(o => o.ClienteId == clienteId)
             .Include(o => o.Servicos)
             .Include(o => o.Pecas)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<IEnumerable<OrdemDeServico>> ObterPorStatusAsync(StatusOrdemDeServico status)
+    public async Task<IEnumerable<OrdemDeServico>> ObterPorStatusAsync(StatusOrdemDeServico status, CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico
             .Where(o => o.Status == status)
             .Include(o => o.Servicos)
             .Include(o => o.Pecas)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<IEnumerable<OrdemDeServico>> ObterTodosAsync()
+    public async Task<IEnumerable<OrdemDeServico>> ObterTodosAsync(CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico
             .Include(o => o.Servicos)
             .Include(o => o.Pecas)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<OrdemDeServico> CriarAsync(OrdemDeServico ordem)
+    public async Task<OrdemDeServico> CriarAsync(OrdemDeServico ordem, CancellationToken cancellationToken)
     {
         _context.OrdensDeServico.Add(ordem);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return ordem;
     }
 
-    public async Task<OrdemDeServico> AtualizarAsync(OrdemDeServico ordem)
+    public async Task<OrdemDeServico> AtualizarAsync(OrdemDeServico ordem, CancellationToken cancellationToken)
     {
         _context.OrdensDeServico.Update(ordem);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return ordem;
     }
 
-    public async Task DeletarAsync(Guid id)
+    public async Task DeletarAsync(Guid id, CancellationToken cancellationToken)
     {
-        var ordem = await _context.OrdensDeServico.FirstOrDefaultAsync(o => o.Id == id);
+        var ordem = await _context.OrdensDeServico.FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
         if (ordem != null)
         {
             _context.OrdensDeServico.Remove(ordem);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }

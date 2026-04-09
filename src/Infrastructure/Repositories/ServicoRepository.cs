@@ -14,37 +14,37 @@ public class ServicoRepository : IServicoRepository
         _context = context;
     }
 
-    public async Task<Servico?> ObterPorIdAsync(Guid id)
+    public async Task<Servico?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        return await _context.Servicos.FirstOrDefaultAsync(s => s.Id == id);
+        return await _context.Servicos.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
     }
 
-    public async Task<IEnumerable<Servico>> ObterTodosAsync()
+    public async Task<IEnumerable<Servico>> ObterTodosAsync(CancellationToken cancellationToken)
     {
-        return await _context.Servicos.ToListAsync();
+        return await _context.Servicos.ToListAsync(cancellationToken);
     }
 
-    public async Task<Servico> CriarAsync(Servico servico)
+    public async Task<Servico> CriarAsync(Servico servico, CancellationToken cancellationToken)
     {
         _context.Servicos.Add(servico);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return servico;
     }
 
-    public async Task<Servico> AtualizarAsync(Servico servico)
+    public async Task<Servico> AtualizarAsync(Servico servico, CancellationToken cancellationToken)
     {
         _context.Servicos.Update(servico);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return servico;
     }
 
-    public async Task DeletarAsync(Guid id)
+    public async Task DeletarAsync(Guid id, CancellationToken cancellationToken)
     {
-        var servico = await _context.Servicos.FirstOrDefaultAsync(s => s.Id == id);
+        var servico = await _context.Servicos.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
         if (servico != null)
         {
             _context.Servicos.Remove(servico);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }

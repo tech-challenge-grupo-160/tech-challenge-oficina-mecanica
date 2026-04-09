@@ -6,11 +6,11 @@ namespace oficina_mecanica.Application.Services;
 
 public interface IPecaApplicationService
 {
-    Task<PecaDto> CriarPecaAsync(CriarPecaDto dto);
-    Task<PecaDto> ObterPecaAsync(Guid id);
-    Task<IEnumerable<PecaDto>> ListarPecasAsync();
-    Task<PecaDto> AtualizarPecaAsync(Guid id, AtualizarPecaDto dto);
-    Task DeletarPecaAsync(Guid id);
+    Task<PecaDto> CriarPecaAsync(CriarPecaDto dto, CancellationToken cancellationToken);
+    Task<PecaDto> ObterPecaAsync(Guid id, CancellationToken cancellationToken);
+    Task<IEnumerable<PecaDto>> ListarPecasAsync(CancellationToken cancellationToken);
+    Task<PecaDto> AtualizarPecaAsync(Guid id, AtualizarPecaDto dto, CancellationToken cancellationToken);
+    Task DeletarPecaAsync(Guid id, CancellationToken cancellationToken);
 }
 
 public class PecaApplicationService : IPecaApplicationService
@@ -22,7 +22,7 @@ public class PecaApplicationService : IPecaApplicationService
         _pecaRepository = pecaRepository;
     }
 
-    public async Task<PecaDto> CriarPecaAsync(CriarPecaDto dto)
+    public async Task<PecaDto> CriarPecaAsync(CriarPecaDto dto, CancellationToken cancellationToken)
     {
         var peca = new Peca
         {
@@ -32,13 +32,13 @@ public class PecaApplicationService : IPecaApplicationService
             QuantidadeEstoque = dto.QuantidadeEstoque
         };
 
-        var pecaCriada = await _pecaRepository.CriarAsync(peca);
+        var pecaCriada = await _pecaRepository.CriarAsync(peca, cancellationToken);
         return MapToDto(pecaCriada);
     }
 
-    public async Task<PecaDto> ObterPecaAsync(Guid id)
+    public async Task<PecaDto> ObterPecaAsync(Guid id, CancellationToken cancellationToken)
     {
-        var peca = await _pecaRepository.ObterPorIdAsync(id);
+        var peca = await _pecaRepository.ObterPorIdAsync(id, cancellationToken);
         if (peca == null)
         {
             throw new KeyNotFoundException($"Peça com ID {id} não encontrada.");
@@ -47,15 +47,15 @@ public class PecaApplicationService : IPecaApplicationService
         return MapToDto(peca);
     }
 
-    public async Task<IEnumerable<PecaDto>> ListarPecasAsync()
+    public async Task<IEnumerable<PecaDto>> ListarPecasAsync(CancellationToken cancellationToken)
     {
-        var pecas = await _pecaRepository.ObterTodosAsync();
+        var pecas = await _pecaRepository.ObterTodosAsync(cancellationToken);
         return pecas.Select(MapToDto);
     }
 
-    public async Task<PecaDto> AtualizarPecaAsync(Guid id, AtualizarPecaDto dto)
+    public async Task<PecaDto> AtualizarPecaAsync(Guid id, AtualizarPecaDto dto, CancellationToken cancellationToken)
     {
-        var peca = await _pecaRepository.ObterPorIdAsync(id);
+        var peca = await _pecaRepository.ObterPorIdAsync(id, cancellationToken);
         if (peca == null)
         {
             throw new KeyNotFoundException($"Peça com ID {id} não encontrada.");
@@ -65,19 +65,19 @@ public class PecaApplicationService : IPecaApplicationService
         peca.Preco = dto.Preco;
         peca.QuantidadeEstoque = dto.QuantidadeEstoque;
 
-        var pecaAtualizada = await _pecaRepository.AtualizarAsync(peca);
+        var pecaAtualizada = await _pecaRepository.AtualizarAsync(peca, cancellationToken);
         return MapToDto(pecaAtualizada);
     }
 
-    public async Task DeletarPecaAsync(Guid id)
+    public async Task DeletarPecaAsync(Guid id, CancellationToken cancellationToken)
     {
-        var peca = await _pecaRepository.ObterPorIdAsync(id);
+        var peca = await _pecaRepository.ObterPorIdAsync(id, cancellationToken);
         if (peca == null)
         {
             throw new KeyNotFoundException($"Peça com ID {id} não encontrada.");
         }
 
-        await _pecaRepository.DeletarAsync(id);
+        await _pecaRepository.DeletarAsync(id, cancellationToken);
     }
 
     private static PecaDto MapToDto(Peca peca)

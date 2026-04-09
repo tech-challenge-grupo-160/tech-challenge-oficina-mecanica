@@ -6,12 +6,12 @@ namespace oficina_mecanica.Application.Services;
 
 public interface IVeiculoApplicationService
 {
-    Task<VeiculoDto> CriarVeiculoAsync(CriarVeiculoDto dto);
-    Task<VeiculoDto> ObterVeiculoAsync(Guid id);
-    Task<IEnumerable<VeiculoDto>> ListarVeiculosAsync();
-    Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(Guid clienteId);
-    Task<VeiculoDto> AtualizarVeiculoAsync(Guid id, AtualizarVeiculoDto dto);
-    Task DeletarVeiculoAsync(Guid id);
+    Task<VeiculoDto> CriarVeiculoAsync(CriarVeiculoDto dto, CancellationToken cancellationToken);
+    Task<VeiculoDto> ObterVeiculoAsync(Guid id, CancellationToken cancellationToken);
+    Task<IEnumerable<VeiculoDto>> ListarVeiculosAsync(CancellationToken cancellationToken);
+    Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(Guid clienteId, CancellationToken cancellationToken);
+    Task<VeiculoDto> AtualizarVeiculoAsync(Guid id, AtualizarVeiculoDto dto, CancellationToken cancellationToken);
+    Task DeletarVeiculoAsync(Guid id, CancellationToken cancellationToken);
 }
 
 public class VeiculoApplicationService : IVeiculoApplicationService
@@ -25,15 +25,15 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         _clienteRepository = clienteRepository;
     }
 
-    public async Task<VeiculoDto> CriarVeiculoAsync(CriarVeiculoDto dto)
+    public async Task<VeiculoDto> CriarVeiculoAsync(CriarVeiculoDto dto, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(dto.ClienteId);
+        var cliente = await _clienteRepository.ObterPorIdAsync(dto.ClienteId, cancellationToken);
         if (cliente == null)
         {
             throw new KeyNotFoundException($"Cliente com ID {dto.ClienteId} não encontrado.");
         }
 
-        var veiculoExistente = await _veiculoRepository.ObterPorPlacaAsync(dto.Placa);
+        var veiculoExistente = await _veiculoRepository.ObterPorPlacaAsync(dto.Placa, cancellationToken);
         if (veiculoExistente != null)
         {
             throw new InvalidOperationException("Veículo com esta placa já existe.");
@@ -49,13 +49,13 @@ public class VeiculoApplicationService : IVeiculoApplicationService
             ClienteId = dto.ClienteId
         };
 
-        var veiculoCriado = await _veiculoRepository.CriarAsync(veiculo);
+        var veiculoCriado = await _veiculoRepository.CriarAsync(veiculo, cancellationToken);
         return MapToDto(veiculoCriado);
     }
 
-    public async Task<VeiculoDto> ObterVeiculoAsync(Guid id)
+    public async Task<VeiculoDto> ObterVeiculoAsync(Guid id, CancellationToken cancellationToken)
     {
-        var veiculo = await _veiculoRepository.ObterPorIdAsync(id);
+        var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
         if (veiculo == null)
         {
             throw new KeyNotFoundException($"Veículo com ID {id} não encontrado.");
@@ -64,27 +64,27 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         return MapToDto(veiculo);
     }
 
-    public async Task<IEnumerable<VeiculoDto>> ListarVeiculosAsync()
+    public async Task<IEnumerable<VeiculoDto>> ListarVeiculosAsync(CancellationToken cancellationToken)
     {
-        var veiculos = await _veiculoRepository.ObterTodosAsync();
+        var veiculos = await _veiculoRepository.ObterTodosAsync(cancellationToken);
         return veiculos.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(Guid clienteId)
+    public async Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(Guid clienteId, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(clienteId);
+        var cliente = await _clienteRepository.ObterPorIdAsync(clienteId, cancellationToken);
         if (cliente == null)
         {
             throw new KeyNotFoundException($"Cliente com ID {clienteId} não encontrado.");
         }
 
-        var veiculos = await _veiculoRepository.ObterPorClienteAsync(clienteId);
+        var veiculos = await _veiculoRepository.ObterPorClienteAsync(clienteId, cancellationToken);
         return veiculos.Select(MapToDto);
     }
 
-    public async Task<VeiculoDto> AtualizarVeiculoAsync(Guid id, AtualizarVeiculoDto dto)
+    public async Task<VeiculoDto> AtualizarVeiculoAsync(Guid id, AtualizarVeiculoDto dto, CancellationToken cancellationToken)
     {
-        var veiculo = await _veiculoRepository.ObterPorIdAsync(id);
+        var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
         if (veiculo == null)
         {
             throw new KeyNotFoundException($"Veículo com ID {id} não encontrado.");
@@ -94,19 +94,19 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         veiculo.Modelo = dto.Modelo;
         veiculo.Ano = dto.Ano;
 
-        var veiculoAtualizado = await _veiculoRepository.AtualizarAsync(veiculo);
+        var veiculoAtualizado = await _veiculoRepository.AtualizarAsync(veiculo, cancellationToken);
         return MapToDto(veiculoAtualizado);
     }
 
-    public async Task DeletarVeiculoAsync(Guid id)
+    public async Task DeletarVeiculoAsync(Guid id, CancellationToken cancellationToken)
     {
-        var veiculo = await _veiculoRepository.ObterPorIdAsync(id);
+        var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
         if (veiculo == null)
         {
             throw new KeyNotFoundException($"Veículo com ID {id} não encontrado.");
         }
 
-        await _veiculoRepository.DeletarAsync(id);
+        await _veiculoRepository.DeletarAsync(id, cancellationToken);
     }
 
     private static VeiculoDto MapToDto(Veiculo veiculo)
