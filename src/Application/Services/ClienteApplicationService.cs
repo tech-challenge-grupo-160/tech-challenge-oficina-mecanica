@@ -6,12 +6,12 @@ namespace oficina_mecanica.Application.Services;
 
 public interface IClienteApplicationService
 {
-    Task<ClienteDto> CriarClienteAsync(CriarClienteDto dto);
-    Task<ClienteDto> ObterClienteAsync(Guid id);
-    Task<ClienteDto> ObterClientePorCpfCnpjAsync(string cpfCnpj);
-    Task<IEnumerable<ClienteDto>> ListarClientesAsync();
-    Task<ClienteDto> AtualizarClienteAsync(Guid id, AtualizarClienteDto dto);
-    Task DeletarClienteAsync(Guid id);
+    Task<ClienteDto> CriarClienteAsync(CriarClienteDto dto, CancellationToken cancellationToken);
+    Task<ClienteDto> ObterClienteAsync(Guid id, CancellationToken cancellationToken);
+    Task<ClienteDto> ObterClientePorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken);
+    Task<IEnumerable<ClienteDto>> ListarClientesAsync(CancellationToken cancellationToken);
+    Task<ClienteDto> AtualizarClienteAsync(Guid id, AtualizarClienteDto dto, CancellationToken cancellationToken);
+    Task DeletarClienteAsync(Guid id, CancellationToken cancellationToken);
 }
 
 public class ClienteApplicationService : IClienteApplicationService
@@ -23,9 +23,9 @@ public class ClienteApplicationService : IClienteApplicationService
         _clienteRepository = clienteRepository;
     }
 
-    public async Task<ClienteDto> CriarClienteAsync(CriarClienteDto dto)
+    public async Task<ClienteDto> CriarClienteAsync(CriarClienteDto dto, CancellationToken cancellationToken)
     {
-        var clienteExistente = await _clienteRepository.ObterPorCpfCnpjAsync(dto.CpfCnpj);
+        var clienteExistente = await _clienteRepository.ObterPorCpfCnpjAsync(dto.CpfCnpj, cancellationToken);
         if (clienteExistente != null)
         {
             throw new InvalidOperationException("Cliente com este CPF/CNPJ já existe.");
@@ -41,13 +41,13 @@ public class ClienteApplicationService : IClienteApplicationService
             DataCadastro = DateTime.UtcNow
         };
 
-        var clienteCriado = await _clienteRepository.CriarAsync(cliente);
+        var clienteCriado = await _clienteRepository.CriarAsync(cliente, cancellationToken);
         return MapToDto(clienteCriado);
     }
 
-    public async Task<ClienteDto> ObterClienteAsync(Guid id)
+    public async Task<ClienteDto> ObterClienteAsync(Guid id, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(id);
+        var cliente = await _clienteRepository.ObterPorIdAsync(id, cancellationToken);
         if (cliente == null)
         {
             throw new KeyNotFoundException($"Cliente com ID {id} não encontrado.");
@@ -56,9 +56,9 @@ public class ClienteApplicationService : IClienteApplicationService
         return MapToDto(cliente);
     }
 
-    public async Task<ClienteDto> ObterClientePorCpfCnpjAsync(string cpfCnpj)
+    public async Task<ClienteDto> ObterClientePorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(cpfCnpj);
+        var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(cpfCnpj, cancellationToken);
         if (cliente == null)
         {
             throw new KeyNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} não encontrado.");
@@ -67,15 +67,15 @@ public class ClienteApplicationService : IClienteApplicationService
         return MapToDto(cliente);
     }
 
-    public async Task<IEnumerable<ClienteDto>> ListarClientesAsync()
+    public async Task<IEnumerable<ClienteDto>> ListarClientesAsync(CancellationToken cancellationToken)
     {
-        var clientes = await _clienteRepository.ObterTodosAsync();
+        var clientes = await _clienteRepository.ObterTodosAsync(cancellationToken);
         return clientes.Select(MapToDto);
     }
 
-    public async Task<ClienteDto> AtualizarClienteAsync(Guid id, AtualizarClienteDto dto)
+    public async Task<ClienteDto> AtualizarClienteAsync(Guid id, AtualizarClienteDto dto, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(id);
+        var cliente = await _clienteRepository.ObterPorIdAsync(id, cancellationToken);
         if (cliente == null)
         {
             throw new KeyNotFoundException($"Cliente com ID {id} não encontrado.");
@@ -85,19 +85,19 @@ public class ClienteApplicationService : IClienteApplicationService
         cliente.Telefone = dto.Telefone;
         cliente.Email = dto.Email;
 
-        var clienteAtualizado = await _clienteRepository.AtualizarAsync(cliente);
+        var clienteAtualizado = await _clienteRepository.AtualizarAsync(cliente, cancellationToken);
         return MapToDto(clienteAtualizado);
     }
 
-    public async Task DeletarClienteAsync(Guid id)
+    public async Task DeletarClienteAsync(Guid id, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(id);
+        var cliente = await _clienteRepository.ObterPorIdAsync(id, cancellationToken);
         if (cliente == null)
         {
             throw new KeyNotFoundException($"Cliente com ID {id} não encontrado.");
         }
 
-        await _clienteRepository.DeletarAsync(id);
+        await _clienteRepository.DeletarAsync(id, cancellationToken);
     }
 
     private static ClienteDto MapToDto(Cliente cliente)

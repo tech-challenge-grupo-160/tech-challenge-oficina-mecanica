@@ -6,15 +6,15 @@ namespace oficina_mecanica.Application.Services;
 
 public interface IOrdemDeServicoApplicationService
 {
-    Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto);
-    Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(Guid id);
-    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoAsync();
-    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(Guid clienteId);
-    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorStatusAsync(string status);
-    Task<OrdemDeServicoDto> AtualizarStatusAsync(Guid id, AtualizarStatusOrdemDeServicoDto dto);
-    Task<OrdemDeServicoDto> AdicionarServicoAsync(Guid id, AdicionarServicoAOrdemDto dto);
-    Task<OrdemDeServicoDto> AdicionarPecaAsync(Guid id, AdicionarPecaAOrdemDto dto);
-    Task DeletarOrdemDeServicoAsync(Guid id);
+    Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(Guid id, CancellationToken cancellationToken);
+    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(CancellationToken cancellationToken);
+    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(Guid clienteId, CancellationToken cancellationToken);
+    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorStatusAsync(string status, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> AtualizarStatusAsync(Guid id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> AdicionarServicoAsync(Guid id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> AdicionarPecaAsync(Guid id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken);
+    Task DeletarOrdemDeServicoAsync(Guid id, CancellationToken cancellationToken);
 }
 
 public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationService
@@ -39,15 +39,15 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         _pecaRepository = pecaRepository;
     }
 
-    public async Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto)
+    public async Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(dto.ClienteId);
+        var cliente = await _clienteRepository.ObterPorIdAsync(dto.ClienteId, cancellationToken);
         if (cliente == null)
         {
             throw new KeyNotFoundException($"Cliente com ID {dto.ClienteId} não encontrado.");
         }
 
-        var veiculo = await _veiculoRepository.ObterPorIdAsync(dto.VeiculoId);
+        var veiculo = await _veiculoRepository.ObterPorIdAsync(dto.VeiculoId, cancellationToken);
         if (veiculo == null)
         {
             throw new KeyNotFoundException($"Veículo com ID {dto.VeiculoId} não encontrado.");
@@ -65,13 +65,13 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             ValorTotal = 0
         };
 
-        var ordemCriada = await _ordemRepository.CriarAsync(ordem);
+        var ordemCriada = await _ordemRepository.CriarAsync(ordem, cancellationToken);
         return MapToDto(ordemCriada);
     }
 
-    public async Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(Guid id)
+    public async Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(Guid id, CancellationToken cancellationToken)
     {
-        var ordem = await _ordemRepository.ObterPorIdAsync(id);
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
             throw new KeyNotFoundException($"Ordem de serviço com ID {id} não encontrada.");
@@ -80,38 +80,38 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         return MapToDto(ordem);
     }
 
-    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoAsync()
+    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(CancellationToken cancellationToken)
     {
-        var ordens = await _ordemRepository.ObterTodosAsync();
+        var ordens = await _ordemRepository.ObterTodosAsync(cancellationToken);
         return ordens.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(Guid clienteId)
+    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(Guid clienteId, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(clienteId);
+        var cliente = await _clienteRepository.ObterPorIdAsync(clienteId, cancellationToken);
         if (cliente == null)
         {
             throw new KeyNotFoundException($"Cliente com ID {clienteId} não encontrado.");
         }
 
-        var ordens = await _ordemRepository.ObterPorClienteAsync(clienteId);
+        var ordens = await _ordemRepository.ObterPorClienteAsync(clienteId, cancellationToken);
         return ordens.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorStatusAsync(string status)
+    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorStatusAsync(string status, CancellationToken cancellationToken)
     {
         if (!Enum.TryParse<StatusOrdemDeServico>(status, out var statusEnum))
         {
             throw new InvalidOperationException($"Status inválido: {status}");
         }
 
-        var ordens = await _ordemRepository.ObterPorStatusAsync(statusEnum);
+        var ordens = await _ordemRepository.ObterPorStatusAsync(statusEnum, cancellationToken);
         return ordens.Select(MapToDto);
     }
 
-    public async Task<OrdemDeServicoDto> AtualizarStatusAsync(Guid id, AtualizarStatusOrdemDeServicoDto dto)
+    public async Task<OrdemDeServicoDto> AtualizarStatusAsync(Guid id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
     {
-        var ordem = await _ordemRepository.ObterPorIdAsync(id);
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
             throw new KeyNotFoundException($"Ordem de serviço com ID {id} não encontrada.");
@@ -123,57 +123,57 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
 
         ordem.AlterarStatus(novoStatus);
-        var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem);
+        var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
         return MapToDto(ordemAtualizada);
     }
 
-    public async Task<OrdemDeServicoDto> AdicionarServicoAsync(Guid id, AdicionarServicoAOrdemDto dto)
+    public async Task<OrdemDeServicoDto> AdicionarServicoAsync(Guid id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
     {
-        var ordem = await _ordemRepository.ObterPorIdAsync(id);
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
             throw new KeyNotFoundException($"Ordem de serviço com ID {id} não encontrada.");
         }
 
-        var servico = await _servicoRepository.ObterPorIdAsync(dto.ServicoId);
+        var servico = await _servicoRepository.ObterPorIdAsync(dto.ServicoId, cancellationToken);
         if (servico == null)
         {
             throw new KeyNotFoundException($"Serviço com ID {dto.ServicoId} não encontrado.");
         }
 
         ordem.AdicionarServico(servico);
-        var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem);
+        var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
         return MapToDto(ordemAtualizada);
     }
 
-    public async Task<OrdemDeServicoDto> AdicionarPecaAsync(Guid id, AdicionarPecaAOrdemDto dto)
+    public async Task<OrdemDeServicoDto> AdicionarPecaAsync(Guid id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
     {
-        var ordem = await _ordemRepository.ObterPorIdAsync(id);
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
             throw new KeyNotFoundException($"Ordem de serviço com ID {id} não encontrada.");
         }
 
-        var peca = await _pecaRepository.ObterPorIdAsync(dto.PecaId);
+        var peca = await _pecaRepository.ObterPorIdAsync(dto.PecaId, cancellationToken);
         if (peca == null)
         {
             throw new KeyNotFoundException($"Peça com ID {dto.PecaId} não encontrada.");
         }
 
         ordem.AdicionarPeca(peca, dto.Quantidade);
-        var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem);
+        var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
         return MapToDto(ordemAtualizada);
     }
 
-    public async Task DeletarOrdemDeServicoAsync(Guid id)
+    public async Task DeletarOrdemDeServicoAsync(Guid id, CancellationToken cancellationToken)
     {
-        var ordem = await _ordemRepository.ObterPorIdAsync(id);
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
             throw new KeyNotFoundException($"Ordem de serviço com ID {id} não encontrada.");
         }
 
-        await _ordemRepository.DeletarAsync(id);
+        await _ordemRepository.DeletarAsync(id, cancellationToken);
     }
 
     private static string GerarNumeroOrdem()

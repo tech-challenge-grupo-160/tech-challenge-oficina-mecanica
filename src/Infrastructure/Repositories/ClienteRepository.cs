@@ -14,42 +14,42 @@ public class ClienteRepository : IClienteRepository
         _context = context;
     }
 
-    public async Task<Cliente?> ObterPorIdAsync(Guid id)
+    public async Task<Cliente?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        return await _context.Clientes.FirstOrDefaultAsync(c => c.Id == id);
+        return await _context.Clientes.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
     }
 
-    public async Task<Cliente?> ObterPorCpfCnpjAsync(string cpfCnpj)
+    public async Task<Cliente?> ObterPorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken)
     {
-        return await _context.Clientes.FirstOrDefaultAsync(c => c.CpfCnpj == cpfCnpj);
+        return await _context.Clientes.FirstOrDefaultAsync(c => c.CpfCnpj == cpfCnpj, cancellationToken);
     }
 
-    public async Task<IEnumerable<Cliente>> ObterTodosAsync()
+    public async Task<IEnumerable<Cliente>> ObterTodosAsync(CancellationToken cancellationToken)
     {
-        return await _context.Clientes.ToListAsync();
+        return await _context.Clientes.ToListAsync(cancellationToken);
     }
 
-    public async Task<Cliente> CriarAsync(Cliente cliente)
+    public async Task<Cliente> CriarAsync(Cliente cliente, CancellationToken cancellationToken)
     {
         _context.Clientes.Add(cliente);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return cliente;
     }
 
-    public async Task<Cliente> AtualizarAsync(Cliente cliente)
+    public async Task<Cliente> AtualizarAsync(Cliente cliente, CancellationToken cancellationToken)
     {
         _context.Clientes.Update(cliente);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return cliente;
     }
 
-    public async Task DeletarAsync(Guid id)
+    public async Task DeletarAsync(Guid id, CancellationToken cancellationToken)
     {
-        var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.Id == id);
+        var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
         if (cliente != null)
         {
             _context.Clientes.Remove(cliente);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }

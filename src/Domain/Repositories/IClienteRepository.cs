@@ -4,10 +4,10 @@ namespace oficina_mecanica.Domain.Repositories;
 
 public interface IClienteRepository
 {
-    Task<Cliente?> ObterPorIdAsync(Guid id);
-    Task<Cliente?> ObterPorCpfCnpjAsync(string cpfCnpj);
-    Task<IEnumerable<Cliente>> ObterTodosAsync();
-    Task<Cliente> CriarAsync(Cliente cliente);
-    Task<Cliente> AtualizarAsync(Cliente cliente);
-    Task DeletarAsync(Guid id);
+    Task<Cliente?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken);
+    Task<Cliente?> ObterPorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken);
+    Task<IEnumerable<Cliente>> ObterTodosAsync(CancellationToken cancellationToken);
+    Task<Cliente> CriarAsync(Cliente cliente, CancellationToken cancellationToken);
+    Task<Cliente> AtualizarAsync(Cliente cliente, CancellationToken cancellationToken);
+    Task DeletarAsync(Guid id, CancellationToken cancellationToken);
 }

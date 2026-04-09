@@ -16,37 +16,37 @@ public class ClientesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<ClienteDto>> Criar([FromBody] CriarClienteDto dto)
+    public async Task<ActionResult<ClienteDto>> Criar([FromBody] CriarClienteDto dto, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteService.CriarClienteAsync(dto);
+        var cliente = await _clienteService.CriarClienteAsync(dto, cancellationToken);
         return CreatedAtAction(nameof(Obter), new { id = cliente.Id }, cliente);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<ClienteDto>> Obter(Guid id)
+    public async Task<ActionResult<ClienteDto>> Obter(Guid id, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteService.ObterClienteAsync(id);
+        var cliente = await _clienteService.ObterClienteAsync(id, cancellationToken);
         return Ok(cliente);
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ClienteDto>>> Listar()
+    public async Task<ActionResult<IEnumerable<ClienteDto>>> Listar(CancellationToken cancellationToken)
     {
-        var clientes = await _clienteService.ListarClientesAsync();
+        var clientes = await _clienteService.ListarClientesAsync(cancellationToken);
         return Ok(clientes);
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<ClienteDto>> Atualizar(Guid id, [FromBody] AtualizarClienteDto dto)
+    public async Task<ActionResult<ClienteDto>> Atualizar(Guid id, [FromBody] AtualizarClienteDto dto, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteService.AtualizarClienteAsync(id, dto);
+        var cliente = await _clienteService.AtualizarClienteAsync(id, dto, cancellationToken);
         return Ok(cliente);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Deletar(Guid id)
+    public async Task<IActionResult> Deletar(Guid id, CancellationToken cancellationToken)
     {
-        await _clienteService.DeletarClienteAsync(id);
+        await _clienteService.DeletarClienteAsync(id, cancellationToken);
         return NoContent();
     }
 }
