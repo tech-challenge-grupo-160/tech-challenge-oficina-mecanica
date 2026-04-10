@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace oficina_mecanica.Infrastructure.Migrations
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration
