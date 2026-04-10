@@ -16,7 +16,6 @@ services:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
-      - ./docker/postgres/init-db.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d oficina_mecanica -h 127.0.0.1"]
       interval: 10s
@@ -41,7 +40,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Host=postgres;Database=oficina_mecanica;Username=postgres;Password=postgres;Pooling=true;MaxPoolSize=20;Timeout=15;"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: oficina_mecanica
