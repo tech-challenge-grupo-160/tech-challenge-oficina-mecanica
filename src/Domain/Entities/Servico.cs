@@ -1,4 +1,4 @@
-namespace oficina_mecanica.Domain.Entities;
+namespace Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
 public class Servico
 {

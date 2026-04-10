@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>oficina_mecanica</RootNamespace>
+    <RootNamespace>Fiap.TechChallenge.OficinaMecanica</RootNamespace>
     <UserSecretsId>44582d86-54cc-4659-bc1a-a14dc112a037</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>

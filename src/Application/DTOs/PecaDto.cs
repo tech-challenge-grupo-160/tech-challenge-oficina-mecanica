@@ -1,4 +1,4 @@
-namespace oficina_mecanica.Application.DTOs;
+namespace Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 
 public class PecaDto
 {

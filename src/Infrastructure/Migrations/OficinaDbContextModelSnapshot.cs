@@ -2,11 +2,11 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using oficina_mecanica.Infrastructure.Data;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 
 #nullable disable
 
-namespace oficina_mecanica.Infrastructure.Migrations
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
 {
     [DbContext(typeof(OficinaDbContext))]
     partial class OficinaDbContextModelSnapshot : ModelSnapshot
@@ -16,7 +16,7 @@ namespace oficina_mecanica.Infrastructure.Migrations
             modelBuilder
                 .HasAnnotation("ProductVersion", "8.0.0");
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.Cliente", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Cliente", b =>
             {
                 b.Property<Guid>("Id");
                 b.Property<string>("CpfCnpj").IsRequired().HasMaxLength(20);
@@ -30,7 +30,7 @@ namespace oficina_mecanica.Infrastructure.Migrations
                 b.ToTable("Clientes");
             });
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.Veiculo", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Veiculo", b =>
             {
                 b.Property<Guid>("Id");
                 b.Property<int>("Ano");
@@ -44,7 +44,7 @@ namespace oficina_mecanica.Infrastructure.Migrations
                 b.ToTable("Veiculos");
             });
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.Servico", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Servico", b =>
             {
                 b.Property<Guid>("Id");
                 b.Property<int>("TempoEstimado");
@@ -55,7 +55,7 @@ namespace oficina_mecanica.Infrastructure.Migrations
                 b.ToTable("Servicos");
             });
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.Peca", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Peca", b =>
             {
                 b.Property<Guid>("Id");
                 b.Property<int>("QuantidadeEstoque");
@@ -65,7 +65,7 @@ namespace oficina_mecanica.Infrastructure.Migrations
                 b.ToTable("Pecas");
             });
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.OrdemDeServico", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServico", b =>
             {
                 b.Property<Guid>("Id");
                 b.Property<DateTime>("DataAbertura");
@@ -83,7 +83,7 @@ namespace oficina_mecanica.Infrastructure.Migrations
                 b.ToTable("OrdensDeServico");
             });
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.OrdemDeServicoServico", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServicoServico", b =>
             {
                 b.Property<Guid>("OrdemDeServicoId");
                 b.Property<Guid>("ServicoId");
@@ -94,7 +94,7 @@ namespace oficina_mecanica.Infrastructure.Migrations
                 b.ToTable("OrdemDeServicoServicos");
             });
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.OrdemDeServicoPeca", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServicoPeca", b =>
             {
                 b.Property<Guid>("OrdemDeServicoId");
                 b.Property<Guid>("PecaId");
@@ -105,68 +105,68 @@ namespace oficina_mecanica.Infrastructure.Migrations
                 b.ToTable("OrdemDeServicoPecas");
             });
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.Veiculo", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Veiculo", b =>
             {
-                b.HasOne("oficina_mecanica.Domain.Entities.Cliente")
+                b.HasOne("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Cliente")
                     .WithMany("Veiculos")
                     .HasForeignKey("ClienteId")
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.OrdemDeServico", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServico", b =>
             {
-                b.HasOne("oficina_mecanica.Domain.Entities.Cliente")
+                b.HasOne("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Cliente")
                     .WithMany("OrdensDeServico")
                     .HasForeignKey("ClienteId")
                     .OnDelete(DeleteBehavior.Restrict);
 
-                b.HasOne("oficina_mecanica.Domain.Entities.Veiculo")
+                b.HasOne("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Veiculo")
                     .WithMany("OrdensDeServico")
                     .HasForeignKey("VeiculoId")
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.OrdemDeServicoServico", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServicoServico", b =>
             {
-                b.HasOne("oficina_mecanica.Domain.Entities.OrdemDeServico")
+                b.HasOne("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServico")
                     .WithMany("Servicos")
                     .HasForeignKey("OrdemDeServicoId")
                     .OnDelete(DeleteBehavior.Cascade);
 
-                b.HasOne("oficina_mecanica.Domain.Entities.Servico")
+                b.HasOne("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Servico")
                     .WithMany()
                     .HasForeignKey("ServicoId")
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.OrdemDeServicoPeca", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServicoPeca", b =>
             {
-                b.HasOne("oficina_mecanica.Domain.Entities.OrdemDeServico")
+                b.HasOne("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServico")
                     .WithMany("Pecas")
                     .HasForeignKey("OrdemDeServicoId")
                     .OnDelete(DeleteBehavior.Cascade);
 
-                b.HasOne("oficina_mecanica.Domain.Entities.Peca")
+                b.HasOne("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Peca")
                     .WithMany()
                     .HasForeignKey("PecaId")
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.Cliente", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Cliente", b =>
             {
                 b.Navigation("OrdensDeServico");
 
                 b.Navigation("Veiculos");
             });
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.OrdemDeServico", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServico", b =>
             {
                 b.Navigation("Pecas");
 
                 b.Navigation("Servicos");
             });
 
-            modelBuilder.Entity("oficina_mecanica.Domain.Entities.Veiculo", b =>
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Veiculo", b =>
             {
                 b.Navigation("OrdensDeServico");
             });

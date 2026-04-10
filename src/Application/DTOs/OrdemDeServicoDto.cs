@@ -1,6 +1,6 @@
-using oficina_mecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
-namespace oficina_mecanica.Application.DTOs;
+namespace Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 
 public class OrdemDeServicoDto
 {

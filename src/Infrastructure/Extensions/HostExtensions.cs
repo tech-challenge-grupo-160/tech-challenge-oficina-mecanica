@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using oficina_mecanica.Infrastructure.Data;
-using oficina_mecanica.Infrastructure.Data.Seeders;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data.Seeders;
 
-namespace oficina_mecanica.Infrastructure.Extensions;
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Extensions;
 
 /// <summary>
 /// Extensões para IHost para executar migrations e seeding na inicialização da aplicação.
