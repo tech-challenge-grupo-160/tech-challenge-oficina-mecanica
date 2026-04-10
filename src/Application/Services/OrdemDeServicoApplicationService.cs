@@ -1,8 +1,8 @@
-using oficina_mecanica.Application.DTOs;
-using oficina_mecanica.Domain.Entities;
-using oficina_mecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 
-namespace oficina_mecanica.Application.Services;
+namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
 public interface IOrdemDeServicoApplicationService
 {

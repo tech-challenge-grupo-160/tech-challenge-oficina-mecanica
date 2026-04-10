@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using oficina_mecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
-namespace oficina_mecanica.Infrastructure.Data;
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 
 public class OficinaDbContext : DbContext
 {

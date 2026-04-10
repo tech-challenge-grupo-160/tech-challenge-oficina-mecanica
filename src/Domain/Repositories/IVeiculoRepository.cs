@@ -1,6 +1,6 @@
-using oficina_mecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
-namespace oficina_mecanica.Domain.Repositories;
+namespace Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 
 public interface IVeiculoRepository
 {

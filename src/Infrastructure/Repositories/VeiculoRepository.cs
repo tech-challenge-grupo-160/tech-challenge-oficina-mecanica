@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using oficina_mecanica.Domain.Entities;
-using oficina_mecanica.Domain.Repositories;
-using oficina_mecanica.Infrastructure.Data;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 
-namespace oficina_mecanica.Infrastructure.Repositories;
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
 
 public class VeiculoRepository : IVeiculoRepository
 {

@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using oficina_mecanica.Application.DTOs;
-using oficina_mecanica.Application.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
-namespace oficina_mecanica.API.Controllers;
+namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
 [ApiController]
 [Route("api/ordens-servico")]

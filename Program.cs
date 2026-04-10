@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
-using oficina_mecanica.Application.Services;
-using oficina_mecanica.Domain.Repositories;
-using oficina_mecanica.Infrastructure.Data;
-using oficina_mecanica.Infrastructure.Extensions;
-using oficina_mecanica.Infrastructure.HealthChecks;
-using oficina_mecanica.Infrastructure.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Application.Services;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Extensions;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.HealthChecks;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 

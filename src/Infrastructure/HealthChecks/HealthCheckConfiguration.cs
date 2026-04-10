@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace oficina_mecanica.Infrastructure.HealthChecks;
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.HealthChecks;
 
 public static class HealthCheckConfiguration
 {
@@ -9,7 +9,7 @@ public static class HealthCheckConfiguration
     {
         builder.Services
             .AddHealthChecks()
-            .AddDbContextCheck<oficina_mecanica.Infrastructure.Data.OficinaDbContext>(
+            .AddDbContextCheck<Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data.OficinaDbContext>(
                 name: "Database",
                 failureStatus: HealthStatus.Unhealthy);
     }

@@ -1,7 +1,7 @@
-using oficina_mecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace oficina_mecanica.Infrastructure.Data.Seeders;
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data.Seeders;
 
 public static class OficinaDbContextSeeder
 {
