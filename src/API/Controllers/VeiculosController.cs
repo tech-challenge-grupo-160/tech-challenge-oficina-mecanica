@@ -5,7 +5,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class VeiculosController : ControllerBase
 {
     private readonly IVeiculoApplicationService _veiculoService;

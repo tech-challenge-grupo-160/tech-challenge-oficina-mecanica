@@ -5,7 +5,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
 [ApiController]
-[Route("api/ordens-servico")]
+[Route("api/v1/ordens-servico")]
 public class OrdensDeServicoController : ControllerBase
 {
     private readonly IOrdemDeServicoApplicationService _ordemService;

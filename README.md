@@ -33,6 +33,55 @@ Infrastructure Layer
 
 ---
 
+# 4. Configuração para Desenvolvimento
+
+## 4.1 Variáveis de ambiente / `.env`
+
+1. Copie o arquivo `.env.example` para `.env` (compartilhado no privado).
+2. Defina as credenciais reais do Postgres e do JWT nesse arquivo. O `docker-compose` lerá automaticamente essas variáveis quando você executar `docker-compose up`.
+
+Exemplo:
+
+```
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=oficina_mecanica
+DB_PORT=5432
+API_PORT=8080
+API_CONNECTION_STRING=Host=postgres;Database=oficina_mecanica;Username=postgres;Password=postgres
+JWT_SECRET=sua-chave-muito-forte
+JWT_ISSUER=Fiap.TechChallenge.OficinaMecanica
+JWT_AUDIENCE=Fiap.TechChallenge.OficinaMecanica
+```
+
+> **Atenção:** não commit o arquivo `.env` com senhas reais.
+
+## 4.2 `dotnet user-secrets`
+
+Para rodar a API fora do Docker:
+
+```bash
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=oficina_mecanica;Username=postgres;Password=postgres"
+dotnet user-secrets set "Jwt:SecretKey" "coloque-uma-chave-muito-forte"
+```
+
+## 4.3 Executando
+
+```bash
+docker-compose up --build
+# ou
+dotnet run --project Fiap.TechChallenge.OficinaMecanica.csproj
+```
+
+Depois que a API estiver rodando:
+
+1. Acesse `http://localhost:8080/swagger`.
+2. Faça login em `POST /api/v1/auth/login` com o usuário `admin` / `admin123`.
+3. Clique em **Authorize**, cole apenas o token retornado e consuma os endpoints protegidos.
+
+---
+
 # 3. Camadas da Aplicação
 
 ## 3.1 API Layer (Presentation)
