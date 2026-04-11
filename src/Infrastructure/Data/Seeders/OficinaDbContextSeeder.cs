@@ -1,4 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 using Microsoft.EntityFrameworkCore;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data.Seeders;
@@ -278,6 +279,21 @@ public static class OficinaDbContextSeeder
                 };
 
                 await context.OrdemDeServicoPecas.AddRangeAsync(ordensPecas);
+                await context.SaveChangesAsync();
+            }
+
+            if (!await context.Usuarios.AnyAsync())
+            {
+                var usuario = new Usuario
+                {
+                    Id = Guid.NewGuid(),
+                    Nome = "Administrador",
+                    UsuarioLogin = "admin",
+                    Role = "Administrador",
+                    SenhaHash = StringHelper.ToMd5Hash("admin123")
+                };
+
+                await context.Usuarios.AddAsync(usuario);
                 await context.SaveChangesAsync();
             }
         }

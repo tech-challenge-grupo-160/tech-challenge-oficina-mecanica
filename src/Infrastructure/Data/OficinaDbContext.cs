@@ -17,6 +17,7 @@ public class OficinaDbContext : DbContext
     public DbSet<OrdemDeServico> OrdensDeServico { get; set; } = null!;
     public DbSet<OrdemDeServicoServico> OrdemDeServicoServicos { get; set; } = null!;
     public DbSet<OrdemDeServicoPeca> OrdemDeServicoPecas { get; set; } = null!;
+    public DbSet<Usuario> Usuarios { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -110,6 +111,18 @@ public class OficinaDbContext : DbContext
             entity.HasKey(e => new { e.OrdemDeServicoId, e.PecaId });
             entity.Property(e => e.OrdemDeServicoId).HasColumnName("OrdemServicoId");
             entity.Property(e => e.Preco).HasPrecision(18, 2);
+        });
+
+        // Usuario
+        modelBuilder.Entity<Usuario>(entity =>
+        {
+            entity.ToTable("Usuario");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Nome).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.UsuarioLogin).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.SenhaHash).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Role).IsRequired().HasMaxLength(50);
+            entity.HasIndex(e => e.UsuarioLogin).IsUnique();
         });
     }
 }
