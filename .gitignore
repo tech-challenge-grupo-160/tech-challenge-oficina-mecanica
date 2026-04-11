@@ -11,3 +11,4 @@ bin/
 node_modules/
 .idea/
 #launchSettings.json
+.env

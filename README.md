@@ -494,7 +494,7 @@ Oficina.IntegrationTests
 ## Pré-requisitos
 
 * Docker
-* .NET 8 SDK
+* .NET 10 SDK
 
 ---
 
