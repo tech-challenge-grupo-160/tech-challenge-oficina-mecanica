@@ -1,6 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
@@ -61,7 +62,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             ClienteId = dto.ClienteId,
             VeiculoId = dto.VeiculoId,
             Status = StatusOrdemDeServico.Recebida,
-            DataAbertura = DateTime.UtcNow,
+            DataAbertura = DateTimeHelper.UTCBrazilNow(),
             ValorTotal = 0
         };
 

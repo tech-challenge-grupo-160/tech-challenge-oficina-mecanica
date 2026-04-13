@@ -1,6 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
@@ -25,7 +26,9 @@ public class ClienteApplicationService : IClienteApplicationService
 
     public async Task<ClienteDto> CriarClienteAsync(CriarClienteDto dto, CancellationToken cancellationToken)
     {
-        var clienteExistente = await _clienteRepository.ObterPorCpfCnpjAsync(dto.CpfCnpj, cancellationToken);
+        var documento = DocumentoHelper.NormalizarDocumento(dto.CpfCnpj);
+        var telefone = TelefoneHelper.Normalizar(dto.Telefone);
+        var clienteExistente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
         if (clienteExistente != null)
         {
             throw new InvalidOperationException("Cliente com este CPF/CNPJ já existe.");
@@ -35,10 +38,10 @@ public class ClienteApplicationService : IClienteApplicationService
         {
             Id = Guid.NewGuid(),
             Nome = dto.Nome,
-            CpfCnpj = dto.CpfCnpj,
-            Telefone = dto.Telefone,
+            CpfCnpj = documento,
+            Telefone = telefone,
             Email = dto.Email,
-            DataCadastro = DateTime.UtcNow
+            DataCadastro = DateTimeHelper.UTCBrazilNow()
         };
 
         var clienteCriado = await _clienteRepository.CriarAsync(cliente, cancellationToken);
@@ -58,7 +61,8 @@ public class ClienteApplicationService : IClienteApplicationService
 
     public async Task<ClienteDto> ObterClientePorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(cpfCnpj, cancellationToken);
+        var documento = DocumentoHelper.NormalizarDocumento(cpfCnpj);
+        var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
         if (cliente == null)
         {
             throw new KeyNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} não encontrado.");
@@ -82,7 +86,7 @@ public class ClienteApplicationService : IClienteApplicationService
         }
 
         cliente.Nome = dto.Nome;
-        cliente.Telefone = dto.Telefone;
+        cliente.Telefone = TelefoneHelper.Normalizar(dto.Telefone);
         cliente.Email = dto.Email;
 
         var clienteAtualizado = await _clienteRepository.AtualizarAsync(cliente, cancellationToken);

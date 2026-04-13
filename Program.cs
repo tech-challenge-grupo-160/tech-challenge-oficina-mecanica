@@ -14,7 +14,10 @@ using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<Fiap.TechChallenge.OficinaMecanica.API.Filters.DomainExceptionFilter>();
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -86,9 +89,19 @@ builder.Services.AddAuthorization();
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=postgres;Database=oficina_mecanica;Username=postgres;Password=postgres";
-builder.Services.AddDbContext<OficinaDbContext>(options =>
-    options.UseNpgsql(connectionString)
-);
+var usingInMemoryDatabase = builder.Environment.IsEnvironment("Testing") ||
+    string.Equals(connectionString, "UseInMemory", StringComparison.OrdinalIgnoreCase);
+
+if (usingInMemoryDatabase)
+{
+    builder.Services.AddDbContext<OficinaDbContext>(options =>
+        options.UseInMemoryDatabase("OficinaInMemory"));
+}
+else
+{
+    builder.Services.AddDbContext<OficinaDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
 
 // Health Checks
 builder.AddHealthChecks();
@@ -143,6 +156,11 @@ app.MapControllers();
 app.UseHealthChecks();
 
 // Database migrations and seeding with retry
-await app.MigrateAndSeedAsync(app.Environment.IsDevelopment());
+if (!usingInMemoryDatabase)
+{
+    await app.MigrateAndSeedAsync(app.Environment.IsDevelopment());
+}
 
 app.Run();
+
+public partial class Program;

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
@@ -5,6 +6,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/v1/[controller]")]
 public class ClientesController : ControllerBase
 {
@@ -19,7 +21,7 @@ public class ClientesController : ControllerBase
     public async Task<ActionResult<ClienteDto>> Criar([FromBody] CriarClienteDto dto, CancellationToken cancellationToken)
     {
         var cliente = await _clienteService.CriarClienteAsync(dto, cancellationToken);
-        return CreatedAtAction(nameof(Obter), new { id = cliente.Id }, cliente);
+        return CreatedAtAction(nameof(ObterPorDocumento), new { cpfCnpj = cliente.CpfCnpj }, cliente);
     }
 
     [HttpGet("{id}")]
@@ -34,6 +36,13 @@ public class ClientesController : ControllerBase
     {
         var clientes = await _clienteService.ListarClientesAsync(cancellationToken);
         return Ok(clientes);
+    }
+
+    [HttpGet("documento/{cpfCnpj}")]
+    public async Task<ActionResult<ClienteDto>> ObterPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
+    {
+        var cliente = await _clienteService.ObterClientePorCpfCnpjAsync(cpfCnpj, cancellationToken);
+        return Ok(cliente);
     }
 
     [HttpPut("{id}")]
