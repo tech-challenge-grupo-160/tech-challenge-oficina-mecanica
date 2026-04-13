@@ -1,3 +1,5 @@
+using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
+
 namespace Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
 public enum StatusOrdemDeServico
@@ -80,7 +82,7 @@ public class OrdemDeServico
 
         if (novoStatus == StatusOrdemDeServico.Entregue)
         {
-            DataConclusao = DateTime.UtcNow;
+            DataConclusao = DateTimeHelper.UTCBrazilNow();
         }
     }
 

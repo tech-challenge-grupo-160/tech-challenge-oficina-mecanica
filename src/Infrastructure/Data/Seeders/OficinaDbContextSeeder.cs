@@ -18,29 +18,38 @@ public static class OficinaDbContextSeeder
                     new Cliente
                     {
                         Id = Guid.NewGuid(),
-                        Nome = "João Silva",
-                        CpfCnpj = "123.456.789-10",
-                        Telefone = "(11) 98765-4321",
-                        Email = "joao.silva@email.com",
-                        DataCadastro = DateTime.UtcNow
+                        Nome = "Vanessa Luna Duarte",
+                        CpfCnpj = DocumentoHelper.NormalizarCpf("476.548.668-01"),
+                        Telefone = StringHelper.OnlyDigits("15984608796"),
+                        Email = "vanessa_luna_duarte@maissaude.adm.br",
+                        DataCadastro = DateTimeHelper.UTCBrazilNow()
                     },
                     new Cliente
                     {
                         Id = Guid.NewGuid(),
-                        Nome = "Maria Santos",
-                        CpfCnpj = "987.654.321-10",
-                        Telefone = "(11) 97654-3210",
-                        Email = "maria.santos@email.com",
-                        DataCadastro = DateTime.UtcNow
+                        Nome = "Rafael Mateus César Souza",
+                        CpfCnpj = DocumentoHelper.NormalizarCpf("093.678.498-93"),
+                        Telefone = StringHelper.OnlyDigits("15983042238"),
+                        Email = "rafael-souza91@gilbertorodrigues.com",
+                        DataCadastro = DateTimeHelper.UTCBrazilNow()
                     },
                     new Cliente
                     {
                         Id = Guid.NewGuid(),
-                        Nome = "Transportadora XYZ LTDA",
-                        CpfCnpj = "12.345.678/0001-90",
-                        Telefone = "(11) 3456-7890",
-                        Email = "contato@transportadora.com",
-                        DataCadastro = DateTime.UtcNow
+                        Nome = "Betina e Fernanda Contábil Ltda",
+                        CpfCnpj = DocumentoHelper.NormalizarCnpj("60.617.051/0001-99"),
+                        Telefone = StringHelper.OnlyDigits("16985344781"),
+                        Email = "ouvidoria@betinaefernandacontabilltda.com.br",
+                        DataCadastro = DateTimeHelper.UTCBrazilNow()
+                    },
+                    new Cliente
+                    {
+                        Id = Guid.NewGuid(),
+                        Nome = "Vicente e Giovanni Advocacia Ltda",
+                        CpfCnpj = DocumentoHelper.NormalizarCnpj("46.981.686/0001-40"),
+                        Telefone = StringHelper.OnlyDigits("11983202194"),
+                        Email = "contato@vicenteegiovanniadvocacialtda.com.br",
+                        DataCadastro = DateTimeHelper.UTCBrazilNow()
                     }
                 };
 
@@ -204,8 +213,8 @@ public static class OficinaDbContextSeeder
                         ClienteId = clientes[0].Id,
                         VeiculoId = veiculos[0].Id,
                         Status = StatusOrdemDeServico.Entregue,
-                        DataAbertura = DateTime.UtcNow.AddDays(-5),
-                        DataConclusao = DateTime.UtcNow.AddDays(-1),
+                        DataAbertura = DateTimeHelper.UTCBrazilNow().AddDays(-5),
+                        DataConclusao = DateTimeHelper.UTCBrazilNow().AddDays(-1),
                         ValorTotal = 195.00m
                     },
                     new OrdemDeServico
@@ -215,7 +224,7 @@ public static class OficinaDbContextSeeder
                         ClienteId = clientes[1].Id,
                         VeiculoId = veiculos[1].Id,
                         Status = StatusOrdemDeServico.EmExecucao,
-                        DataAbertura = DateTime.UtcNow.AddDays(-2),
+                        DataAbertura = DateTimeHelper.UTCBrazilNow().AddDays(-2),
                         DataConclusao = null,
                         ValorTotal = 700.00m
                     }

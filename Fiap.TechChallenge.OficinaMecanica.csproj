@@ -15,6 +15,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.5" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
@@ -27,11 +28,19 @@
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.5" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.16.0" />
     <PackageReference Include="System.Text.Json" Version="10.0.5" />
-    <PackageReference Include="xunit" Version="2.6.6" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.4" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
-    <PackageReference Include="FluentAssertions" Version="6.12.1" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+    <EmbeddedResource Remove="tests\**\*" />
+    <None Remove="tests\**\*" />
+    <Compile Remove="Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests\**\*.cs" />
+    <EmbeddedResource Remove="Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests\**\*" />
+    <None Remove="Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests\**\*" />
+    <Compile Remove="Fiap.TechChallenge.OficinaMecanica.Test.UnitTests\**\*.cs" />
+    <EmbeddedResource Remove="Fiap.TechChallenge.OficinaMecanica.Test.UnitTests\**\*" />
+    <None Remove="Fiap.TechChallenge.OficinaMecanica.Test.UnitTests\**\*" />
   </ItemGroup>
 
 </Project>

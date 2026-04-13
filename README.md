@@ -37,7 +37,7 @@ Infrastructure Layer
 
 ## 4.1 Variáveis de ambiente / `.env`
 
-1. Copie o arquivo `.env.example` para `.env` (compartilhado no privado).
+1. Copie o arquivo `.env.example` para `.env` (compartilhado exemplo no privado).
 2. Defina as credenciais reais do Postgres e do JWT nesse arquivo. O `docker-compose` lerá automaticamente essas variáveis quando você executar `docker-compose up`.
 
 Exemplo:

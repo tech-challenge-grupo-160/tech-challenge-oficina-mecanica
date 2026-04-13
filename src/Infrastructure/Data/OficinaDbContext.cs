@@ -36,6 +36,7 @@ public class OficinaDbContext : DbContext
             entity.HasIndex(e => e.Email);
             entity.HasMany(e => e.Veiculos).WithOne(v => v.Cliente).HasForeignKey(v => v.ClienteId).OnDelete(DeleteBehavior.Restrict);
             entity.HasMany(e => e.OrdensDeServico).WithOne(o => o.Cliente).HasForeignKey(o => o.ClienteId).OnDelete(DeleteBehavior.Restrict);
+            entity.Property(e => e.DataCadastro).HasColumnType("timestamp without time zone");
         });
 
         // Veiculo
@@ -79,14 +80,8 @@ public class OficinaDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Numero).IsRequired().HasMaxLength(50);
             entity.Property(e => e.Status).IsRequired();
-            entity.Property(e => e.DataAbertura)
-                .HasConversion(
-                    v => v.Kind == DateTimeKind.Utc ? v : v.ToUniversalTime(),
-                    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
-            entity.Property(e => e.DataConclusao)
-                .HasConversion(
-                    v => v.HasValue && v.Value.Kind == DateTimeKind.Utc ? v : (v.HasValue ? v.Value.ToUniversalTime() : null),
-                    v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : null);
+            entity.Property(e => e.DataAbertura).HasColumnType("timestamp without time zone");
+            entity.Property(e => e.DataConclusao).HasColumnType("timestamp without time zone");
             entity.Property(e => e.ValorTotal).HasPrecision(18, 2);
             entity.HasIndex(e => e.Numero).IsUnique();
             entity.HasIndex(e => e.Status);
