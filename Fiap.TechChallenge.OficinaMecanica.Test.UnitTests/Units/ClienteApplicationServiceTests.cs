@@ -80,4 +80,53 @@ public class ClienteApplicationServiceTests
         await acao.Should().ThrowAsync<KeyNotFoundException>();
         _clienteRepositoryMock.Verify(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task CriarCliente_DevePersistirQuandoDocumentoNaoExiste()
+    {
+        var dto = new CriarClienteDto
+        {
+            Nome = "Novo Cliente",
+            CpfCnpj = "529.982.247-25",
+            Email = "novo@cliente.com",
+            Telefone = "11999999999"
+        };
+
+        _clienteRepositoryMock
+            .Setup(x => x.ObterPorCpfCnpjAsync("52998224725", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Cliente?)null);
+
+        _clienteRepositoryMock
+            .Setup(x => x.CriarAsync(It.IsAny<Cliente>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Cliente cliente, CancellationToken _) => cliente);
+
+        var resultado = await _service.CriarClienteAsync(dto, CancellationToken.None);
+
+        resultado.Nome.Should().Be(dto.Nome);
+        resultado.CpfCnpj.Should().Be("52998224725");
+
+        _clienteRepositoryMock.Verify(x => x.ObterPorCpfCnpjAsync("52998224725", It.IsAny<CancellationToken>()), Times.Once);
+        _clienteRepositoryMock.Verify(x => x.CriarAsync(It.Is<Cliente>(c => c.Nome == dto.Nome), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CriarCliente_DeveLancarQuandoDocumentoJaExistir()
+    {
+        var dto = new CriarClienteDto
+        {
+            Nome = "Cliente Existente",
+            CpfCnpj = "476.548.668-01",
+            Email = "cliente@teste.com",
+            Telefone = "11988887777"
+        };
+
+        _clienteRepositoryMock
+            .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Cliente());
+
+        var acao = () => _service.CriarClienteAsync(dto, CancellationToken.None);
+
+        await acao.Should().ThrowAsync<InvalidOperationException>();
+        _clienteRepositoryMock.Verify(x => x.CriarAsync(It.IsAny<Cliente>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

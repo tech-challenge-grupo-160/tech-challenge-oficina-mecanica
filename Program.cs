@@ -10,6 +10,9 @@ using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Extensions;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.HealthChecks;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using Fiap.TechChallenge.OficinaMecanica.Application.Validators.Clientes;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +21,9 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add<Fiap.TechChallenge.OficinaMecanica.API.Filters.DomainExceptionFilter>();
 });
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddFluentValidationClientsideAdapters();
+builder.Services.AddValidatorsFromAssemblyContaining<CriarClienteDtoValidator>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {

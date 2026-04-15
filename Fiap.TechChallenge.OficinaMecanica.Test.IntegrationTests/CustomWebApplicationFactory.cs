@@ -18,6 +18,11 @@ namespace Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests;
 
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
+    public static readonly Guid PessoaFisicaClienteId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    public static readonly Guid PessoaJuridicaClienteId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+    public static readonly Guid VeiculoExistenteId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    private readonly string _databaseName = $"OficinaInMemoryTests-{Guid.NewGuid()}";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -37,6 +42,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
+            services.RemoveAll<DbContextOptions<OficinaDbContext>>();
+            services.RemoveAll<OficinaDbContext>();
+            services.AddDbContext<OficinaDbContext>(options => options.UseInMemoryDatabase(_databaseName));
+
             services.AddAuthentication("Test")
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
 
@@ -50,18 +59,19 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
             context.Database.EnsureDeleted();
             context.Database.EnsureCreated();
-            SeedClientes(context);
+            SeedData(context);
         });
     }
 
-    private static void SeedClientes(OficinaDbContext context)
+    private static void SeedData(OficinaDbContext context)
     {
+        context.Veiculos.RemoveRange(context.Veiculos);
         context.Clientes.RemoveRange(context.Clientes);
 
         context.Clientes.AddRange(
             new Cliente
             {
-                Id = Guid.NewGuid(),
+                Id = PessoaFisicaClienteId,
                 Nome = "Vanessa Luna Duarte",
                 CpfCnpj = DocumentoHelper.NormalizarCpf("476.548.668-01"),
                 Telefone = TelefoneHelper.Normalizar("15984608796"),
@@ -70,14 +80,24 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             },
             new Cliente
             {
-                Id = Guid.NewGuid(),
-                Nome = "Betina e Fernanda Contábil Ltda",
+                Id = PessoaJuridicaClienteId,
+                Nome = "Betina e Fernanda Contabil Ltda",
                 CpfCnpj = DocumentoHelper.NormalizarCnpj("60.617.051/0001-99"),
                 Telefone = TelefoneHelper.Normalizar("16985344781"),
                 Email = "ouvidoria@betinaefernandacontabilltda.com.br",
                 DataCadastro = DateTimeHelper.UTCBrazilNow()
-            }
-        );
+            });
+
+        context.Veiculos.Add(
+            new Veiculo
+            {
+                Id = VeiculoExistenteId,
+                Placa = "BRA2E19",
+                Marca = "Volkswagen",
+                Modelo = "Gol",
+                Ano = 2020,
+                ClienteId = PessoaFisicaClienteId
+            });
 
         context.SaveChanges();
     }
@@ -88,9 +108,8 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
     public TestAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
-        UrlEncoder encoder,
-        ISystemClock clock)
-        : base(options, logger, encoder, clock)
+        UrlEncoder encoder)
+        : base(options, logger, encoder)
     {
     }
 
