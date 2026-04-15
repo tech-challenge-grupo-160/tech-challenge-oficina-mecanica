@@ -1,6 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
@@ -8,6 +9,7 @@ public interface IVeiculoApplicationService
 {
     Task<VeiculoDto> CriarVeiculoAsync(CriarVeiculoDto dto, CancellationToken cancellationToken);
     Task<VeiculoDto> ObterVeiculoAsync(Guid id, CancellationToken cancellationToken);
+    Task<VeiculoDto> ObterVeiculoPorPlacaAsync(string placa, CancellationToken cancellationToken);
     Task<IEnumerable<VeiculoDto>> ListarVeiculosAsync(CancellationToken cancellationToken);
     Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(Guid clienteId, CancellationToken cancellationToken);
     Task<VeiculoDto> AtualizarVeiculoAsync(Guid id, AtualizarVeiculoDto dto, CancellationToken cancellationToken);
@@ -27,26 +29,28 @@ public class VeiculoApplicationService : IVeiculoApplicationService
 
     public async Task<VeiculoDto> CriarVeiculoAsync(CriarVeiculoDto dto, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(dto.ClienteId, cancellationToken);
+        var placa = PlacaHelper.Normalizar(dto.Placa);
+        var documento = DocumentoHelper.NormalizarDocumento(dto.CpfCnpj);
+        var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
         if (cliente == null)
         {
-            throw new KeyNotFoundException($"Cliente com ID {dto.ClienteId} não encontrado.");
+            throw new KeyNotFoundException($"Cliente com CPF/CNPJ {dto.CpfCnpj} nao encontrado.");
         }
 
-        var veiculoExistente = await _veiculoRepository.ObterPorPlacaAsync(dto.Placa, cancellationToken);
+        var veiculoExistente = await _veiculoRepository.ObterPorPlacaAsync(placa, cancellationToken);
         if (veiculoExistente != null)
         {
-            throw new InvalidOperationException("Veículo com esta placa já existe.");
+            throw new InvalidOperationException("Veiculo com esta placa ja existe.");
         }
 
         var veiculo = new Veiculo
         {
             Id = Guid.NewGuid(),
-            Placa = dto.Placa.ToUpper(),
-            Marca = dto.Marca,
-            Modelo = dto.Modelo,
+            Placa = placa,
+            Marca = dto.Marca.Trim(),
+            Modelo = dto.Modelo.Trim(),
             Ano = dto.Ano,
-            ClienteId = dto.ClienteId
+            ClienteId = cliente.Id
         };
 
         var veiculoCriado = await _veiculoRepository.CriarAsync(veiculo, cancellationToken);
@@ -58,7 +62,19 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
         if (veiculo == null)
         {
-            throw new KeyNotFoundException($"Veículo com ID {id} não encontrado.");
+            throw new KeyNotFoundException($"Veiculo com ID {id} nao encontrado.");
+        }
+
+        return MapToDto(veiculo);
+    }
+
+    public async Task<VeiculoDto> ObterVeiculoPorPlacaAsync(string placa, CancellationToken cancellationToken)
+    {
+        var placaNormalizada = PlacaHelper.Normalizar(placa);
+        var veiculo = await _veiculoRepository.ObterPorPlacaAsync(placaNormalizada, cancellationToken);
+        if (veiculo == null)
+        {
+            throw new KeyNotFoundException($"Veiculo com placa {placa} nao encontrado.");
         }
 
         return MapToDto(veiculo);
@@ -75,7 +91,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         var cliente = await _clienteRepository.ObterPorIdAsync(clienteId, cancellationToken);
         if (cliente == null)
         {
-            throw new KeyNotFoundException($"Cliente com ID {clienteId} não encontrado.");
+            throw new KeyNotFoundException($"Cliente com ID {clienteId} nao encontrado.");
         }
 
         var veiculos = await _veiculoRepository.ObterPorClienteAsync(clienteId, cancellationToken);
@@ -87,11 +103,11 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
         if (veiculo == null)
         {
-            throw new KeyNotFoundException($"Veículo com ID {id} não encontrado.");
+            throw new KeyNotFoundException($"Veiculo com ID {id} nao encontrado.");
         }
 
-        veiculo.Marca = dto.Marca;
-        veiculo.Modelo = dto.Modelo;
+        veiculo.Marca = dto.Marca.Trim();
+        veiculo.Modelo = dto.Modelo.Trim();
         veiculo.Ano = dto.Ano;
 
         var veiculoAtualizado = await _veiculoRepository.AtualizarAsync(veiculo, cancellationToken);
@@ -103,7 +119,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
         if (veiculo == null)
         {
-            throw new KeyNotFoundException($"Veículo com ID {id} não encontrado.");
+            throw new KeyNotFoundException($"Veiculo com ID {id} nao encontrado.");
         }
 
         await _veiculoRepository.DeletarAsync(id, cancellationToken);

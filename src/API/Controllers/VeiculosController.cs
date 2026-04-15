@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
@@ -5,6 +6,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/v1/[controller]")]
 public class VeiculosController : ControllerBase
 {
@@ -19,13 +21,20 @@ public class VeiculosController : ControllerBase
     public async Task<ActionResult<VeiculoDto>> Criar([FromBody] CriarVeiculoDto dto, CancellationToken cancellationToken)
     {
         var veiculo = await _veiculoService.CriarVeiculoAsync(dto, cancellationToken);
-        return CreatedAtAction(nameof(Obter), new { id = veiculo.Id }, veiculo);
+        return CreatedAtAction(nameof(ObterPorPlaca), new { placa = veiculo.Placa }, veiculo);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<VeiculoDto>> Obter(Guid id, CancellationToken cancellationToken)
     {
         var veiculo = await _veiculoService.ObterVeiculoAsync(id, cancellationToken);
+        return Ok(veiculo);
+    }
+
+    [HttpGet("placa/{placa}")]
+    public async Task<ActionResult<VeiculoDto>> ObterPorPlaca(string placa, CancellationToken cancellationToken)
+    {
+        var veiculo = await _veiculoService.ObterVeiculoPorPlacaAsync(placa, cancellationToken);
         return Ok(veiculo);
     }
 

@@ -36,7 +36,42 @@ public class ClientesControllerTests : IClassFixture<CustomWebApplicationFactory
 
         var cliente = await response.Content.ReadFromJsonAsync<ClienteDto>();
         cliente.Should().NotBeNull();
-        cliente!.Nome.Should().Be("Betina e Fernanda Contábil Ltda");
+        cliente!.Nome.Should().Be("Betina e Fernanda Contabil Ltda");
         cliente.CpfCnpj.Should().Be("60617051000199");
+    }
+
+    [Fact]
+    public async Task CriarCliente_DeveRetornarCreatedQuandoPayloadValido()
+    {
+        var payload = new
+        {
+            nome = "Cliente Integracao",
+            cpfCnpj = "52998224725",
+            email = "integracao@teste.com",
+            telefone = "11988887777"
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/Clientes", payload);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var cliente = await response.Content.ReadFromJsonAsync<ClienteDto>();
+        cliente.Should().NotBeNull();
+        cliente!.Nome.Should().Be("Cliente Integracao");
+        cliente.CpfCnpj.Should().Be("52998224725");
+    }
+
+    [Fact]
+    public async Task CriarCliente_DeveRetornarBadRequestQuandoDadosObrigatoriosFaltarem()
+    {
+        var payload = new
+        {
+            cpfCnpj = "59362967063",
+            telefone = "11987654321"
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/Clientes", payload);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

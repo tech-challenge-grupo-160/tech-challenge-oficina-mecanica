@@ -5,11 +5,17 @@ public static class TelefoneHelper
     public static string Normalizar(string telefone)
     {
         var digitos = StringHelper.OnlyDigits(telefone);
-        if (digitos.Length < 10 || digitos.Length > 11)
+        if (!IsValid(digitos))
         {
             throw new ArgumentException("Telefone inválido.");
         }
 
         return digitos;
+    }
+
+    public static bool IsValid(string telefone)
+    {
+        var digitos = StringHelper.OnlyDigits(telefone);
+        return digitos.Length is >= 10 and <= 11;
     }
 }

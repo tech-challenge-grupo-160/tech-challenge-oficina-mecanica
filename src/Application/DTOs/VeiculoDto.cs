@@ -16,7 +16,7 @@ public class CriarVeiculoDto
     public string Marca { get; set; } = null!;
     public string Modelo { get; set; } = null!;
     public int Ano { get; set; }
-    public Guid ClienteId { get; set; }
+    public string CpfCnpj { get; set; } = null!;
 }
 
 public class AtualizarVeiculoDto
