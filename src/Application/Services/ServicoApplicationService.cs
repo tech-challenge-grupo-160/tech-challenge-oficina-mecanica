@@ -7,10 +7,10 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 public interface IServicoApplicationService
 {
     Task<ServicoDto> CriarServicoAsync(CriarServicoDto dto, CancellationToken cancellationToken);
-    Task<ServicoDto> ObterServicoAsync(Guid id, CancellationToken cancellationToken);
+    Task<ServicoDto> ObterServicoAsync(int id, CancellationToken cancellationToken);
     Task<IEnumerable<ServicoDto>> ListarServicosAsync(CancellationToken cancellationToken);
-    Task<ServicoDto> AtualizarServicoAsync(Guid id, AtualizarServicoDto dto, CancellationToken cancellationToken);
-    Task DeletarServicoAsync(Guid id, CancellationToken cancellationToken);
+    Task<ServicoDto> AtualizarServicoAsync(int id, AtualizarServicoDto dto, CancellationToken cancellationToken);
+    Task DeletarServicoAsync(int id, CancellationToken cancellationToken);
 }
 
 public class ServicoApplicationService : IServicoApplicationService
@@ -26,7 +26,6 @@ public class ServicoApplicationService : IServicoApplicationService
     {
         var servico = new Servico
         {
-            Id = Guid.NewGuid(),
             Nome = dto.Nome,
             Descricao = dto.Descricao,
             Preco = dto.Preco,
@@ -37,7 +36,7 @@ public class ServicoApplicationService : IServicoApplicationService
         return MapToDto(servicoCriado);
     }
 
-    public async Task<ServicoDto> ObterServicoAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<ServicoDto> ObterServicoAsync(int id, CancellationToken cancellationToken)
     {
         var servico = await _servicoRepository.ObterPorIdAsync(id, cancellationToken);
         if (servico == null)
@@ -54,7 +53,7 @@ public class ServicoApplicationService : IServicoApplicationService
         return servicos.Select(MapToDto);
     }
 
-    public async Task<ServicoDto> AtualizarServicoAsync(Guid id, AtualizarServicoDto dto, CancellationToken cancellationToken)
+    public async Task<ServicoDto> AtualizarServicoAsync(int id, AtualizarServicoDto dto, CancellationToken cancellationToken)
     {
         var servico = await _servicoRepository.ObterPorIdAsync(id, cancellationToken);
         if (servico == null)
@@ -71,7 +70,7 @@ public class ServicoApplicationService : IServicoApplicationService
         return MapToDto(servicoAtualizado);
     }
 
-    public async Task DeletarServicoAsync(Guid id, CancellationToken cancellationToken)
+    public async Task DeletarServicoAsync(int id, CancellationToken cancellationToken)
     {
         var servico = await _servicoRepository.ObterPorIdAsync(id, cancellationToken);
         if (servico == null)

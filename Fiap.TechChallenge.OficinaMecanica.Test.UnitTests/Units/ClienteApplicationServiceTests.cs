@@ -24,7 +24,7 @@ public class ClienteApplicationServiceTests
     {
         var cliente = new Cliente
         {
-            Id = Guid.NewGuid(),
+            Id = 1,
             Nome = "Cliente Teste",
             CpfCnpj = "47654866801",
             Telefone = "11988887777",
@@ -49,7 +49,7 @@ public class ClienteApplicationServiceTests
     {
         var cliente = new Cliente
         {
-            Id = Guid.NewGuid(),
+            Id = 2,
             Nome = "Empresa Teste",
             CpfCnpj = "60617051000199",
             Telefone = "11988887777",

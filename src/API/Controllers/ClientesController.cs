@@ -25,7 +25,7 @@ public class ClientesController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<ClienteDto>> Obter(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<ClienteDto>> Obter(int id, CancellationToken cancellationToken)
     {
         var cliente = await _clienteService.ObterClienteAsync(id, cancellationToken);
         return Ok(cliente);
@@ -46,14 +46,14 @@ public class ClientesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<ClienteDto>> Atualizar(Guid id, [FromBody] AtualizarClienteDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<ClienteDto>> Atualizar(int id, [FromBody] AtualizarClienteDto dto, CancellationToken cancellationToken)
     {
         var cliente = await _clienteService.AtualizarClienteAsync(id, dto, cancellationToken);
         return Ok(cliente);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Deletar(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Deletar(int id, CancellationToken cancellationToken)
     {
         await _clienteService.DeletarClienteAsync(id, cancellationToken);
         return NoContent();

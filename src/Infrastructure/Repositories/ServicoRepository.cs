@@ -14,7 +14,7 @@ public class ServicoRepository : IServicoRepository
         _context = context;
     }
 
-    public async Task<Servico?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<Servico?> ObterPorIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _context.Servicos.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
     }
@@ -38,7 +38,7 @@ public class ServicoRepository : IServicoRepository
         return servico;
     }
 
-    public async Task DeletarAsync(Guid id, CancellationToken cancellationToken)
+    public async Task DeletarAsync(int id, CancellationToken cancellationToken)
     {
         var servico = await _context.Servicos.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
         if (servico != null)

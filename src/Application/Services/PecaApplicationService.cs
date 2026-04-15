@@ -7,10 +7,10 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 public interface IPecaApplicationService
 {
     Task<PecaDto> CriarPecaAsync(CriarPecaDto dto, CancellationToken cancellationToken);
-    Task<PecaDto> ObterPecaAsync(Guid id, CancellationToken cancellationToken);
+    Task<PecaDto> ObterPecaAsync(int id, CancellationToken cancellationToken);
     Task<IEnumerable<PecaDto>> ListarPecasAsync(CancellationToken cancellationToken);
-    Task<PecaDto> AtualizarPecaAsync(Guid id, AtualizarPecaDto dto, CancellationToken cancellationToken);
-    Task DeletarPecaAsync(Guid id, CancellationToken cancellationToken);
+    Task<PecaDto> AtualizarPecaAsync(int id, AtualizarPecaDto dto, CancellationToken cancellationToken);
+    Task DeletarPecaAsync(int id, CancellationToken cancellationToken);
 }
 
 public class PecaApplicationService : IPecaApplicationService
@@ -26,7 +26,6 @@ public class PecaApplicationService : IPecaApplicationService
     {
         var peca = new Peca
         {
-            Id = Guid.NewGuid(),
             Nome = dto.Nome,
             Preco = dto.Preco,
             QuantidadeEstoque = dto.QuantidadeEstoque
@@ -36,7 +35,7 @@ public class PecaApplicationService : IPecaApplicationService
         return MapToDto(pecaCriada);
     }
 
-    public async Task<PecaDto> ObterPecaAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<PecaDto> ObterPecaAsync(int id, CancellationToken cancellationToken)
     {
         var peca = await _pecaRepository.ObterPorIdAsync(id, cancellationToken);
         if (peca == null)
@@ -53,7 +52,7 @@ public class PecaApplicationService : IPecaApplicationService
         return pecas.Select(MapToDto);
     }
 
-    public async Task<PecaDto> AtualizarPecaAsync(Guid id, AtualizarPecaDto dto, CancellationToken cancellationToken)
+    public async Task<PecaDto> AtualizarPecaAsync(int id, AtualizarPecaDto dto, CancellationToken cancellationToken)
     {
         var peca = await _pecaRepository.ObterPorIdAsync(id, cancellationToken);
         if (peca == null)
@@ -69,7 +68,7 @@ public class PecaApplicationService : IPecaApplicationService
         return MapToDto(pecaAtualizada);
     }
 
-    public async Task DeletarPecaAsync(Guid id, CancellationToken cancellationToken)
+    public async Task DeletarPecaAsync(int id, CancellationToken cancellationToken)
     {
         var peca = await _pecaRepository.ObterPorIdAsync(id, cancellationToken);
         if (peca == null)

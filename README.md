@@ -71,7 +71,7 @@ dotnet user-secrets set "Jwt:SecretKey" "coloque-uma-chave-muito-forte"
 ```bash
 docker-compose up --build
 # ou
-dotnet run --project Fiap.TechChallenge.OficinaMecanica.csproj
+dotnet run --project Fiap.TechChallenge.OficinaMecanica.Api.csproj
 ```
 
 Depois que a API estiver rodando:

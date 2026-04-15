@@ -8,14 +8,14 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 public interface IOrdemDeServicoApplicationService
 {
     Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken);
-    Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(Guid id, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(int id, CancellationToken cancellationToken);
     Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(CancellationToken cancellationToken);
-    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(Guid clienteId, CancellationToken cancellationToken);
+    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(int clienteId, CancellationToken cancellationToken);
     Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorStatusAsync(string status, CancellationToken cancellationToken);
-    Task<OrdemDeServicoDto> AtualizarStatusAsync(Guid id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken);
-    Task<OrdemDeServicoDto> AdicionarServicoAsync(Guid id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken);
-    Task<OrdemDeServicoDto> AdicionarPecaAsync(Guid id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken);
-    Task DeletarOrdemDeServicoAsync(Guid id, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken);
+    Task DeletarOrdemDeServicoAsync(int id, CancellationToken cancellationToken);
 }
 
 public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationService
@@ -57,7 +57,6 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         var numero = GerarNumeroOrdem();
         var ordem = new OrdemDeServico
         {
-            Id = Guid.NewGuid(),
             Numero = numero,
             ClienteId = dto.ClienteId,
             VeiculoId = dto.VeiculoId,
@@ -70,7 +69,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         return MapToDto(ordemCriada);
     }
 
-    public async Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -87,7 +86,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         return ordens.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(Guid clienteId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(int clienteId, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.ObterPorIdAsync(clienteId, cancellationToken);
         if (cliente == null)
@@ -110,7 +109,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         return ordens.Select(MapToDto);
     }
 
-    public async Task<OrdemDeServicoDto> AtualizarStatusAsync(Guid id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
+    public async Task<OrdemDeServicoDto> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -128,7 +127,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         return MapToDto(ordemAtualizada);
     }
 
-    public async Task<OrdemDeServicoDto> AdicionarServicoAsync(Guid id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
+    public async Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -147,7 +146,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         return MapToDto(ordemAtualizada);
     }
 
-    public async Task<OrdemDeServicoDto> AdicionarPecaAsync(Guid id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
+    public async Task<OrdemDeServicoDto> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -166,7 +165,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         return MapToDto(ordemAtualizada);
     }
 
-    public async Task DeletarOrdemDeServicoAsync(Guid id, CancellationToken cancellationToken)
+    public async Task DeletarOrdemDeServicoAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)

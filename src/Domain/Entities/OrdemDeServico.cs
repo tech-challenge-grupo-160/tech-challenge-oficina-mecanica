@@ -14,10 +14,10 @@ public enum StatusOrdemDeServico
 
 public class OrdemDeServico
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Numero { get; set; } = null!;
-    public Guid ClienteId { get; set; }
-    public Guid VeiculoId { get; set; }
+    public int ClienteId { get; set; }
+    public int VeiculoId { get; set; }
     public StatusOrdemDeServico Status { get; set; }
     public DateTime DataAbertura { get; set; }
     public DateTime? DataConclusao { get; set; }
@@ -109,8 +109,8 @@ public class OrdemDeServico
 
 public class OrdemDeServicoServico
 {
-    public Guid OrdemDeServicoId { get; set; }
-    public Guid ServicoId { get; set; }
+    public int OrdemDeServicoId { get; set; }
+    public int ServicoId { get; set; }
     public decimal Preco { get; set; }
     public int TempoEstimado { get; set; }
 
@@ -121,8 +121,8 @@ public class OrdemDeServicoServico
 
 public class OrdemDeServicoPeca
 {
-    public Guid OrdemDeServicoId { get; set; }
-    public Guid PecaId { get; set; }
+    public int OrdemDeServicoId { get; set; }
+    public int PecaId { get; set; }
     public int Quantidade { get; set; }
     public decimal Preco { get; set; }
 

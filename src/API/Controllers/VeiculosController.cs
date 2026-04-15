@@ -25,7 +25,7 @@ public class VeiculosController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<VeiculoDto>> Obter(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<VeiculoDto>> Obter(int id, CancellationToken cancellationToken)
     {
         var veiculo = await _veiculoService.ObterVeiculoAsync(id, cancellationToken);
         return Ok(veiculo);
@@ -46,21 +46,21 @@ public class VeiculosController : ControllerBase
     }
 
     [HttpGet("cliente/{clienteId}")]
-    public async Task<ActionResult<IEnumerable<VeiculoDto>>> ListarPorCliente(Guid clienteId, CancellationToken cancellationToken)
+    public async Task<ActionResult<IEnumerable<VeiculoDto>>> ListarPorCliente(int clienteId, CancellationToken cancellationToken)
     {
         var veiculos = await _veiculoService.ListarVeiculosPorClienteAsync(clienteId, cancellationToken);
         return Ok(veiculos);
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<VeiculoDto>> Atualizar(Guid id, [FromBody] AtualizarVeiculoDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<VeiculoDto>> Atualizar(int id, [FromBody] AtualizarVeiculoDto dto, CancellationToken cancellationToken)
     {
         var veiculo = await _veiculoService.AtualizarVeiculoAsync(id, dto, cancellationToken);
         return Ok(veiculo);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Deletar(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Deletar(int id, CancellationToken cancellationToken)
     {
         await _veiculoService.DeletarVeiculoAsync(id, cancellationToken);
         return NoContent();

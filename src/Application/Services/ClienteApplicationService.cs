@@ -8,11 +8,11 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 public interface IClienteApplicationService
 {
     Task<ClienteDto> CriarClienteAsync(CriarClienteDto dto, CancellationToken cancellationToken);
-    Task<ClienteDto> ObterClienteAsync(Guid id, CancellationToken cancellationToken);
+    Task<ClienteDto> ObterClienteAsync(int id, CancellationToken cancellationToken);
     Task<ClienteDto> ObterClientePorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken);
     Task<IEnumerable<ClienteDto>> ListarClientesAsync(CancellationToken cancellationToken);
-    Task<ClienteDto> AtualizarClienteAsync(Guid id, AtualizarClienteDto dto, CancellationToken cancellationToken);
-    Task DeletarClienteAsync(Guid id, CancellationToken cancellationToken);
+    Task<ClienteDto> AtualizarClienteAsync(int id, AtualizarClienteDto dto, CancellationToken cancellationToken);
+    Task DeletarClienteAsync(int id, CancellationToken cancellationToken);
 }
 
 public class ClienteApplicationService : IClienteApplicationService
@@ -36,7 +36,6 @@ public class ClienteApplicationService : IClienteApplicationService
 
         var cliente = new Cliente
         {
-            Id = Guid.NewGuid(),
             Nome = dto.Nome,
             CpfCnpj = documento,
             Telefone = telefone,
@@ -48,7 +47,7 @@ public class ClienteApplicationService : IClienteApplicationService
         return MapToDto(clienteCriado);
     }
 
-    public async Task<ClienteDto> ObterClienteAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<ClienteDto> ObterClienteAsync(int id, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.ObterPorIdAsync(id, cancellationToken);
         if (cliente == null)
@@ -77,7 +76,7 @@ public class ClienteApplicationService : IClienteApplicationService
         return clientes.Select(MapToDto);
     }
 
-    public async Task<ClienteDto> AtualizarClienteAsync(Guid id, AtualizarClienteDto dto, CancellationToken cancellationToken)
+    public async Task<ClienteDto> AtualizarClienteAsync(int id, AtualizarClienteDto dto, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.ObterPorIdAsync(id, cancellationToken);
         if (cliente == null)
@@ -93,7 +92,7 @@ public class ClienteApplicationService : IClienteApplicationService
         return MapToDto(clienteAtualizado);
     }
 
-    public async Task DeletarClienteAsync(Guid id, CancellationToken cancellationToken)
+    public async Task DeletarClienteAsync(int id, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.ObterPorIdAsync(id, cancellationToken);
         if (cliente == null)

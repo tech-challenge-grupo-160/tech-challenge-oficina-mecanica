@@ -1,10 +1,13 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Migrations
+#nullable disable
+
+namespace Fiap.TechChallenge.OficinaMecanica.src.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialCreateIntIdentity : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -13,12 +16,14 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
                 name: "Cliente",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:IdentitySequenceOptions", "'1000', '1', '', '', 'False', '1'")
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Nome = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     CpfCnpj = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     Telefone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     Email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    DataCadastro = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    DataCadastro = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -29,7 +34,9 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
                 name: "Peca",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:IdentitySequenceOptions", "'1000', '1', '', '', 'False', '1'")
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Nome = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     Preco = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     QuantidadeEstoque = table.Column<int>(type: "integer", nullable: false)
@@ -43,7 +50,9 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
                 name: "Servico",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:IdentitySequenceOptions", "'1000', '1', '', '', 'False', '1'")
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Nome = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     Descricao = table.Column<string>(type: "text", nullable: false),
                     Preco = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
@@ -55,15 +64,34 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Usuario",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:IdentitySequenceOptions", "'1000', '1', '', '', 'False', '1'")
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Nome = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    UsuarioLogin = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    SenhaHash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    Role = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Usuario", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Veiculo",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:IdentitySequenceOptions", "'1000', '1', '', '', 'False', '1'")
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Placa = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
                     Marca = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     Modelo = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     Ano = table.Column<int>(type: "integer", nullable: false),
-                    ClienteId = table.Column<Guid>(type: "uuid", nullable: false)
+                    ClienteId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -80,13 +108,15 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
                 name: "OrdemServico",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:IdentitySequenceOptions", "'1000', '1', '', '', 'False', '1'")
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Numero = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    ClienteId = table.Column<Guid>(type: "uuid", nullable: false),
-                    VeiculoId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ClienteId = table.Column<int>(type: "integer", nullable: false),
+                    VeiculoId = table.Column<int>(type: "integer", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
-                    DataAbertura = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DataConclusao = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DataAbertura = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    DataConclusao = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     ValorTotal = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false)
                 },
                 constraints: table =>
@@ -110,8 +140,8 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
                 name: "OrdemServicoItemPeca",
                 columns: table => new
                 {
-                    OrdemServicoId = table.Column<Guid>(type: "uuid", nullable: false),
-                    PecaId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrdemServicoId = table.Column<int>(type: "integer", nullable: false),
+                    PecaId = table.Column<int>(type: "integer", nullable: false),
                     Quantidade = table.Column<int>(type: "integer", nullable: false),
                     Preco = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false)
                 },
@@ -136,8 +166,8 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
                 name: "OrdemServicoItemServico",
                 columns: table => new
                 {
-                    OrdemServicoId = table.Column<Guid>(type: "uuid", nullable: false),
-                    ServicoId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrdemServicoId = table.Column<int>(type: "integer", nullable: false),
+                    ServicoId = table.Column<int>(type: "integer", nullable: false),
                     Preco = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     TempoEstimadoMinutos = table.Column<int>(type: "integer", nullable: false)
                 },
@@ -201,6 +231,12 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
                 column: "ServicoId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Usuario_UsuarioLogin",
+                table: "Usuario",
+                column: "UsuarioLogin",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Veiculo_ClienteId",
                 table: "Veiculo",
                 column: "ClienteId");
@@ -220,6 +256,9 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
 
             migrationBuilder.DropTable(
                 name: "OrdemServicoItemServico");
+
+            migrationBuilder.DropTable(
+                name: "Usuario");
 
             migrationBuilder.DropTable(
                 name: "Peca");
