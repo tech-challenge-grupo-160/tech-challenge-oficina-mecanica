@@ -8,7 +8,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Fiap.TechChallenge.OficinaMecanica.Migrations
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
 {
     [DbContext(typeof(OficinaDbContext))]
     partial class OficinaDbContextModelSnapshot : ModelSnapshot
@@ -24,9 +24,12 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
 
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Cliente", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
 
                     b.Property<string>("CpfCnpj")
                         .IsRequired()
@@ -63,12 +66,15 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
 
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServico", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("integer");
 
-                    b.Property<Guid>("ClienteId")
-                        .HasColumnType("uuid");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+
+                    b.Property<int>("ClienteId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("DataAbertura")
                         .HasColumnType("timestamp without time zone");
@@ -88,8 +94,8 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
-                    b.Property<Guid>("VeiculoId")
-                        .HasColumnType("uuid");
+                    b.Property<int>("VeiculoId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -107,12 +113,12 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
 
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServicoPeca", b =>
                 {
-                    b.Property<Guid>("OrdemDeServicoId")
-                        .HasColumnType("uuid")
+                    b.Property<int>("OrdemDeServicoId")
+                        .HasColumnType("integer")
                         .HasColumnName("OrdemServicoId");
 
-                    b.Property<Guid>("PecaId")
-                        .HasColumnType("uuid");
+                    b.Property<int>("PecaId")
+                        .HasColumnType("integer");
 
                     b.Property<decimal>("Preco")
                         .HasPrecision(18, 2)
@@ -130,12 +136,12 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
 
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServicoServico", b =>
                 {
-                    b.Property<Guid>("OrdemDeServicoId")
-                        .HasColumnType("uuid")
+                    b.Property<int>("OrdemDeServicoId")
+                        .HasColumnType("integer")
                         .HasColumnName("OrdemServicoId");
 
-                    b.Property<Guid>("ServicoId")
-                        .HasColumnType("uuid");
+                    b.Property<int>("ServicoId")
+                        .HasColumnType("integer");
 
                     b.Property<decimal>("Preco")
                         .HasPrecision(18, 2)
@@ -154,9 +160,12 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
 
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Peca", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -177,9 +186,12 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
 
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Servico", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
 
                     b.Property<string>("Descricao")
                         .IsRequired()
@@ -205,9 +217,12 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
 
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Usuario", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -239,15 +254,18 @@ namespace Fiap.TechChallenge.OficinaMecanica.Migrations
 
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Veiculo", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
 
                     b.Property<int>("Ano")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("ClienteId")
-                        .HasColumnType("uuid");
+                    b.Property<int>("ClienteId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Marca")
                         .IsRequired()

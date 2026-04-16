@@ -2,7 +2,7 @@ namespace Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
 public class Servico
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Nome { get; set; } = null!;
     public string Descricao { get; set; } = null!;
     public decimal Preco { get; set; }

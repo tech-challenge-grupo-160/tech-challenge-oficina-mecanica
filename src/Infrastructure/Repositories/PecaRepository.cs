@@ -14,7 +14,7 @@ public class PecaRepository : IPecaRepository
         _context = context;
     }
 
-    public async Task<Peca?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<Peca?> ObterPorIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _context.Pecas.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
@@ -38,7 +38,7 @@ public class PecaRepository : IPecaRepository
         return peca;
     }
 
-    public async Task DeletarAsync(Guid id, CancellationToken cancellationToken)
+    public async Task DeletarAsync(int id, CancellationToken cancellationToken)
     {
         var peca = await _context.Pecas.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (peca != null)

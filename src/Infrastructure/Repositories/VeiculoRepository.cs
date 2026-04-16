@@ -14,7 +14,7 @@ public class VeiculoRepository : IVeiculoRepository
         _context = context;
     }
 
-    public async Task<Veiculo?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<Veiculo?> ObterPorIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _context.Veiculos.FirstOrDefaultAsync(v => v.Id == id, cancellationToken);
     }
@@ -24,7 +24,7 @@ public class VeiculoRepository : IVeiculoRepository
         return await _context.Veiculos.FirstOrDefaultAsync(v => v.Placa == placa, cancellationToken);
     }
 
-    public async Task<IEnumerable<Veiculo>> ObterPorClienteAsync(Guid clienteId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<Veiculo>> ObterPorClienteAsync(int clienteId, CancellationToken cancellationToken)
     {
         return await _context.Veiculos.Where(v => v.ClienteId == clienteId).ToListAsync(cancellationToken);
     }
@@ -48,7 +48,7 @@ public class VeiculoRepository : IVeiculoRepository
         return veiculo;
     }
 
-    public async Task DeletarAsync(Guid id, CancellationToken cancellationToken)
+    public async Task DeletarAsync(int id, CancellationToken cancellationToken)
     {
         var veiculo = await _context.Veiculos.FirstOrDefaultAsync(v => v.Id == id, cancellationToken);
         if (veiculo != null)

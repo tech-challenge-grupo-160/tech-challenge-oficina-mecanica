@@ -8,12 +8,12 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 public interface IVeiculoApplicationService
 {
     Task<VeiculoDto> CriarVeiculoAsync(CriarVeiculoDto dto, CancellationToken cancellationToken);
-    Task<VeiculoDto> ObterVeiculoAsync(Guid id, CancellationToken cancellationToken);
+    Task<VeiculoDto> ObterVeiculoAsync(int id, CancellationToken cancellationToken);
     Task<VeiculoDto> ObterVeiculoPorPlacaAsync(string placa, CancellationToken cancellationToken);
     Task<IEnumerable<VeiculoDto>> ListarVeiculosAsync(CancellationToken cancellationToken);
-    Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(Guid clienteId, CancellationToken cancellationToken);
-    Task<VeiculoDto> AtualizarVeiculoAsync(Guid id, AtualizarVeiculoDto dto, CancellationToken cancellationToken);
-    Task DeletarVeiculoAsync(Guid id, CancellationToken cancellationToken);
+    Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(int clienteId, CancellationToken cancellationToken);
+    Task<VeiculoDto> AtualizarVeiculoAsync(int id, AtualizarVeiculoDto dto, CancellationToken cancellationToken);
+    Task DeletarVeiculoAsync(int id, CancellationToken cancellationToken);
 }
 
 public class VeiculoApplicationService : IVeiculoApplicationService
@@ -45,7 +45,6 @@ public class VeiculoApplicationService : IVeiculoApplicationService
 
         var veiculo = new Veiculo
         {
-            Id = Guid.NewGuid(),
             Placa = placa,
             Marca = dto.Marca.Trim(),
             Modelo = dto.Modelo.Trim(),
@@ -57,7 +56,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         return MapToDto(veiculoCriado);
     }
 
-    public async Task<VeiculoDto> ObterVeiculoAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<VeiculoDto> ObterVeiculoAsync(int id, CancellationToken cancellationToken)
     {
         var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
         if (veiculo == null)
@@ -86,7 +85,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         return veiculos.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(Guid clienteId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(int clienteId, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.ObterPorIdAsync(clienteId, cancellationToken);
         if (cliente == null)
@@ -98,7 +97,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         return veiculos.Select(MapToDto);
     }
 
-    public async Task<VeiculoDto> AtualizarVeiculoAsync(Guid id, AtualizarVeiculoDto dto, CancellationToken cancellationToken)
+    public async Task<VeiculoDto> AtualizarVeiculoAsync(int id, AtualizarVeiculoDto dto, CancellationToken cancellationToken)
     {
         var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
         if (veiculo == null)
@@ -114,7 +113,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         return MapToDto(veiculoAtualizado);
     }
 
-    public async Task DeletarVeiculoAsync(Guid id, CancellationToken cancellationToken)
+    public async Task DeletarVeiculoAsync(int id, CancellationToken cancellationToken)
     {
         var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
         if (veiculo == null)

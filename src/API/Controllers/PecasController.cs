@@ -25,7 +25,7 @@ public class PecasController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<PecaDto>> Obter(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<PecaDto>> Obter(int id, CancellationToken cancellationToken)
     {
         var peca = await _pecaService.ObterPecaAsync(id, cancellationToken);
         return Ok(peca);
@@ -39,14 +39,14 @@ public class PecasController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<PecaDto>> Atualizar(Guid id, [FromBody] AtualizarPecaDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<PecaDto>> Atualizar(int id, [FromBody] AtualizarPecaDto dto, CancellationToken cancellationToken)
     {
         var peca = await _pecaService.AtualizarPecaAsync(id, dto, cancellationToken);
         return Ok(peca);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Deletar(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Deletar(int id, CancellationToken cancellationToken)
     {
         await _pecaService.DeletarPecaAsync(id, cancellationToken);
         return NoContent();

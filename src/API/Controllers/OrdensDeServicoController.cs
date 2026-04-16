@@ -23,7 +23,7 @@ public class OrdensDeServicoController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<OrdemDeServicoDto>> Obter(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoDto>> Obter(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemService.ObterOrdemDeServicoAsync(id, cancellationToken);
         return Ok(ordem);
@@ -37,7 +37,7 @@ public class OrdensDeServicoController : ControllerBase
     }
 
     [HttpGet("cliente/{clienteId}")]
-    public async Task<ActionResult<IEnumerable<OrdemDeServicoDto>>> ListarPorCliente(Guid clienteId, CancellationToken cancellationToken)
+    public async Task<ActionResult<IEnumerable<OrdemDeServicoDto>>> ListarPorCliente(int clienteId, CancellationToken cancellationToken)
     {
         var ordens = await _ordemService.ListarOrdensDeServicoPorClienteAsync(clienteId, cancellationToken);
         return Ok(ordens);
@@ -51,28 +51,28 @@ public class OrdensDeServicoController : ControllerBase
     }
 
     [HttpPut("{id}/status")]
-    public async Task<ActionResult<OrdemDeServicoDto>> AtualizarStatus(Guid id, [FromBody] AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoDto>> AtualizarStatus(int id, [FromBody] AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
     {
         var ordem = await _ordemService.AtualizarStatusAsync(id, dto, cancellationToken);
         return Ok(ordem);
     }
 
     [HttpPost("{id}/servicos")]
-    public async Task<ActionResult<OrdemDeServicoDto>> AdicionarServico(Guid id, [FromBody] AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoDto>> AdicionarServico(int id, [FromBody] AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
     {
         var ordem = await _ordemService.AdicionarServicoAsync(id, dto, cancellationToken);
         return Ok(ordem);
     }
 
     [HttpPost("{id}/pecas")]
-    public async Task<ActionResult<OrdemDeServicoDto>> AdicionarPeca(Guid id, [FromBody] AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoDto>> AdicionarPeca(int id, [FromBody] AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
     {
         var ordem = await _ordemService.AdicionarPecaAsync(id, dto, cancellationToken);
         return Ok(ordem);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Deletar(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Deletar(int id, CancellationToken cancellationToken)
     {
         await _ordemService.DeletarOrdemDeServicoAsync(id, cancellationToken);
         return NoContent();

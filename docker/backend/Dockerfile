@@ -2,8 +2,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS development
 WORKDIR /app
 
 # copy csproj and restore
-COPY ["Fiap.TechChallenge.OficinaMecanica.csproj", "./"]
-RUN dotnet restore "./Fiap.TechChallenge.OficinaMecanica.csproj"
+COPY ["Fiap.TechChallenge.OficinaMecanica.Api.csproj", "./"]
+RUN dotnet restore "./Fiap.TechChallenge.OficinaMecanica.Api.csproj"
 
 # copy everything
 COPY . .
@@ -22,18 +22,19 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # copy csproj and restore
-COPY ["Fiap.TechChallenge.OficinaMecanica.csproj", "./"]
-RUN dotnet restore "./Fiap.TechChallenge.OficinaMecanica.csproj"
+COPY ["Fiap.TechChallenge.OficinaMecanica.Api.csproj", "./"]
+RUN dotnet restore "./Fiap.TechChallenge.OficinaMecanica.Api.csproj"
 
 # copy everything and publish
 COPY . .
-RUN dotnet publish "Fiap.TechChallenge.OficinaMecanica.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "Fiap.TechChallenge.OficinaMecanica.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-EXPOSE 80
-ENV ASPNETCORE_URLS=http://+:80
+RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
 
 COPY --from=build /app/publish .
 
-ENTRYPOINT ["dotnet", "Fiap.TechChallenge.OficinaMecanica.dll"]
+ENTRYPOINT ["dotnet", "Fiap.TechChallenge.OficinaMecanica.Api.dll"]

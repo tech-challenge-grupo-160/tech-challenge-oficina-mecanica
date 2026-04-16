@@ -71,7 +71,7 @@ dotnet user-secrets set "Jwt:SecretKey" "coloque-uma-chave-muito-forte"
 ```bash
 docker-compose up --build
 # ou
-dotnet run --project Fiap.TechChallenge.OficinaMecanica.csproj
+dotnet run --project Fiap.TechChallenge.OficinaMecanica.Api.csproj
 ```
 
 Depois que a API estiver rodando:
@@ -165,7 +165,7 @@ Representa o cliente da oficina.
 ```csharp
 public class Cliente
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Nome { get; set; }
     public string CpfCnpj { get; set; }
     public string Telefone { get; set; }
@@ -183,12 +183,12 @@ Representa o veículo associado ao cliente.
 ```csharp
 public class Veiculo
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Placa { get; set; }
     public string Marca { get; set; }
     public string Modelo { get; set; }
     public int Ano { get; set; }
-    public Guid ClienteId { get; set; }
+    public int ClienteId { get; set; }
 }
 ```
 
@@ -201,10 +201,10 @@ Agregado principal do sistema.
 ```csharp
 public class OrdemDeServico
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Numero { get; set; }
-    public Guid ClienteId { get; set; }
-    public Guid VeiculoId { get; set; }
+    public int ClienteId { get; set; }
+    public int VeiculoId { get; set; }
     public string Status { get; set; }
     public DateTime DataAbertura { get; set; }
     public DateTime? DataConclusao { get; set; }
@@ -221,7 +221,7 @@ Representa os serviços oferecidos pela oficina.
 ```csharp
 public class Servico
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Nome { get; set; }
     public string Descricao { get; set; }
     public decimal Preco { get; set; }
@@ -238,7 +238,7 @@ Representa peças e insumos utilizados nos serviços.
 ```csharp
 public class Peca
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Nome { get; set; }
     public decimal Preco { get; set; }
     public int QuantidadeEstoque { get; set; }

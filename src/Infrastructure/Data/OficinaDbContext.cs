@@ -28,6 +28,9 @@ public class OficinaDbContext : DbContext
         {
             entity.ToTable("Cliente");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasIdentityOptions(startValue: 1000);
             entity.Property(e => e.Nome).IsRequired().HasMaxLength(255);
             entity.Property(e => e.CpfCnpj).IsRequired().HasMaxLength(20);
             entity.Property(e => e.Telefone).IsRequired().HasMaxLength(20);
@@ -44,6 +47,9 @@ public class OficinaDbContext : DbContext
         {
             entity.ToTable("Veiculo");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasIdentityOptions(startValue: 1000);
             entity.Property(e => e.Placa).IsRequired().HasMaxLength(10);
             entity.Property(e => e.Marca).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Modelo).IsRequired().HasMaxLength(100);
@@ -56,6 +62,9 @@ public class OficinaDbContext : DbContext
         {
             entity.ToTable("Servico");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasIdentityOptions(startValue: 1000);
             entity.Property(e => e.Nome).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Descricao).IsRequired();
             entity.Property(e => e.Preco).HasPrecision(18, 2);
@@ -68,6 +77,9 @@ public class OficinaDbContext : DbContext
         {
             entity.ToTable("Peca");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasIdentityOptions(startValue: 1000);
             entity.Property(e => e.Nome).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Preco).HasPrecision(18, 2);
             entity.HasMany(e => e.OrdensDeServico).WithOne(op => op.Peca).HasForeignKey(op => op.PecaId).OnDelete(DeleteBehavior.Restrict);
@@ -78,6 +90,9 @@ public class OficinaDbContext : DbContext
         {
             entity.ToTable("OrdemServico");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasIdentityOptions(startValue: 1000);
             entity.Property(e => e.Numero).IsRequired().HasMaxLength(50);
             entity.Property(e => e.Status).IsRequired();
             entity.Property(e => e.DataAbertura).HasColumnType("timestamp without time zone");
@@ -113,6 +128,9 @@ public class OficinaDbContext : DbContext
         {
             entity.ToTable("Usuario");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasIdentityOptions(startValue: 1000);
             entity.Property(e => e.Nome).IsRequired().HasMaxLength(255);
             entity.Property(e => e.UsuarioLogin).IsRequired().HasMaxLength(100);
             entity.Property(e => e.SenhaHash).IsRequired().HasMaxLength(64);

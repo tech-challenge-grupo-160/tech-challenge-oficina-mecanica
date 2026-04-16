@@ -2,7 +2,7 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 
 public class ClienteDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Nome { get; set; } = null!;
     public string CpfCnpj { get; set; } = null!;
     public string Telefone { get; set; } = null!;

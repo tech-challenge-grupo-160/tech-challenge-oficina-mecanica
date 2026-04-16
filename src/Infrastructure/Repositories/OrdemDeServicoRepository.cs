@@ -14,7 +14,7 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
         _context = context;
     }
 
-    public async Task<OrdemDeServico?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<OrdemDeServico?> ObterPorIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico
             .Include(o => o.Servicos)
@@ -30,7 +30,7 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
             .FirstOrDefaultAsync(o => o.Numero == numero, cancellationToken);
     }
 
-    public async Task<IEnumerable<OrdemDeServico>> ObterPorClienteAsync(Guid clienteId, CancellationToken cancellationToken)
+    public async Task<IEnumerable<OrdemDeServico>> ObterPorClienteAsync(int clienteId, CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico
             .Where(o => o.ClienteId == clienteId)
@@ -70,7 +70,7 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
         return ordem;
     }
 
-    public async Task DeletarAsync(Guid id, CancellationToken cancellationToken)
+    public async Task DeletarAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _context.OrdensDeServico.FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
         if (ordem != null)

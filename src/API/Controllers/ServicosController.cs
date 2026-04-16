@@ -23,7 +23,7 @@ public class ServicosController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<ServicoDto>> Obter(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<ServicoDto>> Obter(int id, CancellationToken cancellationToken)
     {
         var servico = await _servicoService.ObterServicoAsync(id, cancellationToken);
         return Ok(servico);
@@ -37,14 +37,14 @@ public class ServicosController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<ServicoDto>> Atualizar(Guid id, [FromBody] AtualizarServicoDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<ServicoDto>> Atualizar(int id, [FromBody] AtualizarServicoDto dto, CancellationToken cancellationToken)
     {
         var servico = await _servicoService.AtualizarServicoAsync(id, dto, cancellationToken);
         return Ok(servico);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Deletar(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Deletar(int id, CancellationToken cancellationToken)
     {
         await _servicoService.DeletarServicoAsync(id, cancellationToken);
         return NoContent();

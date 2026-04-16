@@ -14,7 +14,7 @@ public class ClienteRepository : IClienteRepository
         _context = context;
     }
 
-    public async Task<Cliente?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<Cliente?> ObterPorIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _context.Clientes.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
     }
@@ -43,7 +43,7 @@ public class ClienteRepository : IClienteRepository
         return cliente;
     }
 
-    public async Task DeletarAsync(Guid id, CancellationToken cancellationToken)
+    public async Task DeletarAsync(int id, CancellationToken cancellationToken)
     {
         var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
         if (cliente != null)

@@ -4,10 +4,10 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 
 public class OrdemDeServicoDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Numero { get; set; } = null!;
-    public Guid ClienteId { get; set; }
-    public Guid VeiculoId { get; set; }
+    public int ClienteId { get; set; }
+    public int VeiculoId { get; set; }
     public string Status { get; set; } = null!;
     public DateTime DataAbertura { get; set; }
     public DateTime? DataConclusao { get; set; }
@@ -18,8 +18,8 @@ public class OrdemDeServicoDto
 
 public class CriarOrdemDeServicoDto
 {
-    public Guid ClienteId { get; set; }
-    public Guid VeiculoId { get; set; }
+    public int ClienteId { get; set; }
+    public int VeiculoId { get; set; }
 }
 
 public class AtualizarStatusOrdemDeServicoDto
@@ -29,25 +29,25 @@ public class AtualizarStatusOrdemDeServicoDto
 
 public class OrdemDeServicoServicoDto
 {
-    public Guid ServicoId { get; set; }
+    public int ServicoId { get; set; }
     public decimal Preco { get; set; }
     public int TempoEstimado { get; set; }
 }
 
 public class OrdemDeServicoPecaDto
 {
-    public Guid PecaId { get; set; }
+    public int PecaId { get; set; }
     public int Quantidade { get; set; }
     public decimal Preco { get; set; }
 }
 
 public class AdicionarServicoAOrdemDto
 {
-    public Guid ServicoId { get; set; }
+    public int ServicoId { get; set; }
 }
 
 public class AdicionarPecaAOrdemDto
 {
-    public Guid PecaId { get; set; }
+    public int PecaId { get; set; }
     public int Quantidade { get; set; }
 }

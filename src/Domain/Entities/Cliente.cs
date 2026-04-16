@@ -2,7 +2,7 @@ namespace Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
 public class Cliente
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Nome { get; set; } = null!;
     public string CpfCnpj { get; set; } = null!;
     public string Telefone { get; set; } = null!;

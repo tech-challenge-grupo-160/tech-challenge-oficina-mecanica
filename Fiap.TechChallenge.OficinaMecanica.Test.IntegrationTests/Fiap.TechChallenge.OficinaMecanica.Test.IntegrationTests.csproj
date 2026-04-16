@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Fiap.TechChallenge.OficinaMecanica.csproj" />
+    <ProjectReference Include="..\Fiap.TechChallenge.OficinaMecanica.Api.csproj" />
   </ItemGroup>
 
 </Project>

@@ -18,9 +18,9 @@ namespace Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests;
 
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
-    public static readonly Guid PessoaFisicaClienteId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-    public static readonly Guid PessoaJuridicaClienteId = Guid.Parse("22222222-2222-2222-2222-222222222222");
-    public static readonly Guid VeiculoExistenteId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    public const int PessoaFisicaClienteId = 1;
+    public const int PessoaJuridicaClienteId = 2;
+    public const int VeiculoExistenteId = 1;
     private readonly string _databaseName = $"OficinaInMemoryTests-{Guid.NewGuid()}";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

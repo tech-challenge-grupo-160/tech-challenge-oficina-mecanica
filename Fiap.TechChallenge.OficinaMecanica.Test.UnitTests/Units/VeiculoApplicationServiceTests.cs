@@ -24,7 +24,7 @@ public class VeiculoApplicationServiceTests
     [Fact]
     public async Task CriarVeiculo_DevePersistirQuandoClienteExistirEPlacaForValida()
     {
-        var clienteId = Guid.NewGuid();
+        const int clienteId = 1;
         var dto = new CriarVeiculoDto
         {
             Placa = "abc-1234",
@@ -61,7 +61,7 @@ public class VeiculoApplicationServiceTests
     [Fact]
     public async Task CriarVeiculo_DeveLancarQuandoPlacaJaExistir()
     {
-        var clienteId = Guid.NewGuid();
+        const int clienteId = 1;
         var dto = new CriarVeiculoDto
         {
             Placa = "BRA2E19",
@@ -77,7 +77,7 @@ public class VeiculoApplicationServiceTests
 
         _veiculoRepositoryMock
             .Setup(x => x.ObterPorPlacaAsync("BRA2E19", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Veiculo { Id = Guid.NewGuid(), Placa = "BRA2E19" });
+            .ReturnsAsync(new Veiculo { Id = 10, Placa = "BRA2E19" });
 
         var acao = () => _service.CriarVeiculoAsync(dto, CancellationToken.None);
 
@@ -88,10 +88,10 @@ public class VeiculoApplicationServiceTests
     [Fact]
     public async Task ObterVeiculoPorPlaca_DeveAceitarPlacaMercosulComSeparador()
     {
-        var clienteId = Guid.NewGuid();
+        const int clienteId = 1;
         var veiculo = new Veiculo
         {
-            Id = Guid.NewGuid(),
+            Id = 10,
             Placa = "BRA2E19",
             Marca = "Volkswagen",
             Modelo = "Gol",
