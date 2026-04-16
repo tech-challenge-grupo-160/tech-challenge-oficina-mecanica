@@ -2,7 +2,7 @@
 
 ## Pré-requisitos
 - Docker Desktop
-- .NET 8 SDK
+- .NET 10 SDK
 - Git
 
 ## Iniciar
@@ -26,21 +26,21 @@ docker-compose down -v         # Parar, remover e deletar dados
 
 - **Swagger UI**: http://localhost:8080/swagger
 - **Health Check**: http://localhost:8080/health
-- **API Clientes**: http://localhost:8080/api/clientes
+- **API Clientes**: http://localhost:8080/api/v1/clientes
 - **PostgreSQL**: localhost:5432 (user: postgres, pass: postgres)
 
 ## Logs
 
 ```bash
 # API logs
-docker logs -f oficina_api_dev | grep -i "migration\|seed"
+docker logs -f oficina-mecanica-api-dev | grep -i "migration\|seed"
 
 # PostgreSQL logs
-docker logs -f oficina_postgres_dev
+docker logs -f oficina-mecanica-postgres-dev
 
 # Todos os logs
-docker logs oficina_api_dev
-docker logs oficina_postgres_dev
+docker logs oficina-mecanica-api-dev
+docker logs oficina-mecanica-postgres-dev
 ```
 
 ## Verificar Banco
@@ -58,7 +58,7 @@ SELECT COUNT(*) FROM "Cliente";
 
 ### Com Docker exec
 ```bash
-docker exec oficina_postgres_dev psql -U postgres -d oficina_mecanica \
+docker exec oficina-mecanica-postgres-dev psql -U postgres -d oficina_mecanica \
   -c "SELECT COUNT(*) FROM \"Cliente\";"
 ```
 
@@ -77,13 +77,13 @@ docker exec oficina_postgres_dev psql -U postgres -d oficina_mecanica \
 curl http://localhost:8080/health
 
 # Clientes
-curl http://localhost:8080/api/clientes
+curl http://localhost:8080/api/v1/clientes
 
 # Veículos
-curl http://localhost:8080/api/veiculos
+curl http://localhost:8080/api/v1/veiculos
 
 # Serviços
-curl http://localhost:8080/api/servicos
+curl http://localhost:8080/api/v1/servicos
 ```
 
 ## Troubleshooting
@@ -100,25 +100,25 @@ docker-compose up --build
 docker ps | grep postgres
 
 # Ver logs
-docker logs oficina_postgres_dev
+docker logs oficina-mecanica-postgres-dev
 
 # Testar healthcheck
-docker exec oficina_postgres_dev pg_isready -U postgres
+docker exec oficina-mecanica-postgres-dev pg_isready -U postgres
 ```
 
 ### API não conecta ao Postgres
 ```bash
 # Verificar string de conexão
-docker exec oficina_api_dev env | grep ConnectionString
+docker exec oficina-mecanica-api-dev env | grep ConnectionString
 
 # Ver logs de erro
-docker logs oficina_api_dev | grep -i "error\|exception"
+docker logs oficina-mecanica-api-dev | grep -i "error\|exception"
 ```
 
 ### Dados não aparecem
 ```bash
 # Verificar environment
-docker exec oficina_api_dev env | grep ASPNETCORE_ENVIRONMENT
+docker exec oficina-mecanica-api-dev env | grep ASPNETCORE_ENVIRONMENT
 
 # Deve estar como "Development" para executar seeding
 # Se em Production, mudar em docker-compose.yml
@@ -127,7 +127,7 @@ docker exec oficina_api_dev env | grep ASPNETCORE_ENVIRONMENT
 ### Migrations não executam
 ```bash
 # Verificar migrations foram aplicadas
-docker exec oficina_postgres_dev psql -U postgres -d oficina_mecanica \
+docker exec oficina-mecanica-postgres-dev psql -U postgres -d oficina_mecanica \
   -c "SELECT * FROM \"__EFMigrationsHistory\";"
 ```
 
@@ -151,3 +151,5 @@ environment:
 ```
 
 Seeding **só executa** quando `ASPNETCORE_ENVIRONMENT=Development`
+
+

@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Fiap.TechChallenge.OficinaMecanica.src.Infrastructure.Migrations
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreateIntIdentity : Migration

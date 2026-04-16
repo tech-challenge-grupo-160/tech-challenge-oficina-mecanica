@@ -55,7 +55,7 @@ Seeding completado com sucesso!
 
 | Entidade | Qty | Exemplos |
 |----------|-----|----------|
-| Clientes | 3 | João Silva, Maria Santos, Transportadora XYZ |
+| Clientes | 4 | Vanessa Luna Duarte, Rafael Mateus Cesar Souza, Betina, Vicente |
 | Veículos | 3 | Toyota Corolla, Honda Civic, VW Gol |
 | Serviços | 5 | Troca Óleo, Revisão, Alinhamento, Pneus, Diagnóstico |
 | Peças | 5 | Filtros, pastilhas, pneus, velas |
@@ -87,14 +87,14 @@ curl http://localhost:8080/health
 
 ### Contar Clientes
 ```bash
-docker exec oficina_postgres_dev psql -U postgres -d oficina_mecanica \
+docker exec oficina-mecanica-postgres-dev psql -U postgres -d oficina_mecanica \
   -c "SELECT COUNT(*) FROM \"Cliente\";"
 # Esperado: 3
 ```
 
 ### Ver Logs
 ```bash
-docker logs oficina_api_dev | grep -i "migration\|seed"
+docker logs oficina-mecanica-api-dev | grep -i "migration\|seed"
 ```
 
 ## 🐛 Troubleshooting
@@ -111,3 +111,5 @@ docker logs oficina_api_dev | grep -i "migration\|seed"
 1. Edite `OficinaDbContextSeeder.cs`
 2. Adicione novo cliente/veículo/etc
 3. Recrie containers: `docker-compose down -v && docker-compose up --build`
+
+

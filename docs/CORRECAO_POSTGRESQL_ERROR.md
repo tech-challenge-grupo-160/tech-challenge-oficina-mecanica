@@ -65,14 +65,15 @@ entity.Property(e => e.OrdemDeServicoId)
 
 ```bash
 # Verificar mapeamento está correto
-docker exec oficina_postgres_dev psql -U postgres -d oficina_mecanica -c "\d+ \"Cliente\""
+docker exec oficina-mecanica-postgres-dev psql -U postgres -d oficina_mecanica -c "\d+ \"Cliente\""
 
 # Contar registros
-docker exec oficina_postgres_dev psql -U postgres -d oficina_mecanica \
+docker exec oficina-mecanica-postgres-dev psql -U postgres -d oficina_mecanica \
   -c "SELECT COUNT(*) FROM \"Cliente\";"
 
 # Listar tabelas
-docker exec oficina_postgres_dev psql -U postgres -d oficina_mecanica -c "\dt"
+docker exec oficina-mecanica-postgres-dev psql -U postgres -d oficina_mecanica -c "\dt"
 ```
 
 Status: ✅ **CORRIGIDO**
+

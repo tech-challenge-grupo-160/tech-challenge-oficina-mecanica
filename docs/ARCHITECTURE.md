@@ -81,10 +81,10 @@ Implementam os casos de uso do sistema:
 public interface IClienteApplicationService
 {
     Task<ClienteDto> CriarClienteAsync(CriarClienteDto dto);
-    Task<ClienteDto> ObterClienteAsync(Guid id);
+    Task<ClienteDto> ObterClienteAsync(int id);
     Task<IEnumerable<ClienteDto>> ListarClientesAsync();
-    Task<ClienteDto> AtualizarClienteAsync(Guid id, AtualizarClienteDto dto);
-    Task DeletarClienteAsync(Guid id);
+    Task<ClienteDto> AtualizarClienteAsync(int id, AtualizarClienteDto dto);
+    Task DeletarClienteAsync(int id);
 }
 ```
 
@@ -95,7 +95,7 @@ Separam a representação de dados da API da lógica interna:
 ```csharp
 public class ClienteDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Nome { get; set; }
     // ...
 }
@@ -130,12 +130,12 @@ Definem o contrato para acesso a dados:
 ```csharp
 public interface IClienteRepository
 {
-    Task<Cliente?> ObterPorIdAsync(Guid id);
+    Task<Cliente?> ObterPorIdAsync(int id);
     Task<Cliente?> ObterPorCpfCnpjAsync(string cpfCnpj);
     Task<IEnumerable<Cliente>> ObterTodosAsync();
     Task<Cliente> CriarAsync(Cliente cliente);
     Task<Cliente> AtualizarAsync(Cliente cliente);
-    Task DeletarAsync(Guid id);
+    Task DeletarAsync(int id);
 }
 ```
 

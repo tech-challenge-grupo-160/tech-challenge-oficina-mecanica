@@ -80,10 +80,10 @@ API pronta em http://localhost:8080/swagger
 curl http://localhost:8080/health
 
 # API funcionando
-curl http://localhost:8080/api/clientes
+curl http://localhost:8080/api/v1/clientes
 
 # Contar registros no banco
-docker exec oficina_postgres_dev psql -U postgres -d oficina_mecanica \
+docker exec oficina-mecanica-postgres-dev psql -U postgres -d oficina_mecanica \
   -c "SELECT COUNT(*) FROM \"Cliente\";"
 ```
 
@@ -102,3 +102,4 @@ Leia a documentação conforme necessário:
 - **Erro PostgreSQL?** → `CORRECAO_POSTGRESQL_ERROR.md`
 - **Como operar?** → `DOCKER_SETUP_GUIDE.md`
 - **Detalhes técnicos?** → `DOCKER_MIGRATIONS_SEEDING.md`
+
