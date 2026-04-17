@@ -1,223 +1,189 @@
-# Arquitetura - Sistema de Gestão de Oficina Mecânica
+# Arquitetura
 
-## Visão Geral
+## Visão geral
 
-O sistema é uma aplicação monolítica em camadas, desenvolvida em C# com .NET 8, seguindo os princípios de **Domain-Driven Design (DDD)** e arquitetura em camadas.
+A solução é um monólito em camadas orientado a casos de uso. O projeto separa responsabilidades entre API, aplicação, domínio e infraestrutura, mantendo o domínio de oficina mecânica desacoplado dos detalhes de persistência e entrega HTTP.
 
-## Arquitetura em Camadas
+## Camadas
 
-```
-┌─────────────────────────────────────┐
-│      API Layer (Presentation)       │
-│  ├─ Controllers                      │
-│  ├─ Error Handling                   │
-│  └─ Request/Response Mapping         │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────▼──────────────────────┐
-│   Application Layer (Use Cases)      │
-│  ├─ Application Services             │
-│  ├─ DTOs (Data Transfer Objects)     │
-│  └─ Interfaces de Repositórios       │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────▼──────────────────────┐
-│    Domain Layer (Business Rules)     │
-│  ├─ Entidades                        │
-│  ├─ Value Objects                    │
-│  ├─ Agregados                        │
-│  └─ Interfaces de Repositórios       │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────▼──────────────────────┐
-│ Infrastructure Layer (Data Access)  │
-│  ├─ DbContext (Entity Framework)     │
-│  ├─ Repositórios (implementações)    │
-│  ├─ Health Checks                    │
-│  └─ Integrações Externas             │
-└─────────────────────────────────────┘
+```text
+API
+  recebe requisições HTTP, autentica, valida e devolve respostas
+
+Application
+  orquestra casos de uso, converte DTOs e coordena repositórios
+
+Domain
+  define entidades, regras de negócio e contratos
+
+Infrastructure
+  implementa persistência, migrations, seed, health checks e integração com PostgreSQL
 ```
 
-## Fluxo de Requisição
+## Estrutura principal
 
+```text
+src/
+  API/
+    Controllers/
+    Filters/
+  Application/
+    DTOs/
+    Options/
+    Services/
+    Validators/
+  Domain/
+    Entities/
+    Repositories/
+  Infrastructure/
+    Data/
+    Extensions/
+    HealthChecks/
+    Migrations/
+    Repositories/
+  Shared/
+    Helpers/
 ```
-1. HTTP Request
-   └─> ApiController
-       └─> IApplicationService
-           └─> Domain Logic / Validation
-               └─> IRepository (Interface)
-                   └─> Repository Implementation
-                       └─> DbContext
-                           └─> Database
-```
 
-## Camada de Apresentação (API)
+## Componentes centrais
 
-**Localização:** `src/API/Controllers/`
+### API
 
 Responsabilidades:
-- Receber requisições HTTP
-- Validar dados de entrada
-- Mapear DTOs para entidades
-- Retornar respostas HTTP
-- Tratamento de exceções
 
-**Controllers:**
-- `ClientesController`
-- `VeiculosController`
-- `ServicosController`
-- `PecasController`
-- `OrdensDeServicoController`
+- expor endpoints REST;
+- aplicar autenticação e autorização;
+- receber DTOs de entrada;
+- traduzir exceções de domínio para códigos HTTP.
 
-## Camada de Aplicação
+Pontos relevantes:
 
-**Localização:** `src/Application/`
+- `Program.cs` registra DI, EF Core, JWT, Swagger, CORS e health checks;
+- `DomainExceptionFilter` transforma `KeyNotFoundException` em `404` e exceções de argumento/operação em `400`;
+- os controllers delegam a lógica para `Application.Services`.
 
-### Application Services
+### Application
 
-Implementam os casos de uso do sistema:
+Responsabilidades:
 
-```csharp
-public interface IClienteApplicationService
-{
-    Task<ClienteDto> CriarClienteAsync(CriarClienteDto dto);
-    Task<ClienteDto> ObterClienteAsync(int id);
-    Task<IEnumerable<ClienteDto>> ListarClientesAsync();
-    Task<ClienteDto> AtualizarClienteAsync(int id, AtualizarClienteDto dto);
-    Task DeletarClienteAsync(int id);
-}
+- implementar os casos de uso da aplicação;
+- validar entradas com FluentValidation;
+- interagir com contratos de repositório;
+- montar DTOs de resposta.
+
+Principais serviços:
+
+- `ClienteApplicationService`
+- `VeiculoApplicationService`
+- `ServicoApplicationService`
+- `PecaApplicationService`
+- `OrdemDeServicoApplicationService`
+- `AuthApplicationService`
+
+### Domain
+
+Responsabilidades:
+
+- representar o modelo do negócio;
+- encapsular regras de transição e consistência;
+- definir contratos de persistência.
+
+Entidades principais:
+
+- `Cliente`
+- `Veiculo`
+- `Servico`
+- `Peca`
+- `OrdemDeServico`
+- `Usuario`
+
+`OrdemDeServico` é o agregado mais importante do domínio. Ele controla:
+
+- transição de status;
+- adição de serviços;
+- adição de peças com baixa de estoque;
+- recálculo do valor total.
+
+Fluxo de status implementado:
+
+```text
+Recebida -> EmDiagnostico -> AguardandoAprovacao -> EmExecucao -> Finalizada -> Entregue
 ```
 
-### DTOs (Data Transfer Objects)
+### Infrastructure
 
-Separam a representação de dados da API da lógica interna:
+Responsabilidades:
 
-```csharp
-public class ClienteDto
-{
-    public int Id { get; set; }
-    public string Nome { get; set; }
-    // ...
-}
+- implementar repositórios com Entity Framework Core;
+- mapear entidades no `OficinaDbContext`;
+- aplicar migrations;
+- popular dados iniciais em desenvolvimento;
+- expor health checks.
+
+Pontos relevantes:
+
+- `OficinaDbContext` centraliza o acesso ao banco;
+- `HostExtensions.MigrateAndSeedAsync` executa migration com retry e seed em desenvolvimento;
+- `OficinaDbContextSeeder` cria dados iniciais para uso local e testes manuais.
+
+## Fluxo de requisição
+
+```text
+HTTP Request
+  -> Controller
+  -> Application Service
+  -> Entidades / regras de domínio
+  -> Repositório
+  -> DbContext / PostgreSQL
+  -> DTO de resposta
+  -> HTTP Response
 ```
 
-## Camada de Domínio
+## Persistência e inicialização
 
-**Localização:** `src/Domain/`
+O projeto usa PostgreSQL como banco principal. Em ambiente `Testing`, ou quando a connection string é `UseInMemory`, a aplicação usa banco em memória.
 
-### Entidades
+No startup:
 
-Representam conceitos principais do negócio:
+1. a aplicação registra dependências e middleware;
+2. configura autenticação JWT;
+3. configura o `DbContext`;
+4. publica health checks;
+5. executa migrations automaticamente;
+6. executa seed apenas em ambiente `Development`.
 
-- **Cliente** - Clientes da oficina
-- **Veiculo** - Veículos dos clientes
-- **Servico** - Serviços oferecidos
-- **Peca** - Peças e insumos
-- **OrdemDeServico** - Agregado raiz
+## Segurança
 
-### Agregados
+Autenticação:
 
-`OrdemDeServico` é um agregado que contém:
-- Referências a Cliente e Veiculo
-- Coleção de Servicos
-- Coleção de Pecas
-- Lógica de negócio
+- JWT Bearer;
+- configuração em `Jwt`;
+- token emitido por `AuthApplicationService`.
 
-### Interfaces de Repositório
+Autorização no estado atual do código:
 
-Definem o contrato para acesso a dados:
+- protegidos com `[Authorize]`: `ClientesController`, `VeiculosController`, `PecasController`;
+- sem `[Authorize]`: `ServicosController`, `OrdensDeServicoController`, `AuthController`.
 
-```csharp
-public interface IClienteRepository
-{
-    Task<Cliente?> ObterPorIdAsync(int id);
-    Task<Cliente?> ObterPorCpfCnpjAsync(string cpfCnpj);
-    Task<IEnumerable<Cliente>> ObterTodosAsync();
-    Task<Cliente> CriarAsync(Cliente cliente);
-    Task<Cliente> AtualizarAsync(Cliente cliente);
-    Task DeletarAsync(int id);
-}
-```
+Esse comportamento deve ser entendido como estado atual da implementação, não necessariamente como política final de segurança.
 
-## Camada de Infraestrutura
+## Observabilidade
 
-**Localização:** `src/Infrastructure/`
+Health checks expostos:
 
-### DbContext
+- `/health`
+- `/health/live`
+- `/health/ready`
 
-```csharp
-public class OficinaDbContext : DbContext
-{
-    public DbSet<Cliente> Clientes { get; set; }
-    public DbSet<Veiculo> Veiculos { get; set; }
-    // ...
-}
-```
+O endpoint `/health` retorna um JSON com o estado geral da aplicação e do `DbContext`.
 
-### Repositórios
+## Testabilidade
 
-Implementam as interfaces definidas no domínio:
+O repositório contém:
 
-```csharp
-public class ClienteRepository : IClienteRepository
-{
-    private readonly OficinaDbContext _context;
-    
-    public async Task<Cliente> CriarAsync(Cliente cliente)
-    {
-        _context.Clientes.Add(cliente);
-        await _context.SaveChangesAsync();
-        return cliente;
-    }
-}
-```
-
-### Health Checks
-
-Monitoram a saúde da aplicação:
-
-- `/health` - Status geral
-- `/health/live` - Liveness (aplicação está rodando)
-- `/health/ready` - Readiness (pronto para receber requisições)
-
-## Padrões de Design Utilizados
-
-### 1. Repository Pattern
-Abstração para acesso a dados, permitindo trocar a implementação facilmente.
-
-### 2. Dependency Injection
-Inversão de controle para gerenciar dependências.
-
-### 3. DTO (Data Transfer Object)
-Separação entre a API e a lógica interna.
-
-### 4. Async/Await
-Operações assíncronas para melhor performance.
-
-### 5. Aggregate Root
-OrdemDeServico como raiz do agregado.
-
-## Fluxo de Dados
-
-### Criação de Cliente
-
-```
-POST /api/clientes
-  ├─> ClientesController.Criar(CriarClienteDto)
-  ├─> IClienteApplicationService.CriarClienteAsync(dto)
-  ├─> Validar CPF/CNPJ
-  ├─> Criar entidade Cliente
-  ├─> IClienteRepository.CriarAsync(cliente)
-  ├─> DbContext.SaveChangesAsync()
-  └─> Retornar ClienteDto
-```
-
-### Criar Ordem de Serviço
-
-```
-POST /api/ordens-servico
-  ├─> OrdensDeServicoController.Criar(CriarOrdemDeServicoDto)
-  ├─> Validar cliente e veículo
+- testes unitários para serviços de aplicação;
+- testes de integração para controllers;
+- suporte a banco em memória para cenários de teste.
   ├─> Gerar número da ordem
   ├─> Criar OrdemDeServico (status: Recebida)
   ├─> OrdemDeServicoRepository.CriarAsync()
