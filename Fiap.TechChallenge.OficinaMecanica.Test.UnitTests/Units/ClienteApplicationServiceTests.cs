@@ -4,6 +4,7 @@ using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units;
@@ -23,7 +24,8 @@ public class ClienteApplicationServiceTests
         _service = new ClienteApplicationService(
             _clienteRepositoryMock.Object,
             _veiculoRepositoryMock.Object,
-            _ordemDeServicoRepositoryMock.Object);
+            _ordemDeServicoRepositoryMock.Object,
+            NullLoggerFactory.Instance);
     }
 
     [Fact]

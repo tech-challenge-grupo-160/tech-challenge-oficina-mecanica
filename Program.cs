@@ -16,6 +16,13 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Validators.Clientes;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Logging.ClearProviders();
+builder.Logging.AddSimpleConsole(options =>
+{
+    options.SingleLine = true;
+    options.TimestampFormat = "dd/MM/yyyy HH:mm:ss ";
+});
+
 // Add services to the container.
 builder.Services.AddControllers(options =>
 {

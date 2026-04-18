@@ -4,6 +4,7 @@ using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units;
@@ -18,7 +19,7 @@ public class VeiculoApplicationServiceTests
     {
         _veiculoRepositoryMock = VeiculoRepositoryMockFactory.CreateStrict();
         _clienteRepositoryMock = ClienteRepositoryMockFactory.CreateStrict();
-        _service = new VeiculoApplicationService(_veiculoRepositoryMock.Object, _clienteRepositoryMock.Object);
+        _service = new VeiculoApplicationService(_veiculoRepositoryMock.Object, _clienteRepositoryMock.Object, NullLoggerFactory.Instance);
     }
 
     [Fact]
