@@ -29,6 +29,20 @@ public class ClienteRepository : IClienteRepository
         return await _context.Clientes.ToListAsync(cancellationToken);
     }
 
+    public async Task<IEnumerable<Cliente>> ObterPaginadoAsync(int page, int pageSize, string? nome, string? cpfCnpj, CancellationToken cancellationToken)
+    {
+        return await AplicarFiltros(nome, cpfCnpj)
+            .OrderBy(c => c.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<int> ContarAsync(string? nome, string? cpfCnpj, CancellationToken cancellationToken)
+    {
+        return await AplicarFiltros(nome, cpfCnpj).CountAsync(cancellationToken);
+    }
+
     public async Task<Cliente> CriarAsync(Cliente cliente, CancellationToken cancellationToken)
     {
         _context.Clientes.Add(cliente);
@@ -51,5 +65,24 @@ public class ClienteRepository : IClienteRepository
             _context.Clientes.Remove(cliente);
             await _context.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    private IQueryable<Cliente> AplicarFiltros(string? nome, string? cpfCnpj)
+    {
+        var query = _context.Clientes.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(nome))
+        {
+            var nomeNormalizado = nome.Trim().ToLower();
+            query = query.Where(c => c.Nome.ToLower().Contains(nomeNormalizado));
+        }
+
+        if (!string.IsNullOrWhiteSpace(cpfCnpj))
+        {
+            var documentoNormalizado = cpfCnpj.Trim();
+            query = query.Where(c => c.CpfCnpj.Contains(documentoNormalizado));
+        }
+
+        return query;
     }
 }

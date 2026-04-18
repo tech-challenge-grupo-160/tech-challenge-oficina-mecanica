@@ -45,7 +45,7 @@ public class VeiculosController : ControllerBase
         return Ok(veiculos);
     }
 
-    [HttpGet("cliente/{clienteId}")]
+    [HttpGet("cliente/{clienteId:int}")]
     public async Task<ActionResult<IEnumerable<VeiculoDto>>> ListarPorCliente(int clienteId, CancellationToken cancellationToken)
     {
         var veiculos = await _veiculoService.ListarVeiculosPorClienteAsync(clienteId, cancellationToken);

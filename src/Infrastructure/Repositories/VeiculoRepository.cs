@@ -29,6 +29,11 @@ public class VeiculoRepository : IVeiculoRepository
         return await _context.Veiculos.Where(v => v.ClienteId == clienteId).ToListAsync(cancellationToken);
     }
 
+    public async Task<bool> ExistePorClienteAsync(int clienteId, CancellationToken cancellationToken)
+    {
+        return await _context.Veiculos.AnyAsync(v => v.ClienteId == clienteId, cancellationToken);
+    }
+
     public async Task<IEnumerable<Veiculo>> ObterTodosAsync(CancellationToken cancellationToken)
     {
         return await _context.Veiculos.ToListAsync(cancellationToken);

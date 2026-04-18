@@ -37,3 +37,25 @@ public class CriarVeiculoDtoValidator : AbstractValidator<CriarVeiculoDto>
             .WithMessage("CNPJ invalido.");
     }
 }
+
+public class CriarVeiculoParaClienteDtoValidator : AbstractValidator<CriarVeiculoParaClienteDto>
+{
+    public CriarVeiculoParaClienteDtoValidator()
+    {
+        RuleFor(x => x.Placa)
+            .NotEmpty().WithMessage("Placa e obrigatoria.")
+            .Must(PlacaHelper.IsValid).WithMessage("Placa invalida.");
+
+        RuleFor(x => x.Marca)
+            .NotEmpty().WithMessage("Marca e obrigatoria.")
+            .MaximumLength(100);
+
+        RuleFor(x => x.Modelo)
+            .NotEmpty().WithMessage("Modelo e obrigatorio.")
+            .MaximumLength(100);
+
+        RuleFor(x => x.Ano)
+            .InclusiveBetween(1900, DateTime.UtcNow.Year + 1)
+            .WithMessage("Ano do veiculo invalido.");
+    }
+}
