@@ -10,18 +10,25 @@ public interface IClienteApplicationService
     Task<ClienteDto> CriarClienteAsync(CriarClienteDto dto, CancellationToken cancellationToken);
     Task<ClienteDto> ObterClienteAsync(int id, CancellationToken cancellationToken);
     Task<ClienteDto> ObterClientePorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken);
-    Task<IEnumerable<ClienteDto>> ListarClientesAsync(CancellationToken cancellationToken);
-    Task<ClienteDto> AtualizarClienteAsync(int id, AtualizarClienteDto dto, CancellationToken cancellationToken);
-    Task DeletarClienteAsync(int id, CancellationToken cancellationToken);
+    Task<PagedResultDto<ClienteDto>> ListarClientesAsync(int page, int pageSize, string? nome, string? cpfCnpj, CancellationToken cancellationToken);
+    Task<ClienteDto> AtualizarClientePorCpfCnpjAsync(string cpfCnpj, AtualizarClienteDto dto, CancellationToken cancellationToken);
+    Task DeletarClientePorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken);
 }
 
 public class ClienteApplicationService : IClienteApplicationService
 {
     private readonly IClienteRepository _clienteRepository;
+    private readonly IVeiculoRepository _veiculoRepository;
+    private readonly IOrdemDeServicoRepository _ordemDeServicoRepository;
 
-    public ClienteApplicationService(IClienteRepository clienteRepository)
+    public ClienteApplicationService(
+        IClienteRepository clienteRepository,
+        IVeiculoRepository veiculoRepository,
+        IOrdemDeServicoRepository ordemDeServicoRepository)
     {
         _clienteRepository = clienteRepository;
+        _veiculoRepository = veiculoRepository;
+        _ordemDeServicoRepository = ordemDeServicoRepository;
     }
 
     public async Task<ClienteDto> CriarClienteAsync(CriarClienteDto dto, CancellationToken cancellationToken)
@@ -31,7 +38,7 @@ public class ClienteApplicationService : IClienteApplicationService
         var clienteExistente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
         if (clienteExistente != null)
         {
-            throw new InvalidOperationException("Cliente com este CPF/CNPJ já existe.");
+            throw new InvalidOperationException("Cliente com este CPF/CNPJ ja existe.");
         }
 
         var cliente = new Cliente
@@ -52,7 +59,7 @@ public class ClienteApplicationService : IClienteApplicationService
         var cliente = await _clienteRepository.ObterPorIdAsync(id, cancellationToken);
         if (cliente == null)
         {
-            throw new KeyNotFoundException($"Cliente com ID {id} não encontrado.");
+            throw new KeyNotFoundException($"Cliente com ID {id} nao encontrado.");
         }
 
         return MapToDto(cliente);
@@ -64,24 +71,40 @@ public class ClienteApplicationService : IClienteApplicationService
         var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
         if (cliente == null)
         {
-            throw new KeyNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} não encontrado.");
+            throw new KeyNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} nao encontrado.");
         }
 
         return MapToDto(cliente);
     }
 
-    public async Task<IEnumerable<ClienteDto>> ListarClientesAsync(CancellationToken cancellationToken)
+    public async Task<PagedResultDto<ClienteDto>> ListarClientesAsync(int page, int pageSize, string? nome, string? cpfCnpj, CancellationToken cancellationToken)
     {
-        var clientes = await _clienteRepository.ObterTodosAsync(cancellationToken);
-        return clientes.Select(MapToDto);
+        var documentoFiltro = NormalizarDocumentoParaBusca(cpfCnpj);
+
+        var nomeFiltro = string.IsNullOrWhiteSpace(nome)
+            ? null
+            : nome.Trim();
+
+        var totalItems = await _clienteRepository.ContarAsync(nomeFiltro, documentoFiltro, cancellationToken);
+        var clientes = await _clienteRepository.ObterPaginadoAsync(page, pageSize, nomeFiltro, documentoFiltro, cancellationToken);
+
+        return new PagedResultDto<ClienteDto>
+        {
+            Items = clientes.Select(MapToDto).ToArray(),
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = totalItems,
+            TotalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)pageSize)
+        };
     }
 
-    public async Task<ClienteDto> AtualizarClienteAsync(int id, AtualizarClienteDto dto, CancellationToken cancellationToken)
+    public async Task<ClienteDto> AtualizarClientePorCpfCnpjAsync(string cpfCnpj, AtualizarClienteDto dto, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(id, cancellationToken);
+        var documento = DocumentoHelper.NormalizarDocumento(cpfCnpj);
+        var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
         if (cliente == null)
         {
-            throw new KeyNotFoundException($"Cliente com ID {id} não encontrado.");
+            throw new KeyNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} nao encontrado.");
         }
 
         cliente.Nome = dto.Nome;
@@ -92,15 +115,26 @@ public class ClienteApplicationService : IClienteApplicationService
         return MapToDto(clienteAtualizado);
     }
 
-    public async Task DeletarClienteAsync(int id, CancellationToken cancellationToken)
+    public async Task DeletarClientePorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(id, cancellationToken);
+        var documento = DocumentoHelper.NormalizarDocumento(cpfCnpj);
+        var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
         if (cliente == null)
         {
-            throw new KeyNotFoundException($"Cliente com ID {id} não encontrado.");
+            throw new KeyNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} nao encontrado.");
         }
 
-        await _clienteRepository.DeletarAsync(id, cancellationToken);
+        if (await _veiculoRepository.ExistePorClienteAsync(cliente.Id, cancellationToken))
+        {
+            throw new InvalidOperationException("Nao e possivel excluir o cliente, pois existem veiculos vinculados.");
+        }
+
+        if (await _ordemDeServicoRepository.ExistePorClienteAsync(cliente.Id, cancellationToken))
+        {
+            throw new InvalidOperationException("Nao e possivel excluir o cliente, pois existem ordens de servico vinculadas.");
+        }
+
+        await _clienteRepository.DeletarAsync(cliente.Id, cancellationToken);
     }
 
     private static ClienteDto MapToDto(Cliente cliente)
@@ -114,5 +148,21 @@ public class ClienteApplicationService : IClienteApplicationService
             Email = cliente.Email,
             DataCadastro = cliente.DataCadastro
         };
+    }
+
+    private static string? NormalizarDocumentoParaBusca(string? cpfCnpj)
+    {
+        if (string.IsNullOrWhiteSpace(cpfCnpj))
+        {
+            return null;
+        }
+
+        var normalizado = new string(cpfCnpj
+            .Trim()
+            .Where(c => char.IsDigit(c) || char.IsLetter(c))
+            .Select(char.ToUpperInvariant)
+            .ToArray());
+
+        return string.IsNullOrWhiteSpace(normalizado) ? null : normalizado;
     }
 }

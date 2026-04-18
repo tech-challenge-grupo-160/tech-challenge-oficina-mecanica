@@ -39,6 +39,11 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<bool> ExistePorClienteAsync(int clienteId, CancellationToken cancellationToken)
+    {
+        return await _context.OrdensDeServico.AnyAsync(o => o.ClienteId == clienteId, cancellationToken);
+    }
+
     public async Task<IEnumerable<OrdemDeServico>> ObterPorStatusAsync(StatusOrdemDeServico status, CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico
