@@ -53,12 +53,50 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IEnumerable<OrdemDeServico>> ObterTodosAsync(CancellationToken cancellationToken)
+    public async Task<int> ContarAsync(
+        int? clienteId,
+        StatusOrdemDeServico? status,
+        string? numero,
+        DateTime? dataAberturaInicio,
+        DateTime? dataAberturaFim,
+        CancellationToken cancellationToken)
     {
-        return await _context.OrdensDeServico
+        var query = AplicarFiltros(
+            _context.OrdensDeServico.AsNoTracking(),
+            clienteId,
+            status,
+            numero,
+            dataAberturaInicio,
+            dataAberturaFim);
+
+        return await query.CountAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<OrdemDeServico>> ObterPaginadoAsync(
+        int page,
+        int pageSize,
+        int? clienteId,
+        StatusOrdemDeServico? status,
+        string? numero,
+        DateTime? dataAberturaInicio,
+        DateTime? dataAberturaFim,
+        CancellationToken cancellationToken)
+    {
+        var query = AplicarFiltros(
+                _context.OrdensDeServico,
+                clienteId,
+                status,
+                numero,
+                dataAberturaInicio,
+                dataAberturaFim)
             .Include(o => o.Servicos)
             .Include(o => o.Pecas)
-            .ToListAsync(cancellationToken);
+            .OrderByDescending(o => o.DataAbertura)
+            .ThenByDescending(o => o.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
+
+        return await query.ToListAsync(cancellationToken);
     }
 
     public async Task<OrdemDeServico> CriarAsync(OrdemDeServico ordem, CancellationToken cancellationToken)
@@ -83,5 +121,41 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
             _context.OrdensDeServico.Remove(ordem);
             await _context.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    private static IQueryable<OrdemDeServico> AplicarFiltros(
+        IQueryable<OrdemDeServico> query,
+        int? clienteId,
+        StatusOrdemDeServico? status,
+        string? numero,
+        DateTime? dataAberturaInicio,
+        DateTime? dataAberturaFim)
+    {
+        if (clienteId.HasValue)
+        {
+            query = query.Where(o => o.ClienteId == clienteId.Value);
+        }
+
+        if (status.HasValue)
+        {
+            query = query.Where(o => o.Status == status.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(numero))
+        {
+            query = query.Where(o => o.Numero == numero);
+        }
+
+        if (dataAberturaInicio.HasValue)
+        {
+            query = query.Where(o => o.DataAbertura >= dataAberturaInicio.Value);
+        }
+
+        if (dataAberturaFim.HasValue)
+        {
+            query = query.Where(o => o.DataAbertura <= dataAberturaFim.Value);
+        }
+
+        return query;
     }
 }
