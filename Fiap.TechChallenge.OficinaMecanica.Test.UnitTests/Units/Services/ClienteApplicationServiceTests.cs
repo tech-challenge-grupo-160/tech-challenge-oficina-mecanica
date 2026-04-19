@@ -2,12 +2,14 @@ using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
-using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks;
+using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Repositories;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units;
+namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units.Services;
 
 public class ClienteApplicationServiceTests
 {
@@ -31,7 +33,7 @@ public class ClienteApplicationServiceTests
     [Fact]
     public async Task ObterClientePorCpfCnpj_DeveRetornarDtoQuandoClienteExistir()
     {
-        var cliente = CriarCliente(id: 1, cpfCnpj: "47654866801", nome: "Cliente Teste");
+        var cliente = ClienteMock.Criar(id: 1, cpfCnpj: "47654866801", nome: "Cliente Teste");
 
         _clienteRepositoryMock
             .Setup(x => x.ObterPorCpfCnpjAsync(cliente.CpfCnpj, It.IsAny<CancellationToken>()))
@@ -46,7 +48,7 @@ public class ClienteApplicationServiceTests
     [Fact]
     public async Task ObterClientePorCpfCnpj_DeveAceitarCnpj()
     {
-        var cliente = CriarCliente(id: 2, cpfCnpj: "60617051000199", nome: "Empresa Teste");
+        var cliente = ClienteMock.Criar(id: 2, cpfCnpj: "60617051000199", nome: "Empresa Teste");
 
         _clienteRepositoryMock
             .Setup(x => x.ObterPorCpfCnpjAsync(cliente.CpfCnpj, It.IsAny<CancellationToken>()))
@@ -72,13 +74,11 @@ public class ClienteApplicationServiceTests
     [Fact]
     public async Task CriarCliente_DevePersistirQuandoDocumentoNaoExiste()
     {
-        var dto = new CriarClienteDto
-        {
-            Nome = "Novo Cliente",
-            CpfCnpj = "529.982.247-25",
-            Email = "novo@cliente.com",
-            Telefone = "11999999999"
-        };
+        var dto = CriarClienteDtoMock.Criar(
+            nome: "Novo Cliente",
+            cpfCnpj: "529.982.247-25",
+            email: "novo@cliente.com",
+            telefone: "11999999999");
 
         _clienteRepositoryMock
             .Setup(x => x.ObterPorCpfCnpjAsync("52998224725", It.IsAny<CancellationToken>()))
@@ -97,17 +97,15 @@ public class ClienteApplicationServiceTests
     [Fact]
     public async Task CriarCliente_DeveLancarQuandoDocumentoJaExistir()
     {
-        var dto = new CriarClienteDto
-        {
-            Nome = "Cliente Existente",
-            CpfCnpj = "476.548.668-01",
-            Email = "cliente@teste.com",
-            Telefone = "11988887777"
-        };
+        var dto = CriarClienteDtoMock.Criar(
+            nome: "Cliente Existente",
+            cpfCnpj: "476.548.668-01",
+            email: "cliente@teste.com",
+            telefone: "11988887777");
 
         _clienteRepositoryMock
             .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CriarCliente(1, "47654866801", "Cliente Existente"));
+            .ReturnsAsync(ClienteMock.Criar(1, "47654866801", "Cliente Existente"));
 
         var acao = () => _service.CriarClienteAsync(dto, CancellationToken.None);
 
@@ -117,7 +115,7 @@ public class ClienteApplicationServiceTests
     [Fact]
     public async Task AtualizarClientePorCpfCnpj_DeveAtualizarQuandoClienteExistir()
     {
-        var cliente = CriarCliente(1, "47654866801", "Vanessa");
+        var cliente = ClienteMock.Criar(1, "47654866801", "Vanessa");
         var dto = new AtualizarClienteDto
         {
             Nome = "Vanessa Atualizada",
@@ -142,7 +140,7 @@ public class ClienteApplicationServiceTests
     [Fact]
     public async Task DeletarClientePorCpfCnpj_DeveLancarQuandoExistiremVeiculosVinculados()
     {
-        var cliente = CriarCliente(1, "47654866801", "Vanessa");
+        var cliente = ClienteMock.Criar(1, "47654866801", "Vanessa");
 
         _clienteRepositoryMock
             .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
@@ -160,7 +158,7 @@ public class ClienteApplicationServiceTests
     [Fact]
     public async Task DeletarClientePorCpfCnpj_DeveLancarQuandoExistiremOrdensDeServicoVinculadas()
     {
-        var cliente = CriarCliente(1, "47654866801", "Vanessa");
+        var cliente = ClienteMock.Criar(1, "47654866801", "Vanessa");
 
         _clienteRepositoryMock
             .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
@@ -181,7 +179,7 @@ public class ClienteApplicationServiceTests
     [Fact]
     public async Task DeletarClientePorCpfCnpj_DeveExcluirQuandoNaoExistiremDependencias()
     {
-        var cliente = CriarCliente(1, "47654866801", "Vanessa");
+        var cliente = ClienteMock.Criar(1, "47654866801", "Vanessa");
 
         _clienteRepositoryMock
             .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
@@ -206,7 +204,7 @@ public class ClienteApplicationServiceTests
     {
         var clientes = new[]
         {
-            CriarCliente(1, "47654866801", "Vanessa Luna Duarte")
+            ClienteMock.Criar(1, "47654866801", "Vanessa Luna Duarte")
         };
 
         _clienteRepositoryMock
@@ -223,18 +221,5 @@ public class ClienteApplicationServiceTests
         resultado.PageSize.Should().Be(10);
         resultado.TotalItems.Should().Be(1);
         resultado.TotalPages.Should().Be(1);
-    }
-
-    private static Cliente CriarCliente(int id, string cpfCnpj, string nome)
-    {
-        return new Cliente
-        {
-            Id = id,
-            Nome = nome,
-            CpfCnpj = cpfCnpj,
-            Telefone = "11988887777",
-            Email = "cliente@teste.com",
-            DataCadastro = DateTime.UtcNow
-        };
     }
 }
