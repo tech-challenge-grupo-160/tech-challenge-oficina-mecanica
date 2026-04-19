@@ -24,9 +24,4 @@
     <ProjectReference Include="..\Fiap.TechChallenge.OficinaMecanica.Api.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Mocks\Dtos\" />
-    <Folder Include="Mocks\Entities\" />
-  </ItemGroup>
-
 </Project>

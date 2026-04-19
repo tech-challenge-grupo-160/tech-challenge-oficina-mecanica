@@ -1,9 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Infrastructure;
 using FluentAssertions;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests;
+namespace Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Endpoints.Veiculos;
 
 public class VeiculosControllerTests : IClassFixture<CustomWebApplicationFactory>
 {

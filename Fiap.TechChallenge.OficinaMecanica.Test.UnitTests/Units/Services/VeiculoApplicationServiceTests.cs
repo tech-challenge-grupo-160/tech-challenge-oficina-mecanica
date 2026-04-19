@@ -2,12 +2,14 @@ using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
-using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks;
+using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Repositories;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units;
+namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units.Services;
 
 public class VeiculoApplicationServiceTests
 {
@@ -26,18 +28,16 @@ public class VeiculoApplicationServiceTests
     public async Task CriarVeiculo_DevePersistirQuandoClienteExistirEPlacaForValida()
     {
         const int clienteId = 1;
-        var dto = new CriarVeiculoDto
-        {
-            Placa = "abc-1234",
-            Marca = "Fiat",
-            Modelo = "Uno",
-            Ano = 2015,
-            CpfCnpj = "47654866801"
-        };
+        var dto = CriarVeiculoDtoMock.Criar(
+            placa: "abc-1234",
+            marca: "Fiat",
+            modelo: "Uno",
+            ano: 2015,
+            cpfCnpj: "47654866801");
 
         _clienteRepositoryMock
             .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Cliente { Id = clienteId, CpfCnpj = "47654866801" });
+            .ReturnsAsync(ClienteMock.Criar(id: clienteId, cpfCnpj: "47654866801"));
 
         _veiculoRepositoryMock
             .Setup(x => x.ObterPorPlacaAsync("ABC1234", It.IsAny<CancellationToken>()))
@@ -63,22 +63,20 @@ public class VeiculoApplicationServiceTests
     public async Task CriarVeiculo_DeveLancarQuandoPlacaJaExistir()
     {
         const int clienteId = 1;
-        var dto = new CriarVeiculoDto
-        {
-            Placa = "BRA2E19",
-            Marca = "VW",
-            Modelo = "Gol",
-            Ano = 2020,
-            CpfCnpj = "47654866801"
-        };
+        var dto = CriarVeiculoDtoMock.Criar(
+            placa: "BRA2E19",
+            marca: "VW",
+            modelo: "Gol",
+            ano: 2020,
+            cpfCnpj: "47654866801");
 
         _clienteRepositoryMock
             .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Cliente { Id = clienteId, CpfCnpj = "47654866801" });
+            .ReturnsAsync(ClienteMock.Criar(id: clienteId, cpfCnpj: "47654866801"));
 
         _veiculoRepositoryMock
             .Setup(x => x.ObterPorPlacaAsync("BRA2E19", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Veiculo { Id = 10, Placa = "BRA2E19" });
+            .ReturnsAsync(VeiculoMock.Criar(id: 10, placa: "BRA2E19"));
 
         var acao = () => _service.CriarVeiculoAsync(dto, CancellationToken.None);
 
@@ -90,15 +88,13 @@ public class VeiculoApplicationServiceTests
     public async Task ObterVeiculoPorPlaca_DeveAceitarPlacaMercosulComSeparador()
     {
         const int clienteId = 1;
-        var veiculo = new Veiculo
-        {
-            Id = 10,
-            Placa = "BRA2E19",
-            Marca = "Volkswagen",
-            Modelo = "Gol",
-            Ano = 2020,
-            ClienteId = clienteId
-        };
+        var veiculo = VeiculoMock.Criar(
+            id: 10,
+            placa: "BRA2E19",
+            marca: "Volkswagen",
+            modelo: "Gol",
+            ano: 2020,
+            clienteId: clienteId);
 
         _veiculoRepositoryMock
             .Setup(x => x.ObterPorPlacaAsync("BRA2E19", It.IsAny<CancellationToken>()))
