@@ -30,9 +30,35 @@ public class OrdensDeServicoController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<OrdemDeServicoDto>>> Listar(CancellationToken cancellationToken)
+    public async Task<ActionResult<PagedResultDto<OrdemDeServicoDto>>> Listar(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] int? clienteId = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string? numero = null,
+        [FromQuery] DateTime? dataAberturaInicio = null,
+        [FromQuery] DateTime? dataAberturaFim = null,
+        CancellationToken cancellationToken = default)
     {
-        var ordens = await _ordemService.ListarOrdensDeServicoAsync(cancellationToken);
+        if (page <= 0)
+        {
+            return BadRequest("page deve ser maior que zero.");
+        }
+
+        if (pageSize <= 0)
+        {
+            return BadRequest("pageSize deve ser maior que zero.");
+        }
+
+        var ordens = await _ordemService.ListarOrdensDeServicoAsync(
+            page,
+            pageSize,
+            clienteId,
+            status,
+            numero,
+            dataAberturaInicio,
+            dataAberturaFim,
+            cancellationToken);
         return Ok(ordens);
     }
 
@@ -50,10 +76,24 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(ordens);
     }
 
-    [HttpPut("{id}/status")]
-    public async Task<ActionResult<OrdemDeServicoDto>> AtualizarStatus(int id, [FromBody] AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
+    [HttpPatch("{id}/iniciar-diagnostico")]
+    public async Task<ActionResult<OrdemDeServicoDto>> IniciarDiagnostico(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _ordemService.AtualizarStatusAsync(id, dto, cancellationToken);
+        var ordem = await _ordemService.IniciarDiagnosticoAsync(id, cancellationToken);
+        return Ok(ordem);
+    }
+
+    [HttpPatch("{id}/finalizar-diagnostico")]
+    public async Task<ActionResult<OrdemDeServicoDto>> FinalizarDiagnostico(int id, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemService.FinalizarDiagnosticoAsync(id, cancellationToken);
+        return Ok(ordem);
+    }
+
+    [HttpPatch("{id}/cancelar")]
+    public async Task<ActionResult<OrdemDeServicoDto>> Cancelar(int id, [FromBody] CancelarOrdemDeServicoDto dto, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemService.CancelarAsync(id, dto, cancellationToken);
         return Ok(ordem);
     }
 
@@ -71,10 +111,4 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(ordem);
     }
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Deletar(int id, CancellationToken cancellationToken)
-    {
-        await _ordemService.DeletarOrdemDeServicoAsync(id, cancellationToken);
-        return NoContent();
-    }
 }

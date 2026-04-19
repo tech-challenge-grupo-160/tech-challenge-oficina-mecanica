@@ -55,6 +55,10 @@ public static class OficinaDbContextSeeder
             if (!await context.Veiculos.AnyAsync())
             {
                 var clientes = await context.Clientes.OrderBy(c => c.Id).ToListAsync();
+                var clienteVanessa = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("476.548.668-01"));
+                var clienteRafael = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("093.678.498-93"));
+                var clienteBetina = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCnpj("60.617.051/0001-99"));
+
                 var veiculos = new[]
                 {
                     new Veiculo
@@ -63,7 +67,7 @@ public static class OficinaDbContextSeeder
                         Marca = "Toyota",
                         Modelo = "Corolla",
                         Ano = 2020,
-                        ClienteId = clientes[0].Id
+                        ClienteId = clienteVanessa.Id
                     },
                     new Veiculo
                     {
@@ -71,7 +75,7 @@ public static class OficinaDbContextSeeder
                         Marca = "Honda",
                         Modelo = "Civic",
                         Ano = 2019,
-                        ClienteId = clientes[1].Id
+                        ClienteId = clienteRafael.Id
                     },
                     new Veiculo
                     {
@@ -79,7 +83,7 @@ public static class OficinaDbContextSeeder
                         Marca = "Volkswagen",
                         Modelo = "Gol",
                         Ano = 2021,
-                        ClienteId = clientes[2].Id
+                        ClienteId = clienteBetina.Id
                     }
                 };
 
@@ -153,12 +157,24 @@ public static class OficinaDbContextSeeder
                 var veiculos = await context.Veiculos.OrderBy(v => v.Id).ToListAsync();
                 var servicos = await context.Servicos.OrderBy(s => s.Id).ToListAsync();
                 var pecas = await context.Pecas.OrderBy(p => p.Id).ToListAsync();
+                var clienteVanessa = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("476.548.668-01"));
+                var clienteRafael = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("093.678.498-93"));
+                var veiculoCorolla = veiculos.Single(v => v.Placa == "ABC1234");
+                var veiculoCivic = veiculos.Single(v => v.Placa == "XYZ5678");
+                var servicoTrocaOleo = servicos.Single(s => s.Nome == "Troca de Oleo");
+                var servicoRevisaoCompleta = servicos.Single(s => s.Nome == "Revisao Completa");
+                var servicoAlinhamento = servicos.Single(s => s.Nome == "Alinhamento");
+                var pecaFiltroOleo = pecas.Single(p => p.Nome == "Filtro de Oleo");
+                var pecaFiltroAr = pecas.Single(p => p.Nome == "Filtro de Ar");
+                var pecaPastilhaFreio = pecas.Single(p => p.Nome == "Pastilha de Freio");
 
                 var ordem1 = new OrdemDeServico
                 {
-                    Numero = "OS-001",
-                    ClienteId = clientes[0].Id,
-                    VeiculoId = veiculos[0].Id,
+                    Numero = "OS-20260413-3000",
+                    ClienteId = clienteVanessa.Id,
+                    VeiculoId = veiculoCorolla.Id,
+                    DescricaoSolicitacao = "Cliente relatou troca de oleo e revisao preventiva.",
+                    ObservacoesRecepcao = "Veiculo recebido sem avarias aparentes.",
                     Status = StatusOrdemDeServico.Entregue,
                     DataAbertura = DateTimeHelper.UTCBrazilNow().AddDays(-5),
                     DataConclusao = DateTimeHelper.UTCBrazilNow().AddDays(-1),
@@ -167,9 +183,11 @@ public static class OficinaDbContextSeeder
 
                 var ordem2 = new OrdemDeServico
                 {
-                    Numero = "OS-002",
-                    ClienteId = clientes[1].Id,
-                    VeiculoId = veiculos[1].Id,
+                    Numero = "OS-20260416-3001",
+                    ClienteId = clienteRafael.Id,
+                    VeiculoId = veiculoCivic.Id,
+                    DescricaoSolicitacao = "Cliente informou ruido na suspensao dianteira.",
+                    ObservacoesRecepcao = "Barulho identificado em baixa velocidade.",
                     Status = StatusOrdemDeServico.EmExecucao,
                     DataAbertura = DateTimeHelper.UTCBrazilNow().AddDays(-2),
                     DataConclusao = null,
@@ -184,23 +202,23 @@ public static class OficinaDbContextSeeder
                     new OrdemDeServicoServico
                     {
                         OrdemDeServicoId = ordem1.Id,
-                        ServicoId = servicos[0].Id,
-                        Preco = servicos[0].Preco,
-                        TempoEstimado = servicos[0].TempoEstimado
+                        ServicoId = servicoTrocaOleo.Id,
+                        Preco = servicoTrocaOleo.Preco,
+                        TempoEstimado = servicoTrocaOleo.TempoEstimado
                     },
                     new OrdemDeServicoServico
                     {
                         OrdemDeServicoId = ordem2.Id,
-                        ServicoId = servicos[1].Id,
-                        Preco = servicos[1].Preco,
-                        TempoEstimado = servicos[1].TempoEstimado
+                        ServicoId = servicoRevisaoCompleta.Id,
+                        Preco = servicoRevisaoCompleta.Preco,
+                        TempoEstimado = servicoRevisaoCompleta.TempoEstimado
                     },
                     new OrdemDeServicoServico
                     {
                         OrdemDeServicoId = ordem2.Id,
-                        ServicoId = servicos[2].Id,
-                        Preco = servicos[2].Preco,
-                        TempoEstimado = servicos[2].TempoEstimado
+                        ServicoId = servicoAlinhamento.Id,
+                        Preco = servicoAlinhamento.Preco,
+                        TempoEstimado = servicoAlinhamento.TempoEstimado
                     }
                 };
 
@@ -209,23 +227,23 @@ public static class OficinaDbContextSeeder
                     new OrdemDeServicoPeca
                     {
                         OrdemDeServicoId = ordem1.Id,
-                        PecaId = pecas[0].Id,
+                        PecaId = pecaFiltroOleo.Id,
                         Quantidade = 1,
-                        Preco = pecas[0].Preco
+                        Preco = pecaFiltroOleo.Preco
                     },
                     new OrdemDeServicoPeca
                     {
                         OrdemDeServicoId = ordem2.Id,
-                        PecaId = pecas[1].Id,
+                        PecaId = pecaFiltroAr.Id,
                         Quantidade = 1,
-                        Preco = pecas[1].Preco
+                        Preco = pecaFiltroAr.Preco
                     },
                     new OrdemDeServicoPeca
                     {
                         OrdemDeServicoId = ordem2.Id,
-                        PecaId = pecas[2].Id,
+                        PecaId = pecaPastilhaFreio.Id,
                         Quantidade = 2,
-                        Preco = pecas[2].Preco
+                        Preco = pecaPastilhaFreio.Preco
                     }
                 };
 

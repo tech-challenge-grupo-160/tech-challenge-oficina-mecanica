@@ -8,6 +8,9 @@ public class OrdemDeServicoDto
     public string Numero { get; set; } = null!;
     public int ClienteId { get; set; }
     public int VeiculoId { get; set; }
+    public string DescricaoSolicitacao { get; set; } = null!;
+    public string? ObservacoesRecepcao { get; set; }
+    public string? MotivoCancelamento { get; set; }
     public string Status { get; set; } = null!;
     public DateTime DataAbertura { get; set; }
     public DateTime? DataConclusao { get; set; }
@@ -20,11 +23,18 @@ public class CriarOrdemDeServicoDto
 {
     public int ClienteId { get; set; }
     public int VeiculoId { get; set; }
+    public string DescricaoSolicitacao { get; set; } = null!;
+    public string? ObservacoesRecepcao { get; set; }
 }
 
 public class AtualizarStatusOrdemDeServicoDto
 {
     public string NovoStatus { get; set; } = null!;
+}
+
+public class CancelarOrdemDeServicoDto
+{
+    public string MotivoCancelamento { get; set; } = null!;
 }
 
 public class OrdemDeServicoServicoDto

@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
@@ -147,6 +149,7 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -159,7 +162,14 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+var configuredUrls = builder.Configuration["ASPNETCORE_URLS"] ?? string.Empty;
+var hasHttpsBinding = configuredUrls.Contains("https://", StringComparison.OrdinalIgnoreCase);
+
+if (hasHttpsBinding)
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -173,6 +183,22 @@ if (!usingInMemoryDatabase)
 {
     await app.MigrateAndSeedAsync(app.Environment.IsDevelopment());
 }
+
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    var serverAddresses = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>();
+    var addresses = serverAddresses?.Addresses ?? app.Urls;
+
+    foreach (var address in addresses.OrderBy(x => x))
+    {
+        startupLogger.LogInformation("Aplicacao iniciada em: {Address}", address);
+
+        if (app.Environment.IsDevelopment())
+        {
+            startupLogger.LogInformation("Swagger disponivel em: {SwaggerAddress}", $"{address.TrimEnd('/')}/swagger/index.html");
+        }
+    }
+});
 
 app.Run();
 

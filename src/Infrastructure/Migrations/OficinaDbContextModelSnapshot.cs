@@ -71,7 +71,7 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 3000L, null, null, null, null, null);
 
                     b.Property<int>("ClienteId")
                         .HasColumnType("integer");
@@ -82,10 +82,23 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                     b.Property<DateTime?>("DataConclusao")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<string>("DescricaoSolicitacao")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
                     b.Property<string>("Numero")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<string>("ObservacoesRecepcao")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
