@@ -1,37 +1,36 @@
-namespace oficina_mecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 
-public enum StatusOrdemDeServico
-{
-    Recebida,
-    EmDiagnostico,
-    AguardandoAprovacao,
-    EmExecucao,
-    Finalizada,
-    Entregue
-}
+namespace Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
 public class OrdemDeServico
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Numero { get; set; } = null!;
-    public Guid ClienteId { get; set; }
-    public Guid VeiculoId { get; set; }
+    public int ClienteId { get; set; }
+    public int VeiculoId { get; set; }
+    public string DescricaoSolicitacao { get; set; } = null!;
+    public string? ObservacoesRecepcao { get; set; }
+    public string? MotivoCancelamento { get; set; }
+    public DateTime? OrcamentoEnviadoEm { get; set; }
+    public DateTime? DataFinalizacao { get; set; }
+    public DateTime? DataPagamento { get; set; }
     public StatusOrdemDeServico Status { get; set; }
     public DateTime DataAbertura { get; set; }
     public DateTime? DataConclusao { get; set; }
     public decimal ValorTotal { get; set; }
 
-    // Navigations
     public Cliente? Cliente { get; set; }
     public Veiculo? Veiculo { get; set; }
     public ICollection<OrdemDeServicoServico> Servicos { get; set; } = new List<OrdemDeServicoServico>();
     public ICollection<OrdemDeServicoPeca> Pecas { get; set; } = new List<OrdemDeServicoPeca>();
+    public ICollection<OrdemServicoHistorico> Historicos { get; set; } = new List<OrdemServicoHistorico>();
 
     public void AdicionarServico(Servico servico)
     {
-        if (Status != StatusOrdemDeServico.AguardandoAprovacao)
+        if (Status != StatusOrdemDeServico.EmDiagnostico)
         {
-            throw new InvalidOperationException("Só é possível adicionar serviços em ordens aguardando aprovação.");
+            throw new InvalidOperationException("So e possivel adicionar servicos durante o diagnostico. Nao e possivel neste status: " + Status);
         }
 
         Servicos.Add(new OrdemDeServicoServico
@@ -47,9 +46,9 @@ public class OrdemDeServico
 
     public void AdicionarPeca(Peca peca, int quantidade)
     {
-        if (Status != StatusOrdemDeServico.AguardandoAprovacao && Status != StatusOrdemDeServico.EmExecucao)
+        if (Status != StatusOrdemDeServico.EmDiagnostico && Status != StatusOrdemDeServico.EmExecucao)
         {
-            throw new InvalidOperationException("Não é possível adicionar peças neste estado.");
+            throw new InvalidOperationException($"Nao e possivel adicionar pecas neste status: {Status}");
         }
 
         if (peca.QuantidadeEstoque < quantidade)
@@ -73,15 +72,105 @@ public class OrdemDeServico
     {
         if (!ValidarTransicaoDeStatus(Status, novoStatus))
         {
-            throw new InvalidOperationException($"Não é possível transicionar de {Status} para {novoStatus}");
+            throw new InvalidOperationException($"Nao e possivel transicionar de {Status} para {novoStatus}");
         }
 
         Status = novoStatus;
 
         if (novoStatus == StatusOrdemDeServico.Entregue)
         {
-            DataConclusao = DateTime.UtcNow;
+            DataConclusao = DateTimeHelper.UTCBrazilNow();
         }
+    }
+
+    public void FinalizarDiagnostico()
+    {
+        if (Status != StatusOrdemDeServico.EmDiagnostico)
+        {
+            throw new InvalidOperationException("So e possivel finalizar o diagnostico quando a ordem estiver em diagnostico.");
+        }
+
+        if (!Servicos.Any())
+        {
+            throw new InvalidOperationException("A ordem de servico deve possuir ao menos um servico antes de aguardar aprovacao.");
+        }
+
+        if (ValorTotal <= 0)
+        {
+            throw new InvalidOperationException("O orcamento da ordem de servico nao pode ser zerado.");
+        }
+
+        AlterarStatus(StatusOrdemDeServico.AguardandoAprovacao);
+        OrcamentoEnviadoEm = DateTimeHelper.UTCBrazilNow();
+    }
+
+    public void Cancelar(string motivoCancelamento)
+    {
+        if (Status != StatusOrdemDeServico.Recebida &&
+            Status != StatusOrdemDeServico.EmDiagnostico &&
+            Status != StatusOrdemDeServico.AguardandoAprovacao)
+        {
+            throw new InvalidOperationException("Nao e possivel cancelar a ordem de servico no status atual: " + Status);
+        }
+
+        if (string.IsNullOrWhiteSpace(motivoCancelamento))
+        {
+            throw new InvalidOperationException("Motivo do cancelamento e obrigatorio.");
+        }
+
+        Status = StatusOrdemDeServico.Cancelada;
+        MotivoCancelamento = motivoCancelamento.Trim();
+    }
+
+    public void AprovarOrcamento()
+    {
+        if (Status != StatusOrdemDeServico.AguardandoAprovacao)
+        {
+            throw new InvalidOperationException("So e possivel aprovar o orcamento quando a ordem estiver aguardando aprovacao.");
+        }
+
+        AlterarStatus(StatusOrdemDeServico.EmExecucao);
+    }
+
+    public void FinalizarServico()
+    {
+        if (Status != StatusOrdemDeServico.EmExecucao)
+        {
+            throw new InvalidOperationException("So e possivel finalizar o servico quando a ordem estiver em execucao.");
+        }
+
+        DataFinalizacao = DateTimeHelper.UTCBrazilNow();
+        AlterarStatus(StatusOrdemDeServico.Finalizada);
+    }
+
+    public void RegistrarPagamento()
+    {
+        if (Status != StatusOrdemDeServico.Finalizada)
+        {
+            throw new InvalidOperationException("So e possivel registrar pagamento quando a ordem estiver finalizada.");
+        }
+
+        if (!DataFinalizacao.HasValue)
+        {
+            throw new InvalidOperationException("Nao e possivel registrar pagamento antes da finalizacao do servico.");
+        }
+
+        DataPagamento = DateTimeHelper.UTCBrazilNow();
+    }
+
+    public void Entregar()
+    {
+        if (Status != StatusOrdemDeServico.Finalizada)
+        {
+            throw new InvalidOperationException("So e possivel entregar quando a ordem estiver finalizada.");
+        }
+
+        if (!DataPagamento.HasValue)
+        {
+            throw new InvalidOperationException("So e possivel entregar apos o pagamento ser registrado.");
+        }
+
+        AlterarStatus(StatusOrdemDeServico.Entregue);
     }
 
     private bool ValidarTransicaoDeStatus(StatusOrdemDeServico statusAtual, StatusOrdemDeServico novoStatus)
@@ -107,24 +196,22 @@ public class OrdemDeServico
 
 public class OrdemDeServicoServico
 {
-    public Guid OrdemDeServicoId { get; set; }
-    public Guid ServicoId { get; set; }
+    public int OrdemDeServicoId { get; set; }
+    public int ServicoId { get; set; }
     public decimal Preco { get; set; }
     public int TempoEstimado { get; set; }
 
-    // Navigations
     public OrdemDeServico? OrdemDeServico { get; set; }
     public Servico? Servico { get; set; }
 }
 
 public class OrdemDeServicoPeca
 {
-    public Guid OrdemDeServicoId { get; set; }
-    public Guid PecaId { get; set; }
+    public int OrdemDeServicoId { get; set; }
+    public int PecaId { get; set; }
     public int Quantidade { get; set; }
     public decimal Preco { get; set; }
 
-    // Navigations
     public OrdemDeServico? OrdemDeServico { get; set; }
     public Peca? Peca { get; set; }
 }

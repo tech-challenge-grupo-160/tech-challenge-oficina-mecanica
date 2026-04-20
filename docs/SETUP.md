@@ -1,285 +1,167 @@
-# Setup e Execução - Sistema Integrado de Gestão de Oficina Mecânica
+# Setup e Operação
 
 ## Pré-requisitos
 
-### Opção 1: Com Docker (Recomendado)
-- Docker Desktop instalado ([Download](https://www.docker.com/products/docker-desktop))
-- Docker Compose incluído no Docker Desktop
+### Execução com Docker
 
-### Opção 2: Local
-- .NET 8 SDK ([Download](https://dotnet.microsoft.com/download))
-- PostgreSQL 16+ ([Download](https://www.postgresql.org/download/))
+- Docker Desktop
+- Docker Compose
 
----
+### Execução local
 
-## Execução com Docker (Recomendado)
+- .NET SDK 10
+- PostgreSQL 16 ou superior
 
-### Windows
+## Configuração por variáveis de ambiente
 
-```powershell
-cd C:\Users\Lucas\Repos\oficina-mecanica\
-.\scripts\start.bat
+O projeto usa `.env` no fluxo com Docker. Use `.env.example` como base.
+
+```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=oficina_mecanica
+DB_PORT=5432
+API_PORT=8080
+API_CONNECTION_STRING=Host=postgres;Database=oficina_mecanica;Username=postgres;Password=postgres
+JWT_SECRET=defina-uma-chave-muito-forte
+JWT_ISSUER=Fiap.TechChallenge.OficinaMecanica
+JWT_AUDIENCE=Fiap.TechChallenge.OficinaMecanica
 ```
 
-### Linux/Mac
+## Execução com Docker
 
 ```bash
-cd /path/to/oficina-mecanica/
-chmod +x scripts/start.sh
-./scripts/start.sh
+docker-compose up --build
 ```
 
-### Usando Docker Compose diretamente
+Ao iniciar em `Development`, a aplicação:
 
-```bash
-docker-compose up --build -d
-```
+- aguarda o PostgreSQL ficar saudável;
+- executa migrations automaticamente;
+- executa seed de dados de desenvolvimento;
+- expõe Swagger em `/swagger`.
 
-**Resultado esperado:**
-- API disponível em `http://localhost:8080`
-- Swagger UI em `http://localhost:8080/swagger`
-- PostgreSQL em `localhost:5432`
+### Endpoints padrão
 
----
+- API: `http://localhost:8080`
+- Swagger: `http://localhost:8080/swagger`
+- Health: `http://localhost:8080/health`
+- PostgreSQL: `localhost:5432`
 
-## Execução Local (Sem Docker)
+### Credenciais iniciais
 
-### 1. Criar banco de dados PostgreSQL
+O seed cria um usuário para autenticação:
+
+- usuário: `admin`
+- senha: `admin123`
+
+## Execução local
+
+### 1. Criar a base
 
 ```sql
 CREATE DATABASE oficina_mecanica;
 ```
 
-### 2. Configurar connection string
+### 2. Configurar secrets
 
-Editar `appsettings.Development.json`:
+Na raiz do projeto:
 
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=oficina_mecanica;Username=postgres;Password=sua_senha"
-  }
-}
+```bash
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=oficina_mecanica;Username=postgres;Password=postgres"
+dotnet user-secrets set "Jwt:SecretKey" "defina-uma-chave-muito-forte"
+dotnet user-secrets set "Jwt:Issuer" "Fiap.TechChallenge.OficinaMecanica"
+dotnet user-secrets set "Jwt:Audience" "Fiap.TechChallenge.OficinaMecanica"
 ```
 
-### 3. Restaurar dependências
+### 3. Restaurar e executar
 
 ```bash
 dotnet restore
+dotnet run --project Fiap.TechChallenge.OficinaMecanica.Api.csproj
 ```
 
-### 4. Aplicar migrations
+Observações:
 
-```bash
-dotnet ef database update
-```
+- fora do Docker, a aplicação também executa `MigrateAndSeedAsync` quando o ambiente estiver em `Development`;
+- o Swagger é habilitado apenas nesse ambiente.
 
-### 5. Executar a aplicação
+## Testes
 
-```bash
-dotnet run
-```
-
-A API estará disponível em `https://localhost:7063` ou `http://localhost:5000`
-
----
-
-## Parar os Containers
-
-### Docker Compose
-
-```bash
-# Parar containers mantendo volumes
-docker-compose down
-
-# Parar containers e remover volumes
-docker-compose down -v
-```
-
----
-
-## Visualizar Logs
-
-```bash
-# Logs da API
-docker-compose logs -f api
-
-# Logs do PostgreSQL
-docker-compose logs -f postgres
-
-# Todos os logs
-docker-compose logs -f
-```
-
----
-
-## Endpoints da API
-
-### Base URL
-```
-http://localhost:8080/api
-```
-
-### Clientes
-- `POST /clientes` - Criar cliente
-- `GET /clientes` - Listar clientes
-- `GET /clientes/{id}` - Obter cliente
-- `PUT /clientes/{id}` - Atualizar cliente
-- `DELETE /clientes/{id}` - Deletar cliente
-
-### Veículos
-- `POST /veiculos` - Criar veículo
-- `GET /veiculos` - Listar veículos
-- `GET /veiculos/{id}` - Obter veículo
-- `GET /veiculos/cliente/{clienteId}` - Listar por cliente
-- `PUT /veiculos/{id}` - Atualizar veículo
-- `DELETE /veiculos/{id}` - Deletar veículo
-
-### Serviços
-- `POST /servicos` - Criar serviço
-- `GET /servicos` - Listar serviços
-- `GET /servicos/{id}` - Obter serviço
-- `PUT /servicos/{id}` - Atualizar serviço
-- `DELETE /servicos/{id}` - Deletar serviço
-
-### Peças
-- `POST /pecas` - Criar peça
-- `GET /pecas` - Listar peças
-- `GET /pecas/{id}` - Obter peça
-- `PUT /pecas/{id}` - Atualizar peça
-- `DELETE /pecas/{id}` - Deletar peça
-
-### Ordens de Serviço
-- `POST /ordens-servico` - Criar ordem
-- `GET /ordens-servico` - Listar ordens
-- `GET /ordens-servico/{id}` - Obter ordem
-- `GET /ordens-servico/cliente/{clienteId}` - Listar por cliente
-- `GET /ordens-servico/status/{status}` - Listar por status
-- `PUT /ordens-servico/{id}/status` - Atualizar status
-- `POST /ordens-servico/{id}/servicos` - Adicionar serviço
-- `POST /ordens-servico/{id}/pecas` - Adicionar peça
-- `DELETE /ordens-servico/{id}` - Deletar ordem
-
----
-
-## Documentação Swagger
-
-Acesse a documentação interativa em:
-```
-http://localhost:8080/swagger
-```
-
-Aqui você pode:
-- Visualizar todos os endpoints
-- Ver modelos de requisição/resposta
-- Testar os endpoints diretamente
-
----
-
-## Troubleshooting
-
-### Porta 5432 já está em uso
-```bash
-# Encontrar container usando a porta
-docker ps
-
-# Remover container
-docker rm -f <container_id>
-
-# Ou alterar a porta no docker-compose.yml
-# Mudar "5432:5432" para "5433:5432"
-```
-
-### Porta 8080 já está em uso
-```bash
-# Alterar no docker-compose.yml
-# Mudar "8080:8080" para "8081:8080"
-```
-
-### Erro de conexão com banco de dados
-```bash
-# Verificar se PostgreSQL está rodando
-docker-compose ps
-
-# Reiniciar containers
-docker-compose restart
-
-# Ou executar novamente
-docker-compose down
-docker-compose up --build -d
-```
-
-### Clear de migrations locais
-```bash
-# Remover migrations e banco
-dotnet ef database drop -f
-dotnet ef database update
-```
-
----
-
-## Variáveis de Ambiente
-
-### Docker Compose
-Definidas em `docker-compose.yml`:
-- `ASPNETCORE_ENVIRONMENT` = Production
-- `ConnectionStrings__DefaultConnection` = Connection string do PostgreSQL
-
-### Local Development
-Defina em `appsettings.Development.json` ou variáveis de ambiente do SO
-
----
-
-## Estrutura do Projeto
-
-```
-oficina-mecanica/
-├── src/
-│   ├── API/
-│   │   └── Controllers/
-│   ├── Application/
-│   │   ├── DTOs/
-│   │   └── Services/
-│   ├── Domain/
-│   │   ├── Entities/
-│   │   └── Repositories/
-│   └── Infrastructure/
-│       ├── Data/
-│       └── Repositories/
-├── tests/
-│   └── Oficina.UnitTests/
-├── Dockerfile
-├── docker-compose.yml
-├── Program.cs
-├── appsettings.json
-└── appsettings.Development.json
-```
-
----
-
-## Desenvolvimento
-
-### Rodar testes
 ```bash
 dotnet test
 ```
 
-### Criar nova migration
+## Operação básica
+
+### Subir em background
+
 ```bash
-dotnet ef migrations add <MigrationName>
-dotnet ef database update
+docker-compose up --build -d
 ```
 
-### Build local
+### Parar serviços
+
 ```bash
-dotnet build
+docker-compose down
 ```
 
----
+### Remover volumes e reinicializar o banco
 
-## Suporte
+```bash
+docker-compose down -v
+docker-compose up --build
+```
 
-Para mais informações, consulte:
-- [Documentação .NET 8](https://learn.microsoft.com/en-us/dotnet/)
-- [Docker Documentation](https://docs.docker.com/)
-- [Entity Framework Core](https://learn.microsoft.com/en-us/ef/)
+### Ver logs
+
+```bash
+docker-compose logs -f api
+docker-compose logs -f postgres
+```
+
+## Verificações rápidas
+
+### Health check
+
+```bash
+curl http://localhost:8080/health
+```
+
+### Login
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "usuario": "admin",
+    "senha": "admin123"
+  }'
+```
+
+## Troubleshooting
+
+### Porta ocupada
+
+Se `5432` ou `8080` já estiverem em uso, ajuste `DB_PORT` e `API_PORT` no `.env`.
+
+### Banco inconsistente após mudanças locais
+
+```bash
+docker-compose down -v
+docker-compose up --build
+```
+
+### API não sobe por falha de conexão
+
+Verifique:
+
+- se o container `postgres` está saudável;
+- se a connection string está correta;
+- se `JWT_SECRET` foi definido;
+- se o banco aceita conexões na porta configurada.
+
+### Sem Swagger
+
+O Swagger só é exposto quando `ASPNETCORE_ENVIRONMENT=Development`.

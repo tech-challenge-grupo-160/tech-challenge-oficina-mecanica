@@ -1,13 +1,15 @@
-using oficina_mecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
-namespace oficina_mecanica.Domain.Repositories;
+namespace Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 
 public interface IClienteRepository
 {
-    Task<Cliente?> ObterPorIdAsync(Guid id);
-    Task<Cliente?> ObterPorCpfCnpjAsync(string cpfCnpj);
-    Task<IEnumerable<Cliente>> ObterTodosAsync();
-    Task<Cliente> CriarAsync(Cliente cliente);
-    Task<Cliente> AtualizarAsync(Cliente cliente);
-    Task DeletarAsync(Guid id);
+    Task<Cliente?> ObterPorIdAsync(int id, CancellationToken cancellationToken);
+    Task<Cliente?> ObterPorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken);
+    Task<IEnumerable<Cliente>> ObterTodosAsync(CancellationToken cancellationToken);
+    Task<IEnumerable<Cliente>> ObterPaginadoAsync(int page, int pageSize, string? nome, string? cpfCnpj, CancellationToken cancellationToken);
+    Task<int> ContarAsync(string? nome, string? cpfCnpj, CancellationToken cancellationToken);
+    Task<Cliente> CriarAsync(Cliente cliente, CancellationToken cancellationToken);
+    Task<Cliente> AtualizarAsync(Cliente cliente, CancellationToken cancellationToken);
+    Task DeletarAsync(int id, CancellationToken cancellationToken);
 }

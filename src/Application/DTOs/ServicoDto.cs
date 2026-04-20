@@ -1,8 +1,8 @@
-namespace oficina_mecanica.Application.DTOs;
+namespace Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 
 public class ServicoDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Nome { get; set; } = null!;
     public string Descricao { get; set; } = null!;
     public decimal Preco { get; set; }

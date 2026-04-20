@@ -10,4 +10,5 @@ bin/
 .DS_Store
 node_modules/
 .idea/
-launchSettings.json
+#launchSettings.json
+.env

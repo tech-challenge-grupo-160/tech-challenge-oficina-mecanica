@@ -1,184 +1,628 @@
-using oficina_mecanica.Application.DTOs;
-using oficina_mecanica.Domain.Entities;
-using oficina_mecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Security;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
+using Microsoft.Extensions.Logging;
 
-namespace oficina_mecanica.Application.Services;
+namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
 public interface IOrdemDeServicoApplicationService
 {
-    Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto);
-    Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(Guid id);
-    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoAsync();
-    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(Guid clienteId);
-    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorStatusAsync(string status);
-    Task<OrdemDeServicoDto> AtualizarStatusAsync(Guid id, AtualizarStatusOrdemDeServicoDto dto);
-    Task<OrdemDeServicoDto> AdicionarServicoAsync(Guid id, AdicionarServicoAOrdemDto dto);
-    Task<OrdemDeServicoDto> AdicionarPecaAsync(Guid id, AdicionarPecaAOrdemDto dto);
-    Task DeletarOrdemDeServicoAsync(Guid id);
+    Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(int id, CancellationToken cancellationToken);
+    Task<IEnumerable<OrdemServicoHistoricoDto>> ObterHistoricoAsync(int id, CancellationToken cancellationToken);
+    Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(
+        int page,
+        int pageSize,
+        int? clienteId,
+        string? status,
+        string? numero,
+        DateTime? dataAberturaInicio,
+        DateTime? dataAberturaFim,
+        CancellationToken cancellationToken);
+    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(int clienteId, CancellationToken cancellationToken);
+    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorStatusAsync(string status, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> CancelarAsync(int id, CancelarOrdemDeServicoDto dto, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken);
 }
 
 public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationService
 {
+    private const string LoggerName = nameof(OrdemDeServicoApplicationService);
     private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly IClienteRepository _clienteRepository;
     private readonly IVeiculoRepository _veiculoRepository;
     private readonly IServicoRepository _servicoRepository;
     private readonly IPecaRepository _pecaRepository;
+    private readonly IOrdemServicoHistoricoRepository _historicoRepository;
+    private readonly IUsuarioAutenticadoService _usuarioAutenticadoService;
+    private readonly ILogger _logger;
 
     public OrdemDeServicoApplicationService(
         IOrdemDeServicoRepository ordemRepository,
         IClienteRepository clienteRepository,
         IVeiculoRepository veiculoRepository,
         IServicoRepository servicoRepository,
-        IPecaRepository pecaRepository)
+        IPecaRepository pecaRepository,
+        IOrdemServicoHistoricoRepository historicoRepository,
+        IUsuarioAutenticadoService usuarioAutenticadoService,
+        ILoggerFactory loggerFactory)
     {
         _ordemRepository = ordemRepository;
         _clienteRepository = clienteRepository;
         _veiculoRepository = veiculoRepository;
         _servicoRepository = servicoRepository;
         _pecaRepository = pecaRepository;
+        _historicoRepository = historicoRepository;
+        _usuarioAutenticadoService = usuarioAutenticadoService;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public async Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto)
+    public async Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(dto.ClienteId);
-        if (cliente == null)
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
         {
-            throw new KeyNotFoundException($"Cliente com ID {dto.ClienteId} não encontrado.");
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarOrdemDeServicoAsync), "Consultando cliente e veiculo informados");
+            var cliente = await _clienteRepository.ObterPorIdAsync(dto.ClienteId, cancellationToken);
+            if (cliente == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarOrdemDeServicoAsync), "Cliente nao encontrado para abertura da OS");
+                throw new KeyNotFoundException($"Cliente com ID {dto.ClienteId} nao encontrado.");
+            }
+
+            var veiculo = await _veiculoRepository.ObterPorIdAsync(dto.VeiculoId, cancellationToken);
+            if (veiculo == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarOrdemDeServicoAsync), "Veiculo nao encontrado para abertura da OS");
+                throw new KeyNotFoundException($"Veiculo com ID {dto.VeiculoId} nao encontrado.");
+            }
+
+            if (veiculo.ClienteId != dto.ClienteId)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarOrdemDeServicoAsync), "Veiculo nao pertence ao cliente informado");
+                throw new InvalidOperationException("O veiculo informado nao pertence ao cliente informado.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarOrdemDeServicoAsync), "Persistindo ordem de servico em status Recebida");
+            var ordem = new OrdemDeServico
+            {
+                Numero = GerarNumeroTemporario(),
+                ClienteId = dto.ClienteId,
+                VeiculoId = dto.VeiculoId,
+                DescricaoSolicitacao = dto.DescricaoSolicitacao.Trim(),
+                ObservacoesRecepcao = string.IsNullOrWhiteSpace(dto.ObservacoesRecepcao) ? null : dto.ObservacoesRecepcao.Trim(),
+                Status = StatusOrdemDeServico.Recebida,
+                DataAbertura = DateTimeHelper.UTCBrazilNow(),
+                ValorTotal = 0
+            };
+
+            var ordemCriada = await _ordemRepository.CriarAsync(ordem, cancellationToken);
+            ordemCriada.Numero = GerarNumeroOrdem(ordemCriada.Id, ordemCriada.DataAbertura);
+
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordemCriada, cancellationToken);
+            await RegistrarHistoricoAsync(
+                ordemAtualizada,
+                TipoEventoOrdemServico.OrdemCriada,
+                null,
+                ordemAtualizada.Status,
+                "Ordem de servico criada.",
+                cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Ordem de servico aberta com sucesso. Numero: {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
         }
-
-        var veiculo = await _veiculoRepository.ObterPorIdAsync(dto.VeiculoId);
-        if (veiculo == null)
+        catch (Exception ex)
         {
-            throw new KeyNotFoundException($"Veículo com ID {dto.VeiculoId} não encontrado.");
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarOrdemDeServicoAsync), ex.Message);
+            throw;
         }
-
-        var numero = GerarNumeroOrdem();
-        var ordem = new OrdemDeServico
-        {
-            Id = Guid.NewGuid(),
-            Numero = numero,
-            ClienteId = dto.ClienteId,
-            VeiculoId = dto.VeiculoId,
-            Status = StatusOrdemDeServico.Recebida,
-            DataAbertura = DateTime.UtcNow,
-            ValorTotal = 0
-        };
-
-        var ordemCriada = await _ordemRepository.CriarAsync(ordem);
-        return MapToDto(ordemCriada);
     }
 
-    public async Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(Guid id)
+    public async Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _ordemRepository.ObterPorIdAsync(id);
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
-            throw new KeyNotFoundException($"Ordem de serviço com ID {id} não encontrada.");
+            throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
         return MapToDto(ordem);
     }
 
-    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoAsync()
+    public async Task<IEnumerable<OrdemServicoHistoricoDto>> ObterHistoricoAsync(int id, CancellationToken cancellationToken)
     {
-        var ordens = await _ordemRepository.ObterTodosAsync();
-        return ordens.Select(MapToDto);
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+        if (ordem == null)
+        {
+            throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+        }
+
+        var historicos = await _historicoRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken);
+        return historicos.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(Guid clienteId)
+    public async Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(
+        int page,
+        int pageSize,
+        int? clienteId,
+        string? status,
+        string? numero,
+        DateTime? dataAberturaInicio,
+        DateTime? dataAberturaFim,
+        CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(clienteId);
+        StatusOrdemDeServico? statusFiltro = null;
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (!Enum.TryParse<StatusOrdemDeServico>(status, true, out var statusEnum))
+            {
+                throw new InvalidOperationException($"Status invalido: {status}");
+            }
+
+            statusFiltro = statusEnum;
+        }
+
+        var numeroFiltro = string.IsNullOrWhiteSpace(numero) ? null : numero.Trim();
+        var totalItems = await _ordemRepository.ContarAsync(
+            clienteId,
+            statusFiltro,
+            numeroFiltro,
+            dataAberturaInicio,
+            dataAberturaFim,
+            cancellationToken);
+
+        var ordens = await _ordemRepository.ObterPaginadoAsync(
+            page,
+            pageSize,
+            clienteId,
+            statusFiltro,
+            numeroFiltro,
+            dataAberturaInicio,
+            dataAberturaFim,
+            cancellationToken);
+
+        return new PagedResultDto<OrdemDeServicoDto>
+        {
+            Items = ordens.Select(MapToDto).ToArray(),
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = totalItems,
+            TotalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)pageSize)
+        };
+    }
+
+    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(int clienteId, CancellationToken cancellationToken)
+    {
+        var cliente = await _clienteRepository.ObterPorIdAsync(clienteId, cancellationToken);
         if (cliente == null)
         {
-            throw new KeyNotFoundException($"Cliente com ID {clienteId} não encontrado.");
+            throw new KeyNotFoundException($"Cliente com ID {clienteId} nao encontrado.");
         }
 
-        var ordens = await _ordemRepository.ObterPorClienteAsync(clienteId);
+        var ordens = await _ordemRepository.ObterPorClienteAsync(clienteId, cancellationToken);
         return ordens.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorStatusAsync(string status)
+    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorStatusAsync(string status, CancellationToken cancellationToken)
     {
-        if (!Enum.TryParse<StatusOrdemDeServico>(status, out var statusEnum))
+        if (!Enum.TryParse<StatusOrdemDeServico>(status, true, out var statusEnum))
         {
-            throw new InvalidOperationException($"Status inválido: {status}");
+            throw new InvalidOperationException($"Status invalido: {status}");
         }
 
-        var ordens = await _ordemRepository.ObterPorStatusAsync(statusEnum);
+        var ordens = await _ordemRepository.ObterPorStatusAsync(statusEnum, cancellationToken);
         return ordens.Select(MapToDto);
     }
 
-    public async Task<OrdemDeServicoDto> AtualizarStatusAsync(Guid id, AtualizarStatusOrdemDeServicoDto dto)
+    public async Task<OrdemDeServicoDto> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
     {
-        var ordem = await _ordemRepository.ObterPorIdAsync(id);
-        if (ordem == null)
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
         {
-            throw new KeyNotFoundException($"Ordem de serviço com ID {id} não encontrada.");
-        }
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AtualizarStatusAsync), "Consultando ordem de servico para alteracao de status");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AtualizarStatusAsync), "Ordem de servico nao encontrada para alteracao de status");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
 
-        if (!Enum.TryParse<StatusOrdemDeServico>(dto.NovoStatus, out var novoStatus))
+            if (!Enum.TryParse<StatusOrdemDeServico>(dto.NovoStatus, out var novoStatus))
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AtualizarStatusAsync), "Status informado e invalido");
+                throw new InvalidOperationException($"Status invalido: {dto.NovoStatus}");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AtualizarStatusAsync), $"Alterando status da ordem para {novoStatus}");
+            ordem.AlterarStatus(novoStatus);
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Status da ordem atualizado com sucesso para {ordemAtualizada.Status}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
         {
-            throw new InvalidOperationException($"Status inválido: {dto.NovoStatus}");
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AtualizarStatusAsync), ex.Message);
+            throw;
         }
-
-        ordem.AlterarStatus(novoStatus);
-        var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem);
-        return MapToDto(ordemAtualizada);
     }
 
-    public async Task<OrdemDeServicoDto> AdicionarServicoAsync(Guid id, AdicionarServicoAOrdemDto dto)
+    public async Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _ordemRepository.ObterPorIdAsync(id);
-        if (ordem == null)
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
         {
-            throw new KeyNotFoundException($"Ordem de serviço com ID {id} não encontrada.");
-        }
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(IniciarDiagnosticoAsync), "Consultando ordem de servico para iniciar diagnostico");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(IniciarDiagnosticoAsync), "Ordem de servico nao encontrada para iniciar diagnostico");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
 
-        var servico = await _servicoRepository.ObterPorIdAsync(dto.ServicoId);
-        if (servico == null)
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(IniciarDiagnosticoAsync), "Alterando status da ordem para EmDiagnostico");
+            var statusAnterior = ordem.Status;
+            ordem.AlterarStatus(StatusOrdemDeServico.EmDiagnostico);
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await RegistrarHistoricoAsync(
+                ordemAtualizada,
+                TipoEventoOrdemServico.DiagnosticoIniciado,
+                statusAnterior,
+                ordemAtualizada.Status,
+                "Diagnostico iniciado.",
+                cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Diagnostico iniciado com sucesso para a ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
         {
-            throw new KeyNotFoundException($"Serviço com ID {dto.ServicoId} não encontrado.");
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(IniciarDiagnosticoAsync), ex.Message);
+            throw;
         }
-
-        ordem.AdicionarServico(servico);
-        var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem);
-        return MapToDto(ordemAtualizada);
     }
 
-    public async Task<OrdemDeServicoDto> AdicionarPecaAsync(Guid id, AdicionarPecaAOrdemDto dto)
+    public async Task<OrdemDeServicoDto> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _ordemRepository.ObterPorIdAsync(id);
-        if (ordem == null)
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
         {
-            throw new KeyNotFoundException($"Ordem de serviço com ID {id} não encontrada.");
-        }
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarDiagnosticoAsync), "Consultando ordem de servico para finalizar diagnostico");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(FinalizarDiagnosticoAsync), "Ordem de servico nao encontrada para finalizar diagnostico");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
 
-        var peca = await _pecaRepository.ObterPorIdAsync(dto.PecaId);
-        if (peca == null)
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarDiagnosticoAsync), "Validando composicao da OS e alterando status para AguardandoAprovacao");
+            var statusAnterior = ordem.Status;
+            ordem.FinalizarDiagnostico();
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await RegistrarHistoricoAsync(
+                ordemAtualizada,
+                TipoEventoOrdemServico.DiagnosticoFinalizado,
+                statusAnterior,
+                ordemAtualizada.Status,
+                "Diagnostico finalizado e orcamento enviado para aprovacao.",
+                cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Diagnostico finalizado com sucesso para a ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
         {
-            throw new KeyNotFoundException($"Peça com ID {dto.PecaId} não encontrada.");
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(FinalizarDiagnosticoAsync), ex.Message);
+            throw;
         }
-
-        ordem.AdicionarPeca(peca, dto.Quantidade);
-        var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem);
-        return MapToDto(ordemAtualizada);
     }
 
-    public async Task DeletarOrdemDeServicoAsync(Guid id)
+    public async Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _ordemRepository.ObterPorIdAsync(id);
-        if (ordem == null)
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
         {
-            throw new KeyNotFoundException($"Ordem de serviço com ID {id} não encontrada.");
-        }
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AprovarAsync), "Consultando ordem de servico para aprovacao do orcamento");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AprovarAsync), "Ordem de servico nao encontrada para aprovacao do orcamento");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
 
-        await _ordemRepository.DeletarAsync(id);
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AprovarAsync), "Aprovando orcamento e alterando status para EmExecucao");
+            var statusAnterior = ordem.Status;
+            ordem.AprovarOrcamento();
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await RegistrarHistoricoAsync(
+                ordemAtualizada,
+                TipoEventoOrdemServico.OrcamentoAprovado,
+                statusAnterior,
+                ordemAtualizada.Status,
+                "Orcamento aprovado pelo cliente.",
+                cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Orcamento aprovado com sucesso para a ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AprovarAsync), ex.Message);
+            throw;
+        }
     }
 
-    private static string GerarNumeroOrdem()
+    public async Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken cancellationToken)
     {
-        return $"OS-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString().Substring(0, 8).ToUpper()}";
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarAsync), "Consultando ordem de servico para finalizacao");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(FinalizarAsync), "Ordem de servico nao encontrada para finalizacao");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarAsync), "Finalizando servico e alterando status para Finalizada");
+            var statusAnterior = ordem.Status;
+            ordem.FinalizarServico();
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await RegistrarHistoricoAsync(
+                ordemAtualizada,
+                TipoEventoOrdemServico.ServicoFinalizado,
+                statusAnterior,
+                ordemAtualizada.Status,
+                "Servico finalizado.",
+                cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Servico finalizado com sucesso para a ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(FinalizarAsync), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(EntregarAsync), "Consultando ordem de servico para entrega");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(EntregarAsync), "Ordem de servico nao encontrada para entrega");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(EntregarAsync), "Entregando veiculo e alterando status para Entregue");
+            var statusAnterior = ordem.Status;
+            ordem.Entregar();
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await RegistrarHistoricoAsync(
+                ordemAtualizada,
+                TipoEventoOrdemServico.VeiculoEntregue,
+                statusAnterior,
+                ordemAtualizada.Status,
+                "Veiculo entregue ao cliente.",
+                cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Veiculo entregue com sucesso para a ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(EntregarAsync), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(RegistrarPagamentoAsync), "Consultando ordem de servico para registro de pagamento");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(RegistrarPagamentoAsync), "Ordem de servico nao encontrada para registro de pagamento");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(RegistrarPagamentoAsync), "Registrando pagamento da ordem de servico");
+            ordem.RegistrarPagamento();
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await RegistrarHistoricoAsync(
+                ordemAtualizada,
+                TipoEventoOrdemServico.PagamentoRegistrado,
+                ordemAtualizada.Status,
+                ordemAtualizada.Status,
+                "Pagamento registrado para a ordem de servico.",
+                cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Pagamento registrado com sucesso para a ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(RegistrarPagamentoAsync), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<OrdemDeServicoDto> CancelarAsync(int id, CancelarOrdemDeServicoDto dto, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CancelarAsync), "Consultando ordem de servico para cancelamento");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CancelarAsync), "Ordem de servico nao encontrada para cancelamento");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CancelarAsync), "Cancelando ordem de servico com motivo informado");
+            var statusAnterior = ordem.Status;
+            ordem.Cancelar(dto.MotivoCancelamento);
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await RegistrarHistoricoAsync(
+                ordemAtualizada,
+                TipoEventoOrdemServico.OrdemCancelada,
+                statusAnterior,
+                ordemAtualizada.Status,
+                $"Ordem cancelada. Motivo: {ordemAtualizada.MotivoCancelamento}",
+                cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Ordem de servico cancelada com sucesso. Numero: {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CancelarAsync), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarServicoAsync), "Consultando ordem de servico e servico para composicao do orcamento");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarServicoAsync), "Ordem de servico nao encontrada para adicionar servico");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            var servico = await _servicoRepository.ObterPorIdAsync(dto.ServicoId, cancellationToken);
+            if (servico == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarServicoAsync), "Servico nao encontrado para composicao do orcamento");
+                throw new KeyNotFoundException($"Servico com ID {dto.ServicoId} nao encontrado.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarServicoAsync), "Adicionando servico a ordem");
+            ordem.AdicionarServico(servico);
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await RegistrarHistoricoAsync(
+                ordemAtualizada,
+                TipoEventoOrdemServico.ServicoAdicionado,
+                ordemAtualizada.Status,
+                ordemAtualizada.Status,
+                $"Servico adicionado ao orcamento: {servico.Nome}.",
+                cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Servico adicionado com sucesso a ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AdicionarServicoAsync), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<OrdemDeServicoDto> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarPecaAsync), "Consultando ordem de servico e peca para composicao do orcamento");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarPecaAsync), "Ordem de servico nao encontrada para adicionar peca");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            var peca = await _pecaRepository.ObterPorIdAsync(dto.PecaId, cancellationToken);
+            if (peca == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarPecaAsync), "Peca nao encontrada para composicao do orcamento");
+                throw new KeyNotFoundException($"Peca com ID {dto.PecaId} nao encontrada.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarPecaAsync), "Adicionando peca a ordem");
+            ordem.AdicionarPeca(peca, dto.Quantidade);
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await RegistrarHistoricoAsync(
+                ordemAtualizada,
+                TipoEventoOrdemServico.PecaAdicionada,
+                ordemAtualizada.Status,
+                ordemAtualizada.Status,
+                $"Peca adicionada ao orcamento: {peca.Nome}. Quantidade: {dto.Quantidade}.",
+                cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Peca adicionada com sucesso a ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AdicionarPecaAsync), ex.Message);
+            throw;
+        }
+    }
+
+    private static string GerarNumeroTemporario()
+    {
+        return $"TMP-{Guid.NewGuid():N}";
+    }
+
+    private static string GerarNumeroOrdem(int id, DateTime dataAbertura)
+    {
+        return $"OS-{dataAbertura:yyyyMMdd}-{id}";
+    }
+
+    private async Task RegistrarHistoricoAsync(
+        OrdemDeServico ordem,
+        TipoEventoOrdemServico tipoEvento,
+        StatusOrdemDeServico? statusAnterior,
+        StatusOrdemDeServico? statusNovo,
+        string descricao,
+        CancellationToken cancellationToken)
+    {
+        var usuarioAtual = _usuarioAutenticadoService.ObterUsuarioAtual();
+
+        await _historicoRepository.CriarAsync(
+            new OrdemServicoHistorico
+            {
+                OrdemDeServicoId = ordem.Id,
+                UsuarioId = usuarioAtual.UsuarioId,
+                UsuarioNome = usuarioAtual.UsuarioNome,
+                StatusAnterior = statusAnterior,
+                StatusNovo = statusNovo,
+                TipoEvento = tipoEvento,
+                Descricao = descricao,
+                DataEvento = DateTimeHelper.UTCBrazilNow()
+            },
+            cancellationToken);
+    }
+
+    private static OrdemServicoHistoricoDto MapToDto(OrdemServicoHistorico historico)
+    {
+        return new OrdemServicoHistoricoDto
+        {
+            Id = historico.Id,
+            OrdemDeServicoId = historico.OrdemDeServicoId,
+            UsuarioId = historico.UsuarioId,
+            UsuarioNome = historico.UsuarioNome,
+            StatusAnterior = historico.StatusAnterior?.ToString(),
+            StatusNovo = historico.StatusNovo?.ToString(),
+            TipoEvento = historico.TipoEvento.ToString(),
+            Descricao = historico.Descricao,
+            DataEvento = historico.DataEvento
+        };
     }
 
     private static OrdemDeServicoDto MapToDto(OrdemDeServico ordem)
@@ -189,6 +633,12 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             Numero = ordem.Numero,
             ClienteId = ordem.ClienteId,
             VeiculoId = ordem.VeiculoId,
+            DescricaoSolicitacao = ordem.DescricaoSolicitacao,
+            ObservacoesRecepcao = ordem.ObservacoesRecepcao,
+            MotivoCancelamento = ordem.MotivoCancelamento,
+            OrcamentoEnviadoEm = ordem.OrcamentoEnviadoEm,
+            DataFinalizacao = ordem.DataFinalizacao,
+            DataPagamento = ordem.DataPagamento,
             Status = ordem.Status.ToString(),
             DataAbertura = ordem.DataAbertura,
             DataConclusao = ordem.DataConclusao,

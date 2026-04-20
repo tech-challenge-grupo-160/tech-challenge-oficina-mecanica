@@ -1,16 +1,16 @@
-using oficina_mecanica.Application.DTOs;
-using oficina_mecanica.Domain.Entities;
-using oficina_mecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 
-namespace oficina_mecanica.Application.Services;
+namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
 public interface IServicoApplicationService
 {
-    Task<ServicoDto> CriarServicoAsync(CriarServicoDto dto);
-    Task<ServicoDto> ObterServicoAsync(Guid id);
-    Task<IEnumerable<ServicoDto>> ListarServicosAsync();
-    Task<ServicoDto> AtualizarServicoAsync(Guid id, AtualizarServicoDto dto);
-    Task DeletarServicoAsync(Guid id);
+    Task<ServicoDto> CriarServicoAsync(CriarServicoDto dto, CancellationToken cancellationToken);
+    Task<ServicoDto> ObterServicoAsync(int id, CancellationToken cancellationToken);
+    Task<IEnumerable<ServicoDto>> ListarServicosAsync(CancellationToken cancellationToken);
+    Task<ServicoDto> AtualizarServicoAsync(int id, AtualizarServicoDto dto, CancellationToken cancellationToken);
+    Task DeletarServicoAsync(int id, CancellationToken cancellationToken);
 }
 
 public class ServicoApplicationService : IServicoApplicationService
@@ -22,24 +22,23 @@ public class ServicoApplicationService : IServicoApplicationService
         _servicoRepository = servicoRepository;
     }
 
-    public async Task<ServicoDto> CriarServicoAsync(CriarServicoDto dto)
+    public async Task<ServicoDto> CriarServicoAsync(CriarServicoDto dto, CancellationToken cancellationToken)
     {
         var servico = new Servico
         {
-            Id = Guid.NewGuid(),
             Nome = dto.Nome,
             Descricao = dto.Descricao,
             Preco = dto.Preco,
             TempoEstimado = dto.TempoEstimado
         };
 
-        var servicoCriado = await _servicoRepository.CriarAsync(servico);
+        var servicoCriado = await _servicoRepository.CriarAsync(servico, cancellationToken);
         return MapToDto(servicoCriado);
     }
 
-    public async Task<ServicoDto> ObterServicoAsync(Guid id)
+    public async Task<ServicoDto> ObterServicoAsync(int id, CancellationToken cancellationToken)
     {
-        var servico = await _servicoRepository.ObterPorIdAsync(id);
+        var servico = await _servicoRepository.ObterPorIdAsync(id, cancellationToken);
         if (servico == null)
         {
             throw new KeyNotFoundException($"Serviço com ID {id} não encontrado.");
@@ -48,15 +47,15 @@ public class ServicoApplicationService : IServicoApplicationService
         return MapToDto(servico);
     }
 
-    public async Task<IEnumerable<ServicoDto>> ListarServicosAsync()
+    public async Task<IEnumerable<ServicoDto>> ListarServicosAsync(CancellationToken cancellationToken)
     {
-        var servicos = await _servicoRepository.ObterTodosAsync();
+        var servicos = await _servicoRepository.ObterTodosAsync(cancellationToken);
         return servicos.Select(MapToDto);
     }
 
-    public async Task<ServicoDto> AtualizarServicoAsync(Guid id, AtualizarServicoDto dto)
+    public async Task<ServicoDto> AtualizarServicoAsync(int id, AtualizarServicoDto dto, CancellationToken cancellationToken)
     {
-        var servico = await _servicoRepository.ObterPorIdAsync(id);
+        var servico = await _servicoRepository.ObterPorIdAsync(id, cancellationToken);
         if (servico == null)
         {
             throw new KeyNotFoundException($"Serviço com ID {id} não encontrado.");
@@ -67,19 +66,19 @@ public class ServicoApplicationService : IServicoApplicationService
         servico.Preco = dto.Preco;
         servico.TempoEstimado = dto.TempoEstimado;
 
-        var servicoAtualizado = await _servicoRepository.AtualizarAsync(servico);
+        var servicoAtualizado = await _servicoRepository.AtualizarAsync(servico, cancellationToken);
         return MapToDto(servicoAtualizado);
     }
 
-    public async Task DeletarServicoAsync(Guid id)
+    public async Task DeletarServicoAsync(int id, CancellationToken cancellationToken)
     {
-        var servico = await _servicoRepository.ObterPorIdAsync(id);
+        var servico = await _servicoRepository.ObterPorIdAsync(id, cancellationToken);
         if (servico == null)
         {
             throw new KeyNotFoundException($"Serviço com ID {id} não encontrado.");
         }
 
-        await _servicoRepository.DeletarAsync(id);
+        await _servicoRepository.DeletarAsync(id, cancellationToken);
     }
 
     private static ServicoDto MapToDto(Servico servico)

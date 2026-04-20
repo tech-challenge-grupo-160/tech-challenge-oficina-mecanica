@@ -1,178 +1,106 @@
-# Sistema Integrado de Gestão de Oficina Mecânica
+# Sistema de Gestão de Oficina Mecânica
 
-## Documentação Técnica – MVP Back-end em C#
+API REST para gestão de clientes, veículos, serviços, peças e ordens de serviço de uma oficina mecânica. O projeto segue uma arquitetura em camadas, utiliza ASP.NET Core, Entity Framework Core, PostgreSQL e autenticação JWT.
 
----
+## Visão geral
 
-# 1. Visão Geral
+O domínio principal do sistema é a ordem de serviço. A aplicação permite:
 
-O sistema tem como objetivo fornecer uma plataforma para gestão de **ordens de serviço (OS)** em uma oficina mecânica, permitindo controlar clientes, veículos, serviços, peças e acompanhar o status dos atendimentos.
+- cadastrar e consultar clientes;
+- associar veículos a clientes;
+- manter catálogo de serviços e peças;
+- abrir ordens de serviço;
+- adicionar serviços e peças à ordem;
+- controlar o fluxo de status da manutenção;
+- expor tudo por meio de uma API HTTP documentada via Swagger.
 
-A solução proposta consiste em um **back-end monolítico desenvolvido em C# utilizando .NET**, aplicando princípios de **Domain Driven Design (DDD)** e boas práticas de arquitetura e segurança.
+## Stack
 
-### Principais funcionalidades
+- .NET 10
+- ASP.NET Core Web API
+- Entity Framework Core
+- PostgreSQL 16
+- JWT Bearer Authentication
+- FluentValidation
+- xUnit para testes
+- Docker e Docker Compose
 
-* Criação e gestão de ordens de serviço
-* Controle de estoque de peças e insumos
-* Cadastro de clientes e veículos
-* Acompanhamento do status da manutenção
-* Consulta do progresso da OS via API
+## Início rápido
 
----
+### Com Docker
 
-# 2. Arquitetura da Solução
+1. Copie `.env.example` para `.env`.
+2. Ajuste as variáveis de ambiente, principalmente `JWT_SECRET`.
+3. Suba os serviços:
 
-A aplicação segue o modelo de **Monólito Modular com Arquitetura em Camadas**.
-
-```
-API (Presentation Layer)
-Application Layer
-Domain Layer
-Infrastructure Layer
-```
-
----
-
-# 3. Camadas da Aplicação
-
-## 3.1 API Layer (Presentation)
-
-Responsável pela exposição das **APIs REST**.
-
-### Tecnologias
-
-* ASP.NET Core Web API
-* Swagger / OpenAPI
-
-### Responsabilidades
-
-* Receber requisições HTTP
-* Validar dados de entrada
-* Autenticar usuários via JWT
-* Encaminhar chamadas para a Application Layer
-
----
-
-## 3.2 Application Layer
-
-Responsável por implementar os **casos de uso do sistema**.
-
-### Exemplos de casos de uso
-
-* Criar Ordem de Serviço
-* Aprovar orçamento
-* Atualizar status da OS
-* Registrar peças utilizadas
-
-### Componentes
-
-* Application Services
-* DTOs
-* Interfaces de repositórios
-
----
-
-## 3.3 Domain Layer
-
-Camada central do sistema contendo as **regras de negócio**.
-
-### Componentes
-
-* Entidades
-* Value Objects
-* Agregados
-* Regras de domínio
-* Interfaces de domínio
-
----
-
-## 3.4 Infrastructure Layer
-
-Responsável pela comunicação com recursos externos.
-
-### Responsabilidades
-
-* Persistência de dados
-* Implementação de repositórios
-* Configuração do ORM
-* Autenticação e segurança
-* Logs e integrações externas
-
-### Tecnologias
-
-* Entity Framework Core
-* PostgreSQL
-
----
-
-# 4. Modelagem de Domínio (DDD)
-
-## Entidades Principais
-
-### Cliente
-
-Representa o cliente da oficina.
-
-```csharp
-public class Cliente
-{
-    public Guid Id { get; set; }
-    public string Nome { get; set; }
-    public string CpfCnpj { get; set; }
-    public string Telefone { get; set; }
-    public string Email { get; set; }
-    public DateTime DataCadastro { get; set; }
-}
+```bash
+docker-compose up --build
 ```
 
----
+Endpoints principais:
 
-### Veiculo
+- API: `http://localhost:8080`
+- Swagger: `http://localhost:8080/swagger`
+- Health check: `http://localhost:8080/health`
 
-Representa o veículo associado ao cliente.
+### Execução local
 
-```csharp
-public class Veiculo
-{
-    public Guid Id { get; set; }
-    public string Placa { get; set; }
-    public string Marca { get; set; }
-    public string Modelo { get; set; }
-    public int Ano { get; set; }
-    public Guid ClienteId { get; set; }
-}
+1. Instale o .NET SDK 10 e PostgreSQL.
+2. Configure a connection string e o segredo JWT via `dotnet user-secrets` ou variáveis de ambiente.
+3. Execute:
+
+```bash
+dotnet restore
+dotnet run --project Fiap.TechChallenge.OficinaMecanica.Api.csproj
 ```
 
----
+## Autenticação
 
-### OrdemDeServico
+O login está disponível em `POST /api/v1/auth/login`.
 
-Agregado principal do sistema.
+Ambientes de desenvolvimento iniciados com Docker executam migration e seed automaticamente, incluindo um usuário inicial:
 
-```csharp
-public class OrdemDeServico
-{
-    public Guid Id { get; set; }
-    public string Numero { get; set; }
-    public Guid ClienteId { get; set; }
-    public Guid VeiculoId { get; set; }
-    public string Status { get; set; }
-    public DateTime DataAbertura { get; set; }
-    public DateTime? DataConclusao { get; set; }
-    public decimal ValorTotal { get; set; }
-}
+- usuário: `admin`
+- senha: `admin123`
+
+## Documentação
+
+- [Índice da documentação](docs/README.md)
+- [Setup e operação local](docs/SETUP.md)
+- [Arquitetura](docs/ARCHITECTURE.md)
+- [Referência da API](docs/API_REFERENCE.md)
+
+## Estrutura do repositório
+
+```text
+src/
+  API/             Controllers e filtros HTTP
+  Application/     Serviços de aplicação, DTOs e validators
+  Domain/          Entidades e contratos de repositório
+  Infrastructure/  EF Core, repositórios, migrations, seed e health checks
+
+Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/
+Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/
+docker/
+docs/
 ```
 
----
+## Testes
 
-### Servico
+```bash
+dotnet test
+```
 
-Representa os serviços oferecidos pela oficina.
+## Observações
+
+- O Swagger é habilitado em ambiente `Development`.
+- `Clientes`, `Veiculos` e `Pecas` exigem token JWT.
+- `Servicos`, `OrdensDeServico` e `Auth` estão expostos sem `[Authorize]` no estado atual do código.
 
 ```csharp
 public class Servico
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Nome { get; set; }
     public string Descricao { get; set; }
     public decimal Preco { get; set; }
@@ -189,7 +117,7 @@ Representa peças e insumos utilizados nos serviços.
 ```csharp
 public class Peca
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Nome { get; set; }
     public decimal Preco { get; set; }
     public int QuantidadeEstoque { get; set; }
@@ -445,7 +373,7 @@ Oficina.IntegrationTests
 ## Pré-requisitos
 
 * Docker
-* .NET 8 SDK
+* .NET 10 SDK
 
 ---
 

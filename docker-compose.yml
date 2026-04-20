@@ -1,22 +1,19 @@
-version: '3.8'
-
 services:
   postgres:
-    # Substitua 'image' por 'build'
     build:
       context: .
       dockerfile: ./docker/postgres/Dockerfile
-    container_name: oficina_postgres_dev
+    image: fiap-techchallenge-oficina-mecanica-postgres:16
+    container_name: oficina-mecanica-postgres-dev
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: oficina_mecanica
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-oficina_mecanica}
       POSTGRES_INITDB_ARGS: "-c max_connections=200"
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
-      - postgres_dev_data:/var/lib/postgresql/data
-      - ./docker/postgres/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - oficina-mecanica-postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d oficina_mecanica -h 127.0.0.1"]
       interval: 10s
@@ -24,7 +21,7 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - oficina_network_dev
+      - oficina-mecanica-network-dev
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -36,28 +33,22 @@ services:
     build:
       context: .
       dockerfile: ./docker/backend/Dockerfile
-    image: oficina-mecanica-api:latest
-    container_name: oficina_api_dev
+    image: fiap-techchallenge-oficina-mecanica-api:latest
+    container_name: oficina-mecanica-api-dev
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "Host=postgres;Database=oficina_mecanica;Username=postgres;Password=postgres;Pooling=true;MaxPoolSize=20;Timeout=15;"
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: oficina_mecanica
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      ConnectionStrings__DefaultConnection: ${API_CONNECTION_STRING:-Host=postgres;Database=oficina_mecanica;Username=postgres;Password=postgres}
+      Jwt__SecretKey: ${JWT_SECRET:-local-development-secret}
+      Jwt__Issuer: ${JWT_ISSUER:-Fiap.TechChallenge.OficinaMecanica}
+      Jwt__Audience: ${JWT_AUDIENCE:-Fiap.TechChallenge.OficinaMecanica}
     ports:
       - "${API_PORT:-8080}:8080"
-    volumes:
-      - .:/app/src
-      - /app/src/bin
-      - /app/src/obj
     depends_on:
       postgres:
         condition: service_healthy
     networks:
-      - oficina_network_dev
+      - oficina-mecanica-network-dev
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -72,9 +63,9 @@ services:
       start_period: 40s
 
 volumes:
-  postgres_dev_data:
+  oficina-mecanica-postgres-data:
     driver: local
 
 networks:
-  oficina_network_dev:
+  oficina-mecanica-network-dev:
     driver: bridge

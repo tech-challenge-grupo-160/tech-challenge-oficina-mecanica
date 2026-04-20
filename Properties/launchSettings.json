@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "Fiap.TechChallenge.OficinaMecanica.Api": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "swagger/index.html",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:62284;http://localhost:62285"
+    }
+  }
+}
