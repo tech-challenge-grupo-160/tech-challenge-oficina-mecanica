@@ -1,4 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 

@@ -12,6 +12,8 @@ using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Extensions;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.HealthChecks;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.API.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Fiap.TechChallenge.OficinaMecanica.Application.Validators.Clientes;
@@ -100,6 +102,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddHttpContextAccessor();
 
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -127,6 +130,7 @@ builder.Services.AddScoped<IVeiculoRepository, VeiculoRepository>();
 builder.Services.AddScoped<IServicoRepository, ServicoRepository>();
 builder.Services.AddScoped<IPecaRepository, PecaRepository>();
 builder.Services.AddScoped<IOrdemDeServicoRepository, OrdemDeServicoRepository>();
+builder.Services.AddScoped<IOrdemServicoHistoricoRepository, OrdemServicoHistoricoRepository>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 
 // Application Services
@@ -136,6 +140,7 @@ builder.Services.AddScoped<IServicoApplicationService, ServicoApplicationService
 builder.Services.AddScoped<IPecaApplicationService, PecaApplicationService>();
 builder.Services.AddScoped<IOrdemDeServicoApplicationService, OrdemDeServicoApplicationService>();
 builder.Services.AddScoped<IAuthApplicationService, AuthApplicationService>();
+builder.Services.AddScoped<IUsuarioAutenticadoService, UsuarioAutenticadoService>();
 
 // CORS
 builder.Services.AddCors(options =>

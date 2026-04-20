@@ -23,6 +23,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     public const int VeiculoExistenteId = 1;
     public const int ServicoExistenteId = 1000;
     public const int PecaExistenteId = 1000;
+    public const string UsuarioAutenticadoId = "integration-test-user-id";
+    public const string UsuarioAutenticadoNome = "integration-test-user";
     private readonly string _databaseName = $"OficinaInMemoryTests-{Guid.NewGuid()}";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -69,6 +71,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     {
         context.OrdemDeServicoPecas.RemoveRange(context.OrdemDeServicoPecas);
         context.OrdemDeServicoServicos.RemoveRange(context.OrdemDeServicoServicos);
+        context.OrdemServicoHistoricos.RemoveRange(context.OrdemServicoHistoricos);
         context.OrdensDeServico.RemoveRange(context.OrdensDeServico);
         context.Pecas.RemoveRange(context.Pecas);
         context.Servicos.RemoveRange(context.Servicos);
@@ -143,8 +146,8 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
     {
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
-            new Claim(ClaimTypes.Name, "integration-test-user"),
+            new Claim(ClaimTypes.NameIdentifier, CustomWebApplicationFactory.UsuarioAutenticadoId),
+            new Claim(ClaimTypes.Name, CustomWebApplicationFactory.UsuarioAutenticadoNome),
             new Claim(ClaimTypes.Role, "Administrador")
         };
 

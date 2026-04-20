@@ -1,6 +1,8 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
@@ -17,6 +19,8 @@ public class OrdemDeServicoApplicationServiceTests
     private readonly Mock<IVeiculoRepository> _veiculoRepositoryMock;
     private readonly Mock<IServicoRepository> _servicoRepositoryMock;
     private readonly Mock<IPecaRepository> _pecaRepositoryMock;
+    private readonly Mock<IOrdemServicoHistoricoRepository> _historicoRepositoryMock;
+    private readonly Mock<IUsuarioAutenticadoService> _usuarioAutenticadoServiceMock;
     private readonly OrdemDeServicoApplicationService _service;
 
     public OrdemDeServicoApplicationServiceTests()
@@ -26,6 +30,19 @@ public class OrdemDeServicoApplicationServiceTests
         _veiculoRepositoryMock = new Mock<IVeiculoRepository>(MockBehavior.Strict);
         _servicoRepositoryMock = new Mock<IServicoRepository>(MockBehavior.Strict);
         _pecaRepositoryMock = new Mock<IPecaRepository>(MockBehavior.Strict);
+        _historicoRepositoryMock = new Mock<IOrdemServicoHistoricoRepository>(MockBehavior.Strict);
+        _usuarioAutenticadoServiceMock = new Mock<IUsuarioAutenticadoService>(MockBehavior.Strict);
+
+        _usuarioAutenticadoServiceMock
+            .Setup(x => x.ObterUsuarioAtual())
+            .Returns(new UsuarioAutenticadoInfo
+            {
+                UsuarioId = "1000",
+                UsuarioNome = "unit-test-user"
+            });
+        _historicoRepositoryMock
+            .Setup(x => x.CriarAsync(It.IsAny<OrdemServicoHistorico>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OrdemServicoHistorico historico, CancellationToken _) => historico);
 
         _service = new OrdemDeServicoApplicationService(
             _ordemRepositoryMock.Object,
@@ -33,6 +50,8 @@ public class OrdemDeServicoApplicationServiceTests
             _veiculoRepositoryMock.Object,
             _servicoRepositoryMock.Object,
             _pecaRepositoryMock.Object,
+            _historicoRepositoryMock.Object,
+            _usuarioAutenticadoServiceMock.Object,
             NullLoggerFactory.Instance);
     }
 
@@ -65,6 +84,17 @@ public class OrdemDeServicoApplicationServiceTests
         resultado.Status.Should().Be(nameof(StatusOrdemDeServico.Recebida));
         resultado.Numero.Should().Be($"OS-{resultado.DataAbertura:yyyyMMdd}-3002");
         resultado.ValorTotal.Should().Be(0);
+        _historicoRepositoryMock.Verify(
+            x => x.CriarAsync(
+                It.Is<OrdemServicoHistorico>(h =>
+                    h.OrdemDeServicoId == 3002 &&
+                    h.UsuarioId == "1000" &&
+                    h.UsuarioNome == "unit-test-user" &&
+                    h.StatusAnterior == null &&
+                    h.StatusNovo == StatusOrdemDeServico.Recebida &&
+                    h.TipoEvento == TipoEventoOrdemServico.OrdemCriada),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -129,7 +159,7 @@ public class OrdemDeServicoApplicationServiceTests
         var comPeca = await _service.AdicionarPecaAsync(ordem.Id, new AdicionarPecaAOrdemDto { PecaId = peca.Id, Quantidade = 1 }, CancellationToken.None);
         var aguardandoAprovacao = await _service.FinalizarDiagnosticoAsync(ordem.Id, CancellationToken.None);
         var emExecucao = await _service.AprovarAsync(ordem.Id, CancellationToken.None);
-        var aguardandoPagamento = await _service.FinalizarAsync(ordem.Id, CancellationToken.None);
+        var finalizada = await _service.FinalizarAsync(ordem.Id, CancellationToken.None);
         var pagamentoRegistrado = await _service.RegistrarPagamentoAsync(ordem.Id, CancellationToken.None);
         var entregue = await _service.EntregarAsync(ordem.Id, CancellationToken.None);
 
@@ -139,17 +169,20 @@ public class OrdemDeServicoApplicationServiceTests
         aguardandoAprovacao.Status.Should().Be(nameof(StatusOrdemDeServico.AguardandoAprovacao));
         aguardandoAprovacao.OrcamentoEnviadoEm.Should().NotBeNull();
         emExecucao.Status.Should().Be(nameof(StatusOrdemDeServico.EmExecucao));
-        aguardandoPagamento.Status.Should().Be(nameof(StatusOrdemDeServico.AguardandoPagamento));
-        aguardandoPagamento.DataFinalizacao.Should().NotBeNull();
+        finalizada.Status.Should().Be(nameof(StatusOrdemDeServico.Finalizada));
+        finalizada.DataFinalizacao.Should().NotBeNull();
         pagamentoRegistrado.DataPagamento.Should().NotBeNull();
         entregue.Status.Should().Be(nameof(StatusOrdemDeServico.Entregue));
         entregue.DataConclusao.Should().NotBeNull();
+        _historicoRepositoryMock.Verify(
+            x => x.CriarAsync(It.IsAny<OrdemServicoHistorico>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(8));
     }
 
     [Fact]
     public async Task EntregarAsync_DeveLancarQuandoPagamentoNaoTiverSidoRegistrado()
     {
-        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoPagamento);
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Finalizada);
         ordem.DataFinalizacao = DateTime.UtcNow;
 
         _ordemRepositoryMock

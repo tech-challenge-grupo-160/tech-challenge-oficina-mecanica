@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
@@ -5,6 +6,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/v1/ordens-servico")]
 public class OrdensDeServicoController : ControllerBase
 {
@@ -27,6 +29,13 @@ public class OrdensDeServicoController : ControllerBase
     {
         var ordem = await _ordemService.ObterOrdemDeServicoAsync(id, cancellationToken);
         return Ok(ordem);
+    }
+
+    [HttpGet("{id}/historico")]
+    public async Task<ActionResult<IEnumerable<OrdemServicoHistoricoDto>>> ObterHistorico(int id, CancellationToken cancellationToken)
+    {
+        var historico = await _ordemService.ObterHistoricoAsync(id, cancellationToken);
+        return Ok(historico);
     }
 
     [HttpGet]

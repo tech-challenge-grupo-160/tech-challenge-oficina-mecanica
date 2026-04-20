@@ -1,4 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 using Microsoft.EntityFrameworkCore;
 
@@ -188,7 +189,7 @@ public static class OficinaDbContextSeeder
                     VeiculoId = veiculoCivic.Id,
                     DescricaoSolicitacao = "Cliente informou ruido na suspensao dianteira.",
                     ObservacoesRecepcao = "Barulho identificado em baixa velocidade.",
-                    Status = StatusOrdemDeServico.EmExecucao,
+                    Status = StatusOrdemDeServico.Finalizada,
                     DataAbertura = DateTimeHelper.UTCBrazilNow().AddDays(-2),
                     DataConclusao = null,
                     ValorTotal = 700.00m

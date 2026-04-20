@@ -17,6 +17,7 @@ public class OficinaDbContext : DbContext
     public DbSet<OrdemDeServico> OrdensDeServico { get; set; } = null!;
     public DbSet<OrdemDeServicoServico> OrdemDeServicoServicos { get; set; } = null!;
     public DbSet<OrdemDeServicoPeca> OrdemDeServicoPecas { get; set; } = null!;
+    public DbSet<OrdemServicoHistorico> OrdemServicoHistoricos { get; set; } = null!;
     public DbSet<Usuario> Usuarios { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -108,6 +109,7 @@ public class OficinaDbContext : DbContext
             entity.HasIndex(e => e.Status);
             entity.HasMany(e => e.Servicos).WithOne(os => os.OrdemDeServico).HasForeignKey(os => os.OrdemDeServicoId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.Pecas).WithOne(op => op.OrdemDeServico).HasForeignKey(op => op.OrdemDeServicoId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.Historicos).WithOne(h => h.OrdemDeServico).HasForeignKey(h => h.OrdemDeServicoId).OnDelete(DeleteBehavior.Cascade);
         });
 
         // OrdemDeServicoServico
@@ -127,6 +129,25 @@ public class OficinaDbContext : DbContext
             entity.HasKey(e => new { e.OrdemDeServicoId, e.PecaId });
             entity.Property(e => e.OrdemDeServicoId).HasColumnName("OrdemServicoId");
             entity.Property(e => e.Preco).HasPrecision(18, 2);
+        });
+
+        // OrdemServicoHistorico
+        modelBuilder.Entity<OrdemServicoHistorico>(entity =>
+        {
+            entity.ToTable("OrdemServicoHistorico");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasIdentityOptions(startValue: 1);
+            entity.Property(e => e.UsuarioId).HasMaxLength(100);
+            entity.Property(e => e.UsuarioNome).HasMaxLength(255);
+            entity.Property(e => e.Descricao).IsRequired().HasMaxLength(1000);
+            entity.Property(e => e.DataEvento).HasColumnType("timestamp without time zone");
+            entity.Property(e => e.StatusAnterior).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.StatusNovo).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.TipoEvento).HasConversion<string>().HasMaxLength(50);
+            entity.HasIndex(e => e.OrdemDeServicoId);
+            entity.HasIndex(e => e.DataEvento);
         });
 
         // Usuario

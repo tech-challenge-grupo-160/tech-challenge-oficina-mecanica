@@ -48,14 +48,14 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
 
         var finalizar = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar", null);
         finalizar.StatusCode.Should().Be(HttpStatusCode.OK);
-        var aguardandoPagamento = await finalizar.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
-        aguardandoPagamento!.Status.Should().Be("AguardandoPagamento");
-        aguardandoPagamento.DataFinalizacao.Should().NotBeNull();
+        var finalizada = await finalizar.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        finalizada!.Status.Should().Be("Finalizada");
+        finalizada.DataFinalizacao.Should().NotBeNull();
 
         var registrarPagamento = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/registrar-pagamento", null);
         registrarPagamento.StatusCode.Should().Be(HttpStatusCode.OK);
         var pagamentoRegistrado = await registrarPagamento.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
-        pagamentoRegistrado!.Status.Should().Be("AguardandoPagamento");
+        pagamentoRegistrado!.Status.Should().Be("Finalizada");
         pagamentoRegistrado.DataPagamento.Should().NotBeNull();
 
         var entregar = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/entregar", null);
@@ -63,6 +63,21 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var entregue = await entregar.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
         entregue!.Status.Should().Be("Entregue");
         entregue.DataConclusao.Should().NotBeNull();
+
+        var obterHistorico = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/historico");
+        obterHistorico.StatusCode.Should().Be(HttpStatusCode.OK);
+        var historico = await obterHistorico.Content.ReadFromJsonAsync<List<OrdemServicoHistoricoDto>>();
+        historico.Should().NotBeNull();
+        historico.Should().HaveCount(9);
+        historico![0].TipoEvento.Should().Be("OrdemCriada");
+        historico[0].StatusAnterior.Should().BeNull();
+        historico[0].StatusNovo.Should().Be("Recebida");
+        historico.Should().OnlyContain(h =>
+            h.UsuarioId == CustomWebApplicationFactory.UsuarioAutenticadoId &&
+            h.UsuarioNome == CustomWebApplicationFactory.UsuarioAutenticadoNome);
+        historico[^1].TipoEvento.Should().Be("VeiculoEntregue");
+        historico[^1].StatusAnterior.Should().Be("Finalizada");
+        historico[^1].StatusNovo.Should().Be("Entregue");
     }
 
     [Fact]
