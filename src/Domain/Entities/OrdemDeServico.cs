@@ -1,17 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
-
-public enum StatusOrdemDeServico
-{
-    Recebida = 0,
-    EmDiagnostico = 1,
-    AguardandoAprovacao = 2,
-    EmExecucao = 3,
-    AguardandoPagamento = 4,
-    Entregue = 5,
-    Cancelada = 6
-}
 
 public class OrdemDeServico
 {
@@ -34,6 +24,7 @@ public class OrdemDeServico
     public Veiculo? Veiculo { get; set; }
     public ICollection<OrdemDeServicoServico> Servicos { get; set; } = new List<OrdemDeServicoServico>();
     public ICollection<OrdemDeServicoPeca> Pecas { get; set; } = new List<OrdemDeServicoPeca>();
+    public ICollection<OrdemServicoHistorico> Historicos { get; set; } = new List<OrdemServicoHistorico>();
 
     public void AdicionarServico(Servico servico)
     {
@@ -149,14 +140,14 @@ public class OrdemDeServico
         }
 
         DataFinalizacao = DateTimeHelper.UTCBrazilNow();
-        AlterarStatus(StatusOrdemDeServico.AguardandoPagamento);
+        AlterarStatus(StatusOrdemDeServico.Finalizada);
     }
 
     public void RegistrarPagamento()
     {
-        if (Status != StatusOrdemDeServico.AguardandoPagamento)
+        if (Status != StatusOrdemDeServico.Finalizada)
         {
-            throw new InvalidOperationException("So e possivel registrar pagamento quando a ordem estiver aguardando pagamento.");
+            throw new InvalidOperationException("So e possivel registrar pagamento quando a ordem estiver finalizada.");
         }
 
         if (!DataFinalizacao.HasValue)
@@ -169,9 +160,9 @@ public class OrdemDeServico
 
     public void Entregar()
     {
-        if (Status != StatusOrdemDeServico.AguardandoPagamento)
+        if (Status != StatusOrdemDeServico.Finalizada)
         {
-            throw new InvalidOperationException("So e possivel entregar quando a ordem estiver aguardando pagamento.");
+            throw new InvalidOperationException("So e possivel entregar quando a ordem estiver finalizada.");
         }
 
         if (!DataPagamento.HasValue)
@@ -189,8 +180,8 @@ public class OrdemDeServico
             (StatusOrdemDeServico.Recebida, StatusOrdemDeServico.EmDiagnostico) => true,
             (StatusOrdemDeServico.EmDiagnostico, StatusOrdemDeServico.AguardandoAprovacao) => true,
             (StatusOrdemDeServico.AguardandoAprovacao, StatusOrdemDeServico.EmExecucao) => true,
-            (StatusOrdemDeServico.EmExecucao, StatusOrdemDeServico.AguardandoPagamento) => true,
-            (StatusOrdemDeServico.AguardandoPagamento, StatusOrdemDeServico.Entregue) => true,
+            (StatusOrdemDeServico.EmExecucao, StatusOrdemDeServico.Finalizada) => true,
+            (StatusOrdemDeServico.Finalizada, StatusOrdemDeServico.Entregue) => true,
             _ => false
         };
     }
