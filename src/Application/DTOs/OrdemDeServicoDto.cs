@@ -11,6 +11,9 @@ public class OrdemDeServicoDto
     public string DescricaoSolicitacao { get; set; } = null!;
     public string? ObservacoesRecepcao { get; set; }
     public string? MotivoCancelamento { get; set; }
+    public DateTime? OrcamentoEnviadoEm { get; set; }
+    public DateTime? DataFinalizacao { get; set; }
+    public DateTime? DataPagamento { get; set; }
     public string Status { get; set; } = null!;
     public DateTime DataAbertura { get; set; }
     public DateTime? DataConclusao { get; set; }

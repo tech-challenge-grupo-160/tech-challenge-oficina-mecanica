@@ -21,6 +21,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     public const int PessoaFisicaClienteId = 1;
     public const int PessoaJuridicaClienteId = 2;
     public const int VeiculoExistenteId = 1;
+    public const int ServicoExistenteId = 1000;
+    public const int PecaExistenteId = 1000;
     private readonly string _databaseName = $"OficinaInMemoryTests-{Guid.NewGuid()}";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -65,6 +67,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     private static void SeedData(OficinaDbContext context)
     {
+        context.OrdemDeServicoPecas.RemoveRange(context.OrdemDeServicoPecas);
+        context.OrdemDeServicoServicos.RemoveRange(context.OrdemDeServicoServicos);
+        context.OrdensDeServico.RemoveRange(context.OrdensDeServico);
+        context.Pecas.RemoveRange(context.Pecas);
+        context.Servicos.RemoveRange(context.Servicos);
         context.Veiculos.RemoveRange(context.Veiculos);
         context.Clientes.RemoveRange(context.Clientes);
 
@@ -97,6 +104,25 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 Modelo = "Gol",
                 Ano = 2020,
                 ClienteId = PessoaFisicaClienteId
+            });
+
+        context.Servicos.Add(
+            new Servico
+            {
+                Id = ServicoExistenteId,
+                Nome = "Alinhamento",
+                Descricao = "Servico de alinhamento",
+                Preco = 150m,
+                TempoEstimado = 30
+            });
+
+        context.Pecas.Add(
+            new Peca
+            {
+                Id = PecaExistenteId,
+                Nome = "Pastilha de Freio",
+                Preco = 45m,
+                QuantidadeEstoque = 10
             });
 
         context.SaveChanges();

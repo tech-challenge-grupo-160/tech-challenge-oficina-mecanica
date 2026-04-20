@@ -9,6 +9,7 @@
     <UserSecretsId>44582d86-54cc-4659-bc1a-a14dc112a037</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**;bin\**;artifacts\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,6 +35,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="obj\**\*.cs" />
+    <Compile Remove="bin\**\*.cs" />
+    <Compile Remove="artifacts\**\*.cs" />
+    <Content Remove="obj\**\*" />
+    <Content Remove="bin\**\*" />
+    <Content Remove="artifacts\**\*" />
+    <EmbeddedResource Remove="obj\**\*" />
+    <EmbeddedResource Remove="bin\**\*" />
+    <EmbeddedResource Remove="artifacts\**\*" />
+    <None Remove="obj\**\*" />
+    <None Remove="bin\**\*" />
+    <None Remove="artifacts\**\*" />
     <Compile Remove="tests\**\*.cs" />
     <Content Remove="tests\**\*" />
     <EmbeddedResource Remove="tests\**\*" />

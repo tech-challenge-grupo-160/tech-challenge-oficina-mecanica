@@ -90,6 +90,34 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(ordem);
     }
 
+    [HttpPatch("{id}/aprovar")]
+    public async Task<ActionResult<OrdemDeServicoDto>> Aprovar(int id, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemService.AprovarAsync(id, cancellationToken);
+        return Ok(ordem);
+    }
+
+    [HttpPatch("{id}/finalizar")]
+    public async Task<ActionResult<OrdemDeServicoDto>> Finalizar(int id, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemService.FinalizarAsync(id, cancellationToken);
+        return Ok(ordem);
+    }
+
+    [HttpPatch("{id}/registrar-pagamento")]
+    public async Task<ActionResult<OrdemDeServicoDto>> RegistrarPagamento(int id, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemService.RegistrarPagamentoAsync(id, cancellationToken);
+        return Ok(ordem);
+    }
+
+    [HttpPatch("{id}/entregar")]
+    public async Task<ActionResult<OrdemDeServicoDto>> Entregar(int id, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemService.EntregarAsync(id, cancellationToken);
+        return Ok(ordem);
+    }
+
     [HttpPatch("{id}/cancelar")]
     public async Task<ActionResult<OrdemDeServicoDto>> Cancelar(int id, [FromBody] CancelarOrdemDeServicoDto dto, CancellationToken cancellationToken)
     {

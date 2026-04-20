@@ -82,6 +82,12 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                     b.Property<DateTime?>("DataConclusao")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("DataFinalizacao")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("DataPagamento")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<string>("DescricaoSolicitacao")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -99,6 +105,9 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                     b.Property<string>("ObservacoesRecepcao")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("OrcamentoEnviadoEm")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
