@@ -97,6 +97,9 @@ public class OficinaDbContext : DbContext
             entity.Property(e => e.DescricaoSolicitacao).IsRequired().HasMaxLength(1000);
             entity.Property(e => e.ObservacoesRecepcao).HasMaxLength(1000);
             entity.Property(e => e.MotivoCancelamento).HasMaxLength(1000);
+            entity.Property(e => e.OrcamentoEnviadoEm).HasColumnType("timestamp without time zone");
+            entity.Property(e => e.DataFinalizacao).HasColumnType("timestamp without time zone");
+            entity.Property(e => e.DataPagamento).HasColumnType("timestamp without time zone");
             entity.Property(e => e.Status).IsRequired();
             entity.Property(e => e.DataAbertura).HasColumnType("timestamp without time zone");
             entity.Property(e => e.DataConclusao).HasColumnType("timestamp without time zone");

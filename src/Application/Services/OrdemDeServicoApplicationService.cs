@@ -24,6 +24,10 @@ public interface IOrdemDeServicoApplicationService
     Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorStatusAsync(string status, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> CancelarAsync(int id, CancelarOrdemDeServicoDto dto, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken);
@@ -264,8 +268,8 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
             }
 
-            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarDiagnosticoAsync), "Alterando status da ordem para AguardandoAprovacao");
-            ordem.AlterarStatus(StatusOrdemDeServico.AguardandoAprovacao);
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarDiagnosticoAsync), "Validando composicao da OS e alterando status para AguardandoAprovacao");
+            ordem.FinalizarDiagnostico();
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Diagnostico finalizado com sucesso para a ordem {ordemAtualizada.Numero}");
             return MapToDto(ordemAtualizada);
@@ -273,6 +277,110 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         catch (Exception ex)
         {
             _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(FinalizarDiagnosticoAsync), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AprovarAsync), "Consultando ordem de servico para aprovacao do orcamento");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AprovarAsync), "Ordem de servico nao encontrada para aprovacao do orcamento");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AprovarAsync), "Aprovando orcamento e alterando status para EmExecucao");
+            ordem.AprovarOrcamento();
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Orcamento aprovado com sucesso para a ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AprovarAsync), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarAsync), "Consultando ordem de servico para finalizacao");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(FinalizarAsync), "Ordem de servico nao encontrada para finalizacao");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarAsync), "Finalizando servico e alterando status para Finalizada");
+            ordem.FinalizarServico();
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Servico finalizado com sucesso para a ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(FinalizarAsync), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(EntregarAsync), "Consultando ordem de servico para entrega");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(EntregarAsync), "Ordem de servico nao encontrada para entrega");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(EntregarAsync), "Entregando veiculo e alterando status para Entregue");
+            ordem.Entregar();
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Veiculo entregue com sucesso para a ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(EntregarAsync), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(RegistrarPagamentoAsync), "Consultando ordem de servico para registro de pagamento");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(RegistrarPagamentoAsync), "Ordem de servico nao encontrada para registro de pagamento");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(RegistrarPagamentoAsync), "Registrando pagamento da ordem de servico");
+            ordem.RegistrarPagamento();
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Pagamento registrado com sucesso para a ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(RegistrarPagamentoAsync), ex.Message);
             throw;
         }
     }
@@ -390,6 +498,9 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             DescricaoSolicitacao = ordem.DescricaoSolicitacao,
             ObservacoesRecepcao = ordem.ObservacoesRecepcao,
             MotivoCancelamento = ordem.MotivoCancelamento,
+            OrcamentoEnviadoEm = ordem.OrcamentoEnviadoEm,
+            DataFinalizacao = ordem.DataFinalizacao,
+            DataPagamento = ordem.DataPagamento,
             Status = ordem.Status.ToString(),
             DataAbertura = ordem.DataAbertura,
             DataConclusao = ordem.DataConclusao,

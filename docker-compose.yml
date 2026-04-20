@@ -1,9 +1,9 @@
 services:
   postgres:
-    # Substitua 'image' por 'build'
     build:
       context: .
       dockerfile: ./docker/postgres/Dockerfile
+    image: fiap-techchallenge-oficina-mecanica-postgres:16
     container_name: oficina-mecanica-postgres-dev
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
