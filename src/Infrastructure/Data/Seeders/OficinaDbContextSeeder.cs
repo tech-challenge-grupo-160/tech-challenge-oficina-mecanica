@@ -59,6 +59,7 @@ public static class OficinaDbContextSeeder
                 var clienteVanessa = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("476.548.668-01"));
                 var clienteRafael = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("093.678.498-93"));
                 var clienteBetina = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCnpj("60.617.051/0001-99"));
+                var clienteVicente = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCnpj("46.981.686/0001-40"));
 
                 var veiculos = new[]
                 {
@@ -85,6 +86,14 @@ public static class OficinaDbContextSeeder
                         Modelo = "Gol",
                         Ano = 2021,
                         ClienteId = clienteBetina.Id
+                    },
+                    new Veiculo
+                    {
+                        Placa = "GHI2345",
+                        Marca = "Fiat",
+                        Modelo = "Strada",
+                        Ano = 2022,
+                        ClienteId = clienteVicente.Id
                     }
                 };
 
@@ -154,20 +163,29 @@ public static class OficinaDbContextSeeder
 
             if (!await context.OrdensDeServico.AnyAsync())
             {
+                var agora = DateTimeHelper.UTCBrazilNow();
                 var clientes = await context.Clientes.OrderBy(c => c.Id).ToListAsync();
                 var veiculos = await context.Veiculos.OrderBy(v => v.Id).ToListAsync();
                 var servicos = await context.Servicos.OrderBy(s => s.Id).ToListAsync();
                 var pecas = await context.Pecas.OrderBy(p => p.Id).ToListAsync();
                 var clienteVanessa = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("476.548.668-01"));
                 var clienteRafael = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("093.678.498-93"));
+                var clienteBetina = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCnpj("60.617.051/0001-99"));
+                var clienteVicente = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCnpj("46.981.686/0001-40"));
                 var veiculoCorolla = veiculos.Single(v => v.Placa == "ABC1234");
                 var veiculoCivic = veiculos.Single(v => v.Placa == "XYZ5678");
+                var veiculoGol = veiculos.Single(v => v.Placa == "DEF9101");
+                var veiculoStrada = veiculos.Single(v => v.Placa == "GHI2345");
                 var servicoTrocaOleo = servicos.Single(s => s.Nome == "Troca de Oleo");
                 var servicoRevisaoCompleta = servicos.Single(s => s.Nome == "Revisao Completa");
                 var servicoAlinhamento = servicos.Single(s => s.Nome == "Alinhamento");
+                var servicoTrocaPneus = servicos.Single(s => s.Nome == "Troca de Pneus");
+                var servicoDiagnosticoEletronico = servicos.Single(s => s.Nome == "Diagnostico Eletronico");
                 var pecaFiltroOleo = pecas.Single(p => p.Nome == "Filtro de Oleo");
                 var pecaFiltroAr = pecas.Single(p => p.Nome == "Filtro de Ar");
                 var pecaPastilhaFreio = pecas.Single(p => p.Nome == "Pastilha de Freio");
+                var pecaPneuAro15 = pecas.Single(p => p.Nome == "Pneu Aro 15");
+                var pecaVelaIgnicao = pecas.Single(p => p.Nome == "Vela de Ignicao");
 
                 var ordem1 = new OrdemDeServico
                 {
@@ -177,8 +195,11 @@ public static class OficinaDbContextSeeder
                     DescricaoSolicitacao = "Cliente relatou troca de oleo e revisao preventiva.",
                     ObservacoesRecepcao = "Veiculo recebido sem avarias aparentes.",
                     Status = StatusOrdemDeServico.Entregue,
-                    DataAbertura = DateTimeHelper.UTCBrazilNow().AddDays(-5),
-                    DataConclusao = DateTimeHelper.UTCBrazilNow().AddDays(-1),
+                    DataAbertura = agora.AddDays(-5),
+                    OrcamentoEnviadoEm = agora.AddDays(-4).AddHours(2),
+                    DataFinalizacao = agora.AddDays(-2),
+                    DataPagamento = agora.AddDays(-2).AddHours(4),
+                    DataConclusao = agora.AddDays(-1),
                     ValorTotal = 195.00m
                 };
 
@@ -190,12 +211,77 @@ public static class OficinaDbContextSeeder
                     DescricaoSolicitacao = "Cliente informou ruido na suspensao dianteira.",
                     ObservacoesRecepcao = "Barulho identificado em baixa velocidade.",
                     Status = StatusOrdemDeServico.Finalizada,
-                    DataAbertura = DateTimeHelper.UTCBrazilNow().AddDays(-2),
+                    DataAbertura = agora.AddDays(-2),
+                    OrcamentoEnviadoEm = agora.AddDays(-1).AddHours(-18),
+                    DataFinalizacao = agora.AddHours(-8),
                     DataConclusao = null,
-                    ValorTotal = 700.00m
+                    ValorTotal = 975.00m
                 };
 
-                await context.OrdensDeServico.AddRangeAsync(ordem1, ordem2);
+                var ordem3 = new OrdemDeServico
+                {
+                    Numero = "OS-20260420-3002",
+                    ClienteId = clienteBetina.Id,
+                    VeiculoId = veiculoGol.Id,
+                    DescricaoSolicitacao = "Veiculo com falha de ignicao intermitente.",
+                    ObservacoesRecepcao = "Motor falhando apos aquecimento.",
+                    Status = StatusOrdemDeServico.EmExecucao,
+                    DataAbertura = agora.AddDays(-1).AddHours(-6),
+                    OrcamentoEnviadoEm = agora.AddDays(-1).AddHours(-1),
+                    ValorTotal = 650.00m
+                };
+
+                var ordem4 = new OrdemDeServico
+                {
+                    Numero = "OS-20260421-3003",
+                    ClienteId = clienteVanessa.Id,
+                    VeiculoId = veiculoCorolla.Id,
+                    DescricaoSolicitacao = "Luz da injecao acesa no painel.",
+                    ObservacoesRecepcao = "Cliente autorizou apenas diagnostico inicial.",
+                    Status = StatusOrdemDeServico.AguardandoAprovacao,
+                    DataAbertura = agora.AddHours(-18),
+                    OrcamentoEnviadoEm = agora.AddHours(-6),
+                    ValorTotal = 100.00m
+                };
+
+                var ordem5 = new OrdemDeServico
+                {
+                    Numero = "OS-20260421-3004",
+                    ClienteId = clienteRafael.Id,
+                    VeiculoId = veiculoCivic.Id,
+                    DescricaoSolicitacao = "Revisao de freios e alinhamento.",
+                    ObservacoesRecepcao = "Veiculo puxando para a direita.",
+                    Status = StatusOrdemDeServico.EmDiagnostico,
+                    DataAbertura = agora.AddHours(-10),
+                    ValorTotal = 300.00m
+                };
+
+                var ordem6 = new OrdemDeServico
+                {
+                    Numero = "OS-20260422-3005",
+                    ClienteId = clienteVicente.Id,
+                    VeiculoId = veiculoStrada.Id,
+                    DescricaoSolicitacao = "Veiculo recebido para revisao basica.",
+                    ObservacoesRecepcao = "Aguardando entrada na oficina.",
+                    Status = StatusOrdemDeServico.Recebida,
+                    DataAbertura = agora.AddHours(-3),
+                    ValorTotal = 0.00m
+                };
+
+                var ordem7 = new OrdemDeServico
+                {
+                    Numero = "OS-20260419-3006",
+                    ClienteId = clienteBetina.Id,
+                    VeiculoId = veiculoGol.Id,
+                    DescricaoSolicitacao = "Solicitada avaliacao de pneus e suspensao.",
+                    ObservacoesRecepcao = "Cliente desistiu antes da aprovacao do orcamento.",
+                    MotivoCancelamento = "Cliente optou por nao prosseguir com o reparo.",
+                    Status = StatusOrdemDeServico.Cancelada,
+                    DataAbertura = agora.AddDays(-3),
+                    ValorTotal = 0.00m
+                };
+
+                await context.OrdensDeServico.AddRangeAsync(ordem1, ordem2, ordem3, ordem4, ordem5, ordem6, ordem7);
                 await context.SaveChangesAsync();
 
                 var ordensServicos = new List<OrdemDeServicoServico>
@@ -217,6 +303,34 @@ public static class OficinaDbContextSeeder
                     new OrdemDeServicoServico
                     {
                         OrdemDeServicoId = ordem2.Id,
+                        ServicoId = servicoAlinhamento.Id,
+                        Preco = servicoAlinhamento.Preco,
+                        TempoEstimado = servicoAlinhamento.TempoEstimado
+                    },
+                    new OrdemDeServicoServico
+                    {
+                        OrdemDeServicoId = ordem3.Id,
+                        ServicoId = servicoTrocaPneus.Id,
+                        Preco = servicoTrocaPneus.Preco,
+                        TempoEstimado = servicoTrocaPneus.TempoEstimado
+                    },
+                    new OrdemDeServicoServico
+                    {
+                        OrdemDeServicoId = ordem3.Id,
+                        ServicoId = servicoDiagnosticoEletronico.Id,
+                        Preco = servicoDiagnosticoEletronico.Preco,
+                        TempoEstimado = servicoDiagnosticoEletronico.TempoEstimado
+                    },
+                    new OrdemDeServicoServico
+                    {
+                        OrdemDeServicoId = ordem4.Id,
+                        ServicoId = servicoDiagnosticoEletronico.Id,
+                        Preco = servicoDiagnosticoEletronico.Preco,
+                        TempoEstimado = servicoDiagnosticoEletronico.TempoEstimado
+                    },
+                    new OrdemDeServicoServico
+                    {
+                        OrdemDeServicoId = ordem5.Id,
                         ServicoId = servicoAlinhamento.Id,
                         Preco = servicoAlinhamento.Preco,
                         TempoEstimado = servicoAlinhamento.TempoEstimado
@@ -245,6 +359,20 @@ public static class OficinaDbContextSeeder
                         PecaId = pecaPastilhaFreio.Id,
                         Quantidade = 2,
                         Preco = pecaPastilhaFreio.Preco
+                    },
+                    new OrdemDeServicoPeca
+                    {
+                        OrdemDeServicoId = ordem3.Id,
+                        PecaId = pecaPneuAro15.Id,
+                        Quantidade = 1,
+                        Preco = pecaPneuAro15.Preco
+                    },
+                    new OrdemDeServicoPeca
+                    {
+                        OrdemDeServicoId = ordem5.Id,
+                        PecaId = pecaVelaIgnicao.Id,
+                        Quantidade = 4,
+                        Preco = pecaVelaIgnicao.Preco
                     }
                 };
 

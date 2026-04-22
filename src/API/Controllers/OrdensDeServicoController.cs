@@ -38,6 +38,33 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(historico);
     }
 
+    [HttpGet("monitoramento")]
+    public async Task<ActionResult<ResumoMonitoramentoOrdensDeServicoDto>> ObterResumoMonitoramento(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+    {
+        if (page <= 0)
+        {
+            return BadRequest("page deve ser maior que zero.");
+        }
+
+        if (pageSize <= 0)
+        {
+            return BadRequest("pageSize deve ser maior que zero.");
+        }
+
+        var resumo = await _ordemService.ObterResumoMonitoramentoAsync(page, pageSize, cancellationToken);
+        return Ok(resumo);
+    }
+
+    [HttpGet("{id}/monitoramento")]
+    public async Task<ActionResult<MonitoramentoOrdemDeServicoDto>> ObterMonitoramento(int id, CancellationToken cancellationToken)
+    {
+        var monitoramento = await _ordemService.ObterMonitoramentoAsync(id, cancellationToken);
+        return Ok(monitoramento);
+    }
+
     [HttpGet]
     public async Task<ActionResult<PagedResultDto<OrdemDeServicoDto>>> Listar(
         [FromQuery] int page = 1,

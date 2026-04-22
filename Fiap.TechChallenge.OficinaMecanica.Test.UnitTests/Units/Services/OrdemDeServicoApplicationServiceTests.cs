@@ -194,4 +194,60 @@ public class OrdemDeServicoApplicationServiceTests
         await acao.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*apos o pagamento*");
     }
+
+    [Fact]
+    public async Task ObterMonitoramentoAsync_DeveRetornarTempoDeFinalizacaoQuandoOsEstiverFechada()
+    {
+        var dataAbertura = new DateTime(2026, 4, 20, 8, 0, 0);
+        var dataFinalizacao = dataAbertura.AddHours(5).AddMinutes(30);
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Finalizada);
+        ordem.DataAbertura = dataAbertura;
+        ordem.DataFinalizacao = dataFinalizacao;
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+
+        var resultado = await _service.ObterMonitoramentoAsync(ordem.Id, CancellationToken.None);
+
+        resultado.EstaFinalizada.Should().BeTrue();
+        resultado.DataFinalizacao.Should().Be(dataFinalizacao);
+        resultado.TempoFinalizacaoMinutos.Should().Be(330);
+        resultado.TempoFinalizacaoHoras.Should().Be(5.5);
+        resultado.TempoDecorridoMinutos.Should().Be(330);
+    }
+
+    [Fact]
+    public async Task ObterResumoMonitoramentoAsync_DeveCalcularMediaDeFinalizacao()
+    {
+        var ordemFinalizadaRapida = OrdemDeServicoMock.Criar(id: 1, status: StatusOrdemDeServico.Finalizada, numero: "OS-1");
+        ordemFinalizadaRapida.DataAbertura = new DateTime(2026, 4, 20, 8, 0, 0);
+        ordemFinalizadaRapida.DataFinalizacao = ordemFinalizadaRapida.DataAbertura.AddHours(2);
+
+        var ordemFinalizadaLenta = OrdemDeServicoMock.Criar(id: 2, status: StatusOrdemDeServico.Finalizada, numero: "OS-2");
+        ordemFinalizadaLenta.DataAbertura = new DateTime(2026, 4, 20, 9, 0, 0);
+        ordemFinalizadaLenta.DataFinalizacao = ordemFinalizadaLenta.DataAbertura.AddHours(4);
+
+        var ordemAberta = OrdemDeServicoMock.Criar(id: 3, status: StatusOrdemDeServico.EmExecucao, numero: "OS-3");
+        ordemAberta.DataAbertura = new DateTime(2026, 4, 20, 10, 0, 0);
+        ordemAberta.DataFinalizacao = null;
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterTodasAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { ordemFinalizadaRapida, ordemFinalizadaLenta, ordemAberta });
+
+        var resultado = await _service.ObterResumoMonitoramentoAsync(1, 2, CancellationToken.None);
+
+        resultado.TotalOrdens.Should().Be(3);
+        resultado.TotalOrdensAbertas.Should().Be(1);
+        resultado.TotalOrdensFinalizadas.Should().Be(2);
+        resultado.Page.Should().Be(1);
+        resultado.PageSize.Should().Be(2);
+        resultado.TotalPages.Should().Be(2);
+        resultado.TempoMedioFinalizacaoMinutos.Should().Be(180);
+        resultado.TempoMedioFinalizacaoHoras.Should().Be(3);
+        resultado.Ordens.Should().HaveCount(2);
+        resultado.Ordens.Should().Contain(x => x.Id == 1 && x.TempoFinalizacaoMinutos == 120);
+        resultado.Ordens.Should().Contain(x => x.Id == 2 && x.TempoFinalizacaoMinutos == 240);
+    }
 }

@@ -14,6 +14,8 @@ public interface IOrdemDeServicoApplicationService
     Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(int id, CancellationToken cancellationToken);
     Task<IEnumerable<OrdemServicoHistoricoDto>> ObterHistoricoAsync(int id, CancellationToken cancellationToken);
+    Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken);
+    Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken);
     Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(
         int page,
         int pageSize,
@@ -150,6 +152,55 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
 
         var historicos = await _historicoRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken);
         return historicos.Select(MapToDto);
+    }
+
+    public async Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+        if (ordem == null)
+        {
+            throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+        }
+
+        return MapToMonitoramentoDto(ordem, DateTimeHelper.UTCBrazilNow());
+    }
+
+    public async Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
+    {
+        var agora = DateTimeHelper.UTCBrazilNow();
+        var ordens = (await _ordemRepository.ObterTodasAsync(cancellationToken)).ToList();
+        var ordensMonitoradas = ordens
+            .Select(ordem => MapToMonitoramentoDto(ordem, agora))
+            .ToList();
+
+        var ordensFinalizadas = ordensMonitoradas
+            .Where(ordem => ordem.TempoFinalizacaoMinutos.HasValue)
+            .ToList();
+
+        var tempoMedioFinalizacaoMinutos = ordensFinalizadas.Count == 0
+            ? (int?)null
+            : (int)Math.Round(ordensFinalizadas.Average(ordem => ordem.TempoFinalizacaoMinutos!.Value));
+
+        var totalOrdens = ordensMonitoradas.Count;
+        var ordensPaginadas = ordensMonitoradas
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return new ResumoMonitoramentoOrdensDeServicoDto
+        {
+            TotalOrdens = totalOrdens,
+            TotalOrdensAbertas = ordensMonitoradas.Count(ordem => !ordem.EstaFinalizada),
+            TotalOrdensFinalizadas = ordensFinalizadas.Count,
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = totalOrdens == 0 ? 0 : (int)Math.Ceiling(totalOrdens / (double)pageSize),
+            TempoMedioFinalizacaoMinutos = tempoMedioFinalizacaoMinutos,
+            TempoMedioFinalizacaoHoras = tempoMedioFinalizacaoMinutos.HasValue
+                ? Math.Round(tempoMedioFinalizacaoMinutos.Value / 60d, 2)
+                : null,
+            Ordens = ordensPaginadas
+        };
     }
 
     public async Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(
@@ -655,6 +706,33 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 Quantidade = p.Quantidade,
                 Preco = p.Preco
             }).ToList()
+        };
+    }
+
+    private static MonitoramentoOrdemDeServicoDto MapToMonitoramentoDto(OrdemDeServico ordem, DateTime agora)
+    {
+        var dataReferencia = ordem.DataFinalizacao ?? agora;
+        var tempoDecorrido = dataReferencia - ordem.DataAbertura;
+        var tempoFinalizacao = ordem.DataFinalizacao.HasValue
+            ? ordem.DataFinalizacao.Value - ordem.DataAbertura
+            : (TimeSpan?)null;
+
+        return new MonitoramentoOrdemDeServicoDto
+        {
+            Id = ordem.Id,
+            Numero = ordem.Numero,
+            Status = ordem.Status.ToString(),
+            DataAbertura = ordem.DataAbertura,
+            DataFinalizacao = ordem.DataFinalizacao,
+            EstaFinalizada = ordem.DataFinalizacao.HasValue,
+            TempoDecorridoMinutos = Math.Max(0, (int)Math.Round(tempoDecorrido.TotalMinutes)),
+            TempoDecorridoHoras = Math.Max(0, Math.Round(tempoDecorrido.TotalHours, 2)),
+            TempoFinalizacaoMinutos = tempoFinalizacao.HasValue
+                ? Math.Max(0, (int)Math.Round(tempoFinalizacao.Value.TotalMinutes))
+                : null,
+            TempoFinalizacaoHoras = tempoFinalizacao.HasValue
+                ? Math.Max(0, Math.Round(tempoFinalizacao.Value.TotalHours, 2))
+                : null
         };
     }
 }
