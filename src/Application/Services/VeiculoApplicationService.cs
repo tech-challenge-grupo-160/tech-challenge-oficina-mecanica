@@ -151,13 +151,33 @@ public class VeiculoApplicationService : IVeiculoApplicationService
 
     public async Task DeletarVeiculoAsync(int id, CancellationToken cancellationToken)
     {
-        var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
-        if (veiculo == null)
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
         {
-            throw new KeyNotFoundException($"Veiculo com ID {id} nao encontrado.");
-        }
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarVeiculoAsync), "Consultando veiculo para exclusao");
+            var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
+            if (veiculo == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarVeiculoAsync), "Veiculo nao encontrado para exclusao");
+                throw new KeyNotFoundException($"Veiculo com ID {id} nao encontrado.");
+            }
 
-        await _veiculoRepository.DeletarAsync(id, cancellationToken);
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarVeiculoAsync), "Validando se existem ordens de servico ativas vinculadas ao veiculo");
+            if (await _veiculoRepository.ExisteEmOrdemDeServicoAtivaAsync(id, cancellationToken))
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarVeiculoAsync), "Veiculo possui ordens de servico ativas vinculadas");
+                throw new InvalidOperationException("Nao e possivel excluir o veiculo pois existem ordens de servico ativas vinculadas.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarVeiculoAsync), "Excluindo veiculo");
+            await _veiculoRepository.DeletarAsync(id, cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, "Veiculo excluido com sucesso.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(DeletarVeiculoAsync), ex.Message);
+            throw;
+        }
     }
 
     private async Task<Cliente> ObterClientePorDocumentoAsync(string cpfCnpj, CancellationToken cancellationToken)

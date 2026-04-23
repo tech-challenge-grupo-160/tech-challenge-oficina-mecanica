@@ -134,6 +134,13 @@ public class PecaApplicationService : IPecaApplicationService
                 throw new KeyNotFoundException($"Peça com ID {id} não encontrada.");
             }
 
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarPecaAsync), "Validando se existem ordens de servico ativas vinculadas a peca");
+            if (await _pecaRepository.ExisteEmOrdemDeServicoAtivaAsync(id, cancellationToken))
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarPecaAsync), "Peca possui ordens de servico ativas vinculadas");
+                throw new InvalidOperationException("Nao e possivel excluir a peca pois existem ordens de servico ativas vinculadas.");
+            }
+
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarPecaAsync), "Excluindo peca");
             await _pecaRepository.DeletarAsync(id, cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, "Peca excluida com sucesso.");
