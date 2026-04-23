@@ -38,6 +38,8 @@ public interface IOrdemDeServicoApplicationService
     Task<OrdemDeServicoDto> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken);
 }
 
 public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationService
@@ -679,6 +681,76 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         catch (Exception ex)
         {
             _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AdicionarPecaAsync), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<OrdemDeServicoDto> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(RemoverServicoAsync), "Consultando ordem de servico para remover servico");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(RemoverServicoAsync), "Ordem de servico nao encontrada para remover servico");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            var servico = ordem.Servicos.FirstOrDefault(x => x.ServicoId == servicoId)?.Servico
+                ?? await _servicoRepository.ObterPorIdAsync(servicoId, cancellationToken);
+
+            ordem.RemoverServico(servicoId);
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await RegistrarHistoricoAsync(
+                ordemAtualizada,
+                TipoEventoOrdemServico.ServicoAdicionado,
+                ordemAtualizada.Status,
+                ordemAtualizada.Status,
+                $"Servico removido do orcamento: {servico?.Nome ?? servicoId.ToString()}.",
+                cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Servico removido com sucesso da ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(RemoverServicoAsync), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<OrdemDeServicoDto> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(RemoverPecaAsync), "Consultando ordem de servico para remover peca");
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(RemoverPecaAsync), "Ordem de servico nao encontrada para remover peca");
+                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            var peca = ordem.Pecas.FirstOrDefault(x => x.PecaId == pecaId)?.Peca
+                ?? await _pecaRepository.ObterPorIdAsync(pecaId, cancellationToken);
+
+            ordem.RemoverPeca(pecaId);
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await RegistrarHistoricoAsync(
+                ordemAtualizada,
+                TipoEventoOrdemServico.PecaAdicionada,
+                ordemAtualizada.Status,
+                ordemAtualizada.Status,
+                $"Peca removida do orcamento: {peca?.Nome ?? pecaId.ToString()}.",
+                cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Peca removida com sucesso da ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(RemoverPecaAsync), ex.Message);
             throw;
         }
     }

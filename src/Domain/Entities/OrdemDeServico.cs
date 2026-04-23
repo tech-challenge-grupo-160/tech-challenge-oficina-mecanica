@@ -44,6 +44,23 @@ public class OrdemDeServico
         RecalcularTotal();
     }
 
+    public void RemoverServico(int servicoId)
+    {
+        if (Status != StatusOrdemDeServico.EmDiagnostico)
+        {
+            throw new InvalidOperationException("So e possivel remover servicos durante o diagnostico. Nao e possivel neste status: " + Status);
+        }
+
+        var item = Servicos.FirstOrDefault(x => x.ServicoId == servicoId);
+        if (item == null)
+        {
+            throw new KeyNotFoundException($"Servico com ID {servicoId} nao encontrado na ordem de servico.");
+        }
+
+        Servicos.Remove(item);
+        RecalcularTotal();
+    }
+
     public void AdicionarPeca(Peca peca, int quantidade)
     {
         if (Status != StatusOrdemDeServico.EmDiagnostico &&
@@ -75,6 +92,23 @@ public class OrdemDeServico
             itemExistente.Preco = peca.Preco;
         }
 
+        RecalcularTotal();
+    }
+
+    public void RemoverPeca(int pecaId)
+    {
+        if (Status != StatusOrdemDeServico.EmDiagnostico)
+        {
+            throw new InvalidOperationException("So e possivel remover pecas durante o diagnostico. Nao e possivel neste status: " + Status);
+        }
+
+        var item = Pecas.FirstOrDefault(x => x.PecaId == pecaId);
+        if (item == null)
+        {
+            throw new KeyNotFoundException($"Peca com ID {pecaId} nao encontrada na ordem de servico.");
+        }
+
+        Pecas.Remove(item);
         RecalcularTotal();
     }
 
