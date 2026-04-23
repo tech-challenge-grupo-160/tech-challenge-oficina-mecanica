@@ -46,25 +46,35 @@ public class OrdemDeServico
 
     public void AdicionarPeca(Peca peca, int quantidade)
     {
-        if (Status != StatusOrdemDeServico.EmDiagnostico && Status != StatusOrdemDeServico.EmExecucao)
+        if (Status != StatusOrdemDeServico.EmDiagnostico &&
+            Status != StatusOrdemDeServico.AguardandoAprovacao &&
+            Status != StatusOrdemDeServico.AguardandoEstoque)
         {
             throw new InvalidOperationException($"Nao e possivel adicionar pecas neste status: {Status}");
         }
 
-        if (peca.QuantidadeEstoque < quantidade)
+        if (quantidade <= 0)
         {
-            throw new InvalidOperationException("Quantidade insuficiente em estoque.");
+            throw new InvalidOperationException("A quantidade da peca deve ser maior que zero.");
         }
 
-        Pecas.Add(new OrdemDeServicoPeca
+        var itemExistente = Pecas.FirstOrDefault(item => item.PecaId == peca.Id);
+        if (itemExistente == null)
         {
-            OrdemDeServicoId = Id,
-            PecaId = peca.Id,
-            Quantidade = quantidade,
-            Preco = peca.Preco
-        });
+            Pecas.Add(new OrdemDeServicoPeca
+            {
+                OrdemDeServicoId = Id,
+                PecaId = peca.Id,
+                Quantidade = quantidade,
+                Preco = peca.Preco
+            });
+        }
+        else
+        {
+            itemExistente.Quantidade += quantidade;
+            itemExistente.Preco = peca.Preco;
+        }
 
-        peca.QuantidadeEstoque -= quantidade;
         RecalcularTotal();
     }
 
@@ -108,7 +118,8 @@ public class OrdemDeServico
     {
         if (Status != StatusOrdemDeServico.Recebida &&
             Status != StatusOrdemDeServico.EmDiagnostico &&
-            Status != StatusOrdemDeServico.AguardandoAprovacao)
+            Status != StatusOrdemDeServico.AguardandoAprovacao &&
+            Status != StatusOrdemDeServico.AguardandoEstoque)
         {
             throw new InvalidOperationException("Nao e possivel cancelar a ordem de servico no status atual: " + Status);
         }
@@ -127,6 +138,26 @@ public class OrdemDeServico
         if (Status != StatusOrdemDeServico.AguardandoAprovacao)
         {
             throw new InvalidOperationException("So e possivel aprovar o orcamento quando a ordem estiver aguardando aprovacao.");
+        }
+    }
+
+    public void BloquearPorFaltaEstoque()
+    {
+        if (Status != StatusOrdemDeServico.AguardandoAprovacao &&
+            Status != StatusOrdemDeServico.AguardandoEstoque)
+        {
+            throw new InvalidOperationException("So e possivel aguardar estoque quando a ordem estiver aguardando aprovacao ou ja aguardando estoque.");
+        }
+
+        Status = StatusOrdemDeServico.AguardandoEstoque;
+    }
+
+    public void LiberarExecucaoAposValidacaoEstoque()
+    {
+        if (Status != StatusOrdemDeServico.AguardandoAprovacao &&
+            Status != StatusOrdemDeServico.AguardandoEstoque)
+        {
+            throw new InvalidOperationException("So e possivel iniciar execucao apos aprovacao e validacao do estoque.");
         }
 
         AlterarStatus(StatusOrdemDeServico.EmExecucao);
@@ -180,6 +211,7 @@ public class OrdemDeServico
             (StatusOrdemDeServico.Recebida, StatusOrdemDeServico.EmDiagnostico) => true,
             (StatusOrdemDeServico.EmDiagnostico, StatusOrdemDeServico.AguardandoAprovacao) => true,
             (StatusOrdemDeServico.AguardandoAprovacao, StatusOrdemDeServico.EmExecucao) => true,
+            (StatusOrdemDeServico.AguardandoEstoque, StatusOrdemDeServico.EmExecucao) => true,
             (StatusOrdemDeServico.EmExecucao, StatusOrdemDeServico.Finalizada) => true,
             (StatusOrdemDeServico.Finalizada, StatusOrdemDeServico.Entregue) => true,
             _ => false
