@@ -98,20 +98,6 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(ordens);
     }
 
-    [HttpGet("cliente/{clienteId}")]
-    public async Task<ActionResult<IEnumerable<OrdemDeServicoDto>>> ListarPorCliente(int clienteId, CancellationToken cancellationToken)
-    {
-        var ordens = await _ordemService.ListarOrdensDeServicoPorClienteAsync(clienteId, cancellationToken);
-        return Ok(ordens);
-    }
-
-    [HttpGet("status/{status}")]
-    public async Task<ActionResult<IEnumerable<OrdemDeServicoDto>>> ListarPorStatus(string status, CancellationToken cancellationToken)
-    {
-        var ordens = await _ordemService.ListarOrdensDeServicoPorStatusAsync(status, cancellationToken);
-        return Ok(ordens);
-    }
-
     [HttpPatch("{id}/iniciar-diagnostico")]
     public async Task<ActionResult<OrdemDeServicoDto>> IniciarDiagnostico(int id, CancellationToken cancellationToken)
     {

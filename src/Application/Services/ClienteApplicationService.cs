@@ -1,4 +1,5 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+﻿using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
@@ -51,7 +52,7 @@ public class ClienteApplicationService : IClienteApplicationService
             if (clienteExistente != null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarClienteAsync), "Cliente ja cadastrado para o documento informado");
-                throw new InvalidOperationException("Cliente com este CPF/CNPJ ja existe.");
+                throw new ServiceValidationException("Cliente com este CPF/CNPJ ja existe.");
             }
 
             var cliente = new Cliente
@@ -70,7 +71,7 @@ public class ClienteApplicationService : IClienteApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarClienteAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarClienteAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -80,7 +81,7 @@ public class ClienteApplicationService : IClienteApplicationService
         var cliente = await _clienteRepository.ObterPorIdAsync(id, cancellationToken);
         if (cliente == null)
         {
-            throw new KeyNotFoundException($"Cliente com ID {id} nao encontrado.");
+            throw new ServiceNotFoundException($"Cliente com ID {id} nao encontrado.");
         }
 
         return MapToDto(cliente);
@@ -99,7 +100,7 @@ public class ClienteApplicationService : IClienteApplicationService
             if (cliente == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(ObterClientePorCpfCnpjAsync), "Cliente nao encontrado para o documento informado");
-                throw new KeyNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} nao encontrado.");
+                throw new ServiceNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} nao encontrado.");
             }
 
             _logger.LogInformation(LogTemplate.End, LoggerName, "Cliente obtido com sucesso.");
@@ -107,7 +108,7 @@ public class ClienteApplicationService : IClienteApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ObterClientePorCpfCnpjAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ObterClientePorCpfCnpjAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -140,7 +141,7 @@ public class ClienteApplicationService : IClienteApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ListarClientesAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ListarClientesAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -156,7 +157,7 @@ public class ClienteApplicationService : IClienteApplicationService
             if (cliente == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AtualizarClientePorCpfCnpjAsync), "Cliente nao encontrado para atualizacao");
-                throw new KeyNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} nao encontrado.");
+                throw new ServiceNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} nao encontrado.");
             }
 
             cliente.Nome = dto.Nome;
@@ -170,7 +171,7 @@ public class ClienteApplicationService : IClienteApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AtualizarClientePorCpfCnpjAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AtualizarClientePorCpfCnpjAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -186,20 +187,20 @@ public class ClienteApplicationService : IClienteApplicationService
             if (cliente == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarClientePorCpfCnpjAsync), "Cliente nao encontrado para exclusao");
-                throw new KeyNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} nao encontrado.");
+                throw new ServiceNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} nao encontrado.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarClientePorCpfCnpjAsync), "Validando dependencias do cliente");
             if (await _veiculoRepository.ExistePorClienteAsync(cliente.Id, cancellationToken))
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarClientePorCpfCnpjAsync), "Cliente possui veiculos vinculados");
-                throw new InvalidOperationException("Nao e possivel excluir o cliente, pois existem veiculos vinculados.");
+                throw new ServiceValidationException("Nao e possivel excluir o cliente, pois existem veiculos vinculados.");
             }
 
             if (await _ordemDeServicoRepository.ExistePorClienteAsync(cliente.Id, cancellationToken))
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarClientePorCpfCnpjAsync), "Cliente possui ordens de servico vinculadas");
-                throw new InvalidOperationException("Nao e possivel excluir o cliente, pois existem ordens de servico vinculadas.");
+                throw new ServiceValidationException("Nao e possivel excluir o cliente, pois existem ordens de servico vinculadas.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarClientePorCpfCnpjAsync), "Excluindo cliente");
@@ -208,7 +209,7 @@ public class ClienteApplicationService : IClienteApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(DeletarClientePorCpfCnpjAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(DeletarClientePorCpfCnpjAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -242,3 +243,8 @@ public class ClienteApplicationService : IClienteApplicationService
         return string.IsNullOrWhiteSpace(normalizado) ? null : normalizado;
     }
 }
+
+
+
+
+

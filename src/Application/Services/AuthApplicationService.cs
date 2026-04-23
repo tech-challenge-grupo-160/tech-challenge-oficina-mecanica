@@ -1,7 +1,8 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Options;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
@@ -41,7 +42,7 @@ public class AuthApplicationService : IAuthApplicationService
             if (usuario == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(LoginAsync), "Usuario nao encontrado para autenticacao");
-                throw new UnauthorizedAccessException("Usuário ou senha inválidos.");
+                throw new ServiceUnauthorizedException("Usuario ou senha invalidos.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(LoginAsync), "Validando credenciais do usuario");
@@ -49,7 +50,7 @@ public class AuthApplicationService : IAuthApplicationService
             if (!string.Equals(senhaHash, usuario.SenhaHash, StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(LoginAsync), "Credenciais invalidas para o usuario informado");
-                throw new UnauthorizedAccessException("Usuário ou senha inválidos.");
+                throw new ServiceUnauthorizedException("Usuario ou senha invalidos.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(LoginAsync), "Gerando token JWT para o usuario autenticado");
@@ -83,8 +84,12 @@ public class AuthApplicationService : IAuthApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(LoginAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(LoginAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
 }
+
+
+
+

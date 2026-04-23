@@ -1,4 +1,5 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+﻿using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
@@ -46,7 +47,7 @@ public class PecaApplicationService : IPecaApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarPecaAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarPecaAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -61,7 +62,7 @@ public class PecaApplicationService : IPecaApplicationService
             if (peca == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(ObterPecaAsync), "Peca nao encontrada para o identificador informado");
-                throw new KeyNotFoundException($"Peça com ID {id} não encontrada.");
+                throw new ServiceNotFoundException($"Peca com ID {id} nao encontrada.");
             }
 
             _logger.LogInformation(LogTemplate.End, LoggerName, "Peca obtida com sucesso.");
@@ -69,7 +70,7 @@ public class PecaApplicationService : IPecaApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ObterPecaAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ObterPecaAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -87,7 +88,7 @@ public class PecaApplicationService : IPecaApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ListarPecasAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ListarPecasAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -102,7 +103,7 @@ public class PecaApplicationService : IPecaApplicationService
             if (peca == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AtualizarPecaAsync), "Peca nao encontrada para atualizacao");
-                throw new KeyNotFoundException($"Peça com ID {id} não encontrada.");
+                throw new ServiceNotFoundException($"Peca com ID {id} nao encontrada.");
             }
 
             peca.Nome = dto.Nome;
@@ -116,7 +117,7 @@ public class PecaApplicationService : IPecaApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AtualizarPecaAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AtualizarPecaAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -131,14 +132,14 @@ public class PecaApplicationService : IPecaApplicationService
             if (peca == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarPecaAsync), "Peca nao encontrada para exclusao");
-                throw new KeyNotFoundException($"Peça com ID {id} não encontrada.");
+                throw new ServiceNotFoundException($"Peca com ID {id} nao encontrada.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarPecaAsync), "Validando se existem ordens de servico ativas vinculadas a peca");
             if (await _pecaRepository.ExisteEmOrdemDeServicoAtivaAsync(id, cancellationToken))
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarPecaAsync), "Peca possui ordens de servico ativas vinculadas");
-                throw new InvalidOperationException("Nao e possivel excluir a peca pois existem ordens de servico ativas vinculadas.");
+                throw new ServiceValidationException("Nao e possivel excluir a peca pois existem ordens de servico ativas vinculadas.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarPecaAsync), "Excluindo peca");
@@ -147,7 +148,7 @@ public class PecaApplicationService : IPecaApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(DeletarPecaAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(DeletarPecaAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -163,3 +164,8 @@ public class PecaApplicationService : IPecaApplicationService
         };
     }
 }
+
+
+
+
+

@@ -41,27 +41,9 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
             .FirstOrDefaultAsync(o => o.Numero == numero, cancellationToken);
     }
 
-    public async Task<IEnumerable<OrdemDeServico>> ObterPorClienteAsync(int clienteId, CancellationToken cancellationToken)
-    {
-        return await _context.OrdensDeServico
-            .Where(o => o.ClienteId == clienteId)
-            .Include(o => o.Servicos)
-            .Include(o => o.Pecas)
-            .ToListAsync(cancellationToken);
-    }
-
     public async Task<bool> ExistePorClienteAsync(int clienteId, CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico.AnyAsync(o => o.ClienteId == clienteId, cancellationToken);
-    }
-
-    public async Task<IEnumerable<OrdemDeServico>> ObterPorStatusAsync(StatusOrdemDeServico status, CancellationToken cancellationToken)
-    {
-        return await _context.OrdensDeServico
-            .Where(o => o.Status == status)
-            .Include(o => o.Servicos)
-            .Include(o => o.Pecas)
-            .ToListAsync(cancellationToken);
     }
 
     public async Task<int> ContarAsync(
