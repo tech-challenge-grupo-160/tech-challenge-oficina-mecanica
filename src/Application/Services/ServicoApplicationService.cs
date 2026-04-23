@@ -136,6 +136,13 @@ public class ServicoApplicationService : IServicoApplicationService
                 throw new KeyNotFoundException($"Serviço com ID {id} não encontrado.");
             }
 
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarServicoAsync), "Validando se existem ordens de servico ativas vinculadas ao servico");
+            if (await _servicoRepository.ExisteEmOrdemDeServicoAtivaAsync(id, cancellationToken))
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarServicoAsync), "Servico possui ordens de servico ativas vinculadas");
+                throw new InvalidOperationException("Nao e possivel excluir o servico pois existem ordens de servico ativas vinculadas.");
+            }
+
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarServicoAsync), "Excluindo servico");
             await _servicoRepository.DeletarAsync(id, cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, "Servico excluido com sucesso.");

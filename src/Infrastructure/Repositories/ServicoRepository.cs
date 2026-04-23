@@ -14,6 +14,14 @@ public class ServicoRepository : IServicoRepository
         _context = context;
     }
 
+    public async Task<bool> ExisteEmOrdemDeServicoAtivaAsync(int servicoId, CancellationToken cancellationToken)
+    {
+        return await _context.OrdemDeServicoServicos
+            .AnyAsync(
+                item => item.ServicoId == servicoId,
+                cancellationToken);
+    }
+
     public async Task<Servico?> ObterPorIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _context.Servicos.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
