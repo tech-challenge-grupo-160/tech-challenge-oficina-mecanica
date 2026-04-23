@@ -14,6 +14,7 @@ using Fiap.TechChallenge.OficinaMecanica.Infrastructure.HealthChecks;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.API.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Fiap.TechChallenge.OficinaMecanica.Application.Validators.Clientes;
@@ -155,6 +156,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 var startupLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+const string StartupLoggerName = "Startup";
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -196,11 +198,17 @@ app.Lifetime.ApplicationStarted.Register(() =>
 
     foreach (var address in addresses.OrderBy(x => x))
     {
-        startupLogger.LogInformation("Aplicacao iniciada em: {Address}", address);
+        startupLogger.LogInformation(
+            LogTemplate.End,
+            StartupLoggerName,
+            $"Aplicacao iniciada em: {address}");
 
         if (app.Environment.IsDevelopment())
         {
-            startupLogger.LogInformation("Swagger disponivel em: {SwaggerAddress}", $"{address.TrimEnd('/')}/swagger/index.html");
+            startupLogger.LogInformation(
+                LogTemplate.End,
+                StartupLoggerName,
+                $"Swagger disponivel em: {address.TrimEnd('/')}/swagger/index.html");
         }
     }
 });
