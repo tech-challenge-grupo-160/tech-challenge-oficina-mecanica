@@ -132,7 +132,10 @@ builder.Services.AddScoped<IServicoRepository, ServicoRepository>();
 builder.Services.AddScoped<IPecaRepository, PecaRepository>();
 builder.Services.AddScoped<IOrdemDeServicoRepository, OrdemDeServicoRepository>();
 builder.Services.AddScoped<IOrdemServicoHistoricoRepository, OrdemServicoHistoricoRepository>();
+builder.Services.AddScoped<IPedidoCompraRepository, PedidoCompraRepository>();
+builder.Services.AddScoped<IMovimentacaoEstoqueRepository, MovimentacaoEstoqueRepository>();
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+builder.Services.AddScoped<ITransactionManager, EfTransactionManager>();
 
 // Application Services
 builder.Services.AddScoped<IClienteApplicationService, ClienteApplicationService>();
@@ -141,6 +144,7 @@ builder.Services.AddScoped<IServicoApplicationService, ServicoApplicationService
 builder.Services.AddScoped<IPecaApplicationService, PecaApplicationService>();
 builder.Services.AddScoped<IOrdemDeServicoApplicationService, OrdemDeServicoApplicationService>();
 builder.Services.AddScoped<IAuthApplicationService, AuthApplicationService>();
+builder.Services.AddScoped<IPedidoCompraApplicationService, PedidoCompraApplicationService>();
 builder.Services.AddScoped<IUsuarioAutenticadoService, UsuarioAutenticadoService>();
 
 // CORS

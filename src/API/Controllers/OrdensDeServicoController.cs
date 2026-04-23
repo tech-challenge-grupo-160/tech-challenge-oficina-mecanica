@@ -38,6 +38,13 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(historico);
     }
 
+    [HttpGet("{id}/movimentacoes-estoque")]
+    public async Task<ActionResult<IEnumerable<MovimentacaoEstoqueDto>>> ObterMovimentacoesEstoque(int id, CancellationToken cancellationToken)
+    {
+        var movimentacoes = await _ordemService.ObterMovimentacoesEstoqueAsync(id, cancellationToken);
+        return Ok(movimentacoes);
+    }
+
     [HttpGet("monitoramento")]
     public async Task<ActionResult<ResumoMonitoramentoOrdensDeServicoDto>> ObterResumoMonitoramento(
         [FromQuery] int page = 1,
