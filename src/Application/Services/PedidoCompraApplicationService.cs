@@ -11,6 +11,7 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
 public interface IPedidoCompraApplicationService
 {
+    Task<PedidoCompraDto> CriarAsync(CriarPedidoCompraDto dto, CancellationToken cancellationToken);
     Task<PagedResultDto<PedidoCompraDto>> ListarAsync(int page, int pageSize, CancellationToken cancellationToken);
     Task<IEnumerable<PedidoCompraDto>> ListarPorOrdemDeServicoAsync(int ordemDeServicoId, CancellationToken cancellationToken);
     Task<PedidoCompraDto> RegistrarRecebimentoAsync(int pedidoCompraId, ReceberPedidoCompraDto dto, CancellationToken cancellationToken);
@@ -20,6 +21,7 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
 {
     private const string LoggerName = nameof(PedidoCompraApplicationService);
     private readonly IPedidoCompraRepository _pedidoCompraRepository;
+    private readonly IOrdemDeServicoRepository _ordemDeServicoRepository;
     private readonly IPecaRepository _pecaRepository;
     private readonly IMovimentacaoEstoqueRepository _movimentacaoEstoqueRepository;
     private readonly IOrdemServicoHistoricoRepository _historicoRepository;
@@ -29,6 +31,7 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
 
     public PedidoCompraApplicationService(
         IPedidoCompraRepository pedidoCompraRepository,
+        IOrdemDeServicoRepository ordemDeServicoRepository,
         IPecaRepository pecaRepository,
         IMovimentacaoEstoqueRepository movimentacaoEstoqueRepository,
         IOrdemServicoHistoricoRepository historicoRepository,
@@ -37,12 +40,78 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
         ILoggerFactory loggerFactory)
     {
         _pedidoCompraRepository = pedidoCompraRepository;
+        _ordemDeServicoRepository = ordemDeServicoRepository;
         _pecaRepository = pecaRepository;
         _movimentacaoEstoqueRepository = movimentacaoEstoqueRepository;
         _historicoRepository = historicoRepository;
         _usuarioAutenticadoService = usuarioAutenticadoService;
         _transactionManager = transactionManager;
         _logger = loggerFactory.CreateLogger(LoggerName);
+    }
+
+    public async Task<PedidoCompraDto> CriarAsync(CriarPedidoCompraDto dto, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            return await _transactionManager.ExecuteAsync(
+                async token =>
+                {
+                    _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarAsync), "Criando pedido de compra manual");
+                    var ordem = await _ordemDeServicoRepository.ObterPorIdAsync(dto.OrdemDeServicoId, token);
+                    if (ordem == null)
+                    {
+                        _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarAsync), "Ordem de servico nao encontrada para criacao manual de pedido");
+                        throw new KeyNotFoundException($"Ordem de servico com ID {dto.OrdemDeServicoId} nao encontrada.");
+                    }
+
+                    var peca = await _pecaRepository.ObterPorIdAsync(dto.PecaId, token);
+                    if (peca == null)
+                    {
+                        _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarAsync), "Peca nao encontrada para criacao manual de pedido");
+                        throw new KeyNotFoundException($"Peca com ID {dto.PecaId} nao encontrada.");
+                    }
+
+                    if (dto.QuantidadeSolicitada <= 0)
+                    {
+                        throw new InvalidOperationException("A quantidade solicitada deve ser maior que zero.");
+                    }
+
+                    var pedido = await _pedidoCompraRepository.CriarAsync(
+                        new PedidoCompra
+                        {
+                            OrdemDeServicoId = dto.OrdemDeServicoId,
+                            PecaId = dto.PecaId,
+                            QuantidadeSolicitada = dto.QuantidadeSolicitada,
+                            QuantidadeRecebida = 0,
+                            Status = StatusPedidoCompra.Pendente,
+                            DataSolicitacao = DateTimeHelper.UTCBrazilNow(),
+                            Observacao = string.IsNullOrWhiteSpace(dto.Observacao)
+                                ? $"Pedido criado manualmente para a ordem {ordem.Numero}."
+                                : dto.Observacao.Trim()
+                        },
+                        token);
+
+                    pedido.Peca = peca;
+
+                    await RegistrarHistoricoAsync(
+                        ordem.Id,
+                        TipoEventoOrdemServico.PedidoCompraGerado,
+                        ordem.Status,
+                        ordem.Status,
+                        $"Pedido de compra {pedido.Id} criado manualmente para a peca {peca.Nome}. Quantidade solicitada: {dto.QuantidadeSolicitada}.",
+                        token);
+
+                    _logger.LogInformation(LogTemplate.End, LoggerName, $"Pedido de compra {pedido.Id} criado manualmente com sucesso.");
+                    return MapToDto(pedido);
+                },
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarAsync), ex.Message);
+            throw;
+        }
     }
 
     public async Task<PagedResultDto<PedidoCompraDto>> ListarAsync(int page, int pageSize, CancellationToken cancellationToken)

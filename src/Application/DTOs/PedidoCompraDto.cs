@@ -14,6 +14,14 @@ public class PedidoCompraDto
     public string Observacao { get; set; } = null!;
 }
 
+public class CriarPedidoCompraDto
+{
+    public int OrdemDeServicoId { get; set; }
+    public int PecaId { get; set; }
+    public int QuantidadeSolicitada { get; set; }
+    public string? Observacao { get; set; }
+}
+
 public class ReceberPedidoCompraDto
 {
     public int QuantidadeRecebida { get; set; }

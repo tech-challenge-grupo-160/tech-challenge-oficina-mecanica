@@ -17,6 +17,13 @@ public class PedidosCompraController : ControllerBase
         _pedidoCompraService = pedidoCompraService;
     }
 
+    [HttpPost]
+    public async Task<ActionResult<PedidoCompraDto>> Criar([FromBody] CriarPedidoCompraDto dto, CancellationToken cancellationToken)
+    {
+        var pedido = await _pedidoCompraService.CriarAsync(dto, cancellationToken);
+        return CreatedAtAction(nameof(ListarPorOrdemDeServico), new { ordemDeServicoId = pedido.OrdemDeServicoId }, pedido);
+    }
+
     [HttpGet]
     public async Task<ActionResult<PagedResultDto<PedidoCompraDto>>> Listar(
         [FromQuery] int page = 1,
