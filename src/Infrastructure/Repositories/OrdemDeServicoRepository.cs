@@ -15,6 +15,16 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
         _context = context;
     }
 
+    public async Task<IEnumerable<OrdemDeServico>> ObterTodasAsync(CancellationToken cancellationToken)
+    {
+        return await _context.OrdensDeServico
+            .Include(o => o.Servicos)
+            .Include(o => o.Pecas)
+            .OrderByDescending(o => o.DataAbertura)
+            .ThenByDescending(o => o.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<OrdemDeServico?> ObterPorIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico

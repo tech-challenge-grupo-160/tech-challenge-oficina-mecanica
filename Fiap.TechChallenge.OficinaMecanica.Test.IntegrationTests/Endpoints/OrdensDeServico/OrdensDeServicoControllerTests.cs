@@ -115,6 +115,59 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         body.Should().Contain("pagamento");
     }
 
+    [Fact]
+    public async Task ObterMonitoramento_DeveRetornarTempoDeFinalizacaoDaOs()
+    {
+        var ordemCriada = await CriarOrdemAsync();
+
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
+        await _client.PostAsJsonAsync(
+            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
+            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar-diagnostico", null);
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/aprovar", null);
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar", null);
+
+        var response = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/monitoramento");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var monitoramento = await response.Content.ReadFromJsonAsync<MonitoramentoOrdemDeServicoDto>();
+        monitoramento.Should().NotBeNull();
+        monitoramento!.Id.Should().Be(ordemCriada.Id);
+        monitoramento.EstaFinalizada.Should().BeTrue();
+        monitoramento.DataFinalizacao.Should().NotBeNull();
+        monitoramento.TempoFinalizacaoMinutos.Should().NotBeNull();
+        monitoramento.TempoFinalizacaoMinutos.Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task ObterResumoMonitoramento_DeveRetornarVisaoGeralComMedia()
+    {
+        var ordemCriada = await CriarOrdemAsync();
+
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
+        await _client.PostAsJsonAsync(
+            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
+            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar-diagnostico", null);
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/aprovar", null);
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar", null);
+
+        var response = await _client.GetAsync("/api/v1/ordens-servico/monitoramento?page=1&pageSize=2");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var resumo = await response.Content.ReadFromJsonAsync<ResumoMonitoramentoOrdensDeServicoDto>();
+        resumo.Should().NotBeNull();
+        resumo!.TotalOrdens.Should().BeGreaterThanOrEqualTo(1);
+        resumo.TotalOrdensFinalizadas.Should().BeGreaterThanOrEqualTo(1);
+        resumo.Page.Should().Be(1);
+        resumo.PageSize.Should().Be(2);
+        resumo.TotalPages.Should().BeGreaterThanOrEqualTo(1);
+        resumo.Ordens.Should().HaveCountLessThanOrEqualTo(2);
+        resumo.TempoMedioFinalizacaoMinutos.Should().NotBeNull();
+        resumo.Ordens.Should().Contain(x => x.Id == ordemCriada.Id && x.EstaFinalizada);
+    }
+
     private async Task<OrdemDeServicoDto> CriarOrdemAsync()
     {
         var payload = new
