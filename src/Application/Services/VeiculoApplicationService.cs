@@ -1,4 +1,5 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+﻿using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
@@ -50,7 +51,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarVeiculoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarVeiculoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -68,7 +69,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarVeiculoParaClienteAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarVeiculoParaClienteAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -78,7 +79,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
         if (veiculo == null)
         {
-            throw new KeyNotFoundException($"Veiculo com ID {id} nao encontrado.");
+            throw new ServiceNotFoundException($"Veiculo com ID {id} nao encontrado.");
         }
 
         return MapToDto(veiculo);
@@ -95,7 +96,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
             if (veiculo == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(ObterVeiculoPorPlacaAsync), "Veiculo nao encontrado para a placa informada");
-                throw new KeyNotFoundException($"Veiculo com placa {placa} nao encontrado.");
+                throw new ServiceNotFoundException($"Veiculo com placa {placa} nao encontrado.");
             }
 
             _logger.LogInformation(LogTemplate.End, LoggerName, "Veiculo obtido com sucesso.");
@@ -103,7 +104,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ObterVeiculoPorPlacaAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ObterVeiculoPorPlacaAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -119,7 +120,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         var cliente = await _clienteRepository.ObterPorIdAsync(clienteId, cancellationToken);
         if (cliente == null)
         {
-            throw new KeyNotFoundException($"Cliente com ID {clienteId} nao encontrado.");
+            throw new ServiceNotFoundException($"Cliente com ID {clienteId} nao encontrado.");
         }
 
         var veiculos = await _veiculoRepository.ObterPorClienteAsync(clienteId, cancellationToken);
@@ -138,7 +139,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
         if (veiculo == null)
         {
-            throw new KeyNotFoundException($"Veiculo com ID {id} nao encontrado.");
+            throw new ServiceNotFoundException($"Veiculo com ID {id} nao encontrado.");
         }
 
         veiculo.Marca = dto.Marca.Trim();
@@ -159,14 +160,14 @@ public class VeiculoApplicationService : IVeiculoApplicationService
             if (veiculo == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarVeiculoAsync), "Veiculo nao encontrado para exclusao");
-                throw new KeyNotFoundException($"Veiculo com ID {id} nao encontrado.");
+                throw new ServiceNotFoundException($"Veiculo com ID {id} nao encontrado.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarVeiculoAsync), "Validando se existem ordens de servico ativas vinculadas ao veiculo");
             if (await _veiculoRepository.ExisteEmOrdemDeServicoAtivaAsync(id, cancellationToken))
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarVeiculoAsync), "Veiculo possui ordens de servico ativas vinculadas");
-                throw new InvalidOperationException("Nao e possivel excluir o veiculo pois existem ordens de servico ativas vinculadas.");
+                throw new ServiceValidationException("Nao e possivel excluir o veiculo pois existem ordens de servico ativas vinculadas.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarVeiculoAsync), "Excluindo veiculo");
@@ -175,7 +176,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(DeletarVeiculoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(DeletarVeiculoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -186,7 +187,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
         if (cliente == null)
         {
-            throw new KeyNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} nao encontrado.");
+            throw new ServiceNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} nao encontrado.");
         }
 
         return cliente;
@@ -204,7 +205,7 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         var veiculoExistente = await _veiculoRepository.ObterPorPlacaAsync(placa, cancellationToken);
         if (veiculoExistente != null)
         {
-            throw new InvalidOperationException("Veiculo com esta placa ja existe.");
+            throw new ServiceValidationException("Veiculo com esta placa ja existe.");
         }
 
         var veiculo = new Veiculo
@@ -232,3 +233,8 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         };
     }
 }
+
+
+
+
+

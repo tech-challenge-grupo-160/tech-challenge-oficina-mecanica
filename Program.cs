@@ -11,6 +11,7 @@ using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Extensions;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.HealthChecks;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Logging;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.API.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
@@ -18,14 +19,20 @@ using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Fiap.TechChallenge.OficinaMecanica.Application.Validators.Clientes;
+using Microsoft.Extensions.Logging.Console;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
-builder.Logging.AddSimpleConsole(options =>
+builder.Logging.AddConsoleFormatter<PlainConsoleFormatter, PlainConsoleFormatterOptions>();
+builder.Logging.AddConsole(options =>
 {
-    options.SingleLine = true;
+    options.FormatterName = PlainConsoleFormatter.FormatterName;
+});
+builder.Logging.Services.Configure<PlainConsoleFormatterOptions>(options =>
+{
     options.TimestampFormat = "dd/MM/yyyy HH:mm:ss ";
+    options.UseUtcTimestamp = false;
 });
 
 // Add services to the container.

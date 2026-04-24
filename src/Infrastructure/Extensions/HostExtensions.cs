@@ -24,7 +24,8 @@ public static class HostExtensions
     {
         using var scope = host.Services.CreateScope();
         var serviceProvider = scope.ServiceProvider;
-        var logger = serviceProvider.GetRequiredService<ILogger<object>>();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var logger = loggerFactory.CreateLogger(LoggerName);
 
         try
         {
@@ -61,6 +62,7 @@ public static class HostExtensions
                 LogTemplate.Error,
                 LoggerName,
                 nameof(MigrateAndSeedAsync),
+                LogTemplate.CurrentTraceId(),
                 "Erro critico ao executar migrations e seeding. A aplicacao sera encerrada.");
             throw;
         }
@@ -106,6 +108,7 @@ public static class HostExtensions
                         LogTemplate.Error,
                         LoggerName,
                         nameof(MigrateWithRetryAsync),
+                        LogTemplate.CurrentTraceId(),
                         $"Falha ao conectar ao banco de dados apos {maxRetries} tentativas.");
                     throw;
                 }

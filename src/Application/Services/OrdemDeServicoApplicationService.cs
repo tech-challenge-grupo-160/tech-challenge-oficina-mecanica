@@ -1,5 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
+using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
@@ -26,8 +27,6 @@ public interface IOrdemDeServicoApplicationService
         DateTime? dataAberturaInicio,
         DateTime? dataAberturaFim,
         CancellationToken cancellationToken);
-    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(int clienteId, CancellationToken cancellationToken);
-    Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorStatusAsync(string status, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken);
@@ -93,20 +92,20 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             if (cliente == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarOrdemDeServicoAsync), "Cliente nao encontrado para abertura da OS");
-                throw new KeyNotFoundException($"Cliente com ID {dto.ClienteId} nao encontrado.");
+                throw new ServiceNotFoundException($"Cliente com ID {dto.ClienteId} nao encontrado.");
             }
 
             var veiculo = await _veiculoRepository.ObterPorIdAsync(dto.VeiculoId, cancellationToken);
             if (veiculo == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarOrdemDeServicoAsync), "Veiculo nao encontrado para abertura da OS");
-                throw new KeyNotFoundException($"Veiculo com ID {dto.VeiculoId} nao encontrado.");
+                throw new ServiceNotFoundException($"Veiculo com ID {dto.VeiculoId} nao encontrado.");
             }
 
             if (veiculo.ClienteId != dto.ClienteId)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarOrdemDeServicoAsync), "Veiculo nao pertence ao cliente informado");
-                throw new InvalidOperationException("O veiculo informado nao pertence ao cliente informado.");
+                throw new ServiceValidationException("O veiculo informado nao pertence ao cliente informado.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarOrdemDeServicoAsync), "Persistindo ordem de servico em status Recebida");
@@ -138,7 +137,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarOrdemDeServicoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarOrdemDeServicoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -148,7 +147,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
-            throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
         return MapToDto(ordem);
@@ -159,7 +158,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
-            throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
         var historicos = await _historicoRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken);
@@ -183,7 +182,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
-            throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
         return MapToMonitoramentoDto(ordem, DateTimeHelper.UTCBrazilNow());
@@ -242,7 +241,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         {
             if (!Enum.TryParse<StatusOrdemDeServico>(status, true, out var statusEnum))
             {
-                throw new InvalidOperationException($"Status invalido: {status}");
+                throw new ServiceValidationException($"Status invalido: {status}");
             }
 
             statusFiltro = statusEnum;
@@ -277,29 +276,6 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         };
     }
 
-    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorClienteAsync(int clienteId, CancellationToken cancellationToken)
-    {
-        var cliente = await _clienteRepository.ObterPorIdAsync(clienteId, cancellationToken);
-        if (cliente == null)
-        {
-            throw new KeyNotFoundException($"Cliente com ID {clienteId} nao encontrado.");
-        }
-
-        var ordens = await _ordemRepository.ObterPorClienteAsync(clienteId, cancellationToken);
-        return ordens.Select(MapToDto);
-    }
-
-    public async Task<IEnumerable<OrdemDeServicoDto>> ListarOrdensDeServicoPorStatusAsync(string status, CancellationToken cancellationToken)
-    {
-        if (!Enum.TryParse<StatusOrdemDeServico>(status, true, out var statusEnum))
-        {
-            throw new InvalidOperationException($"Status invalido: {status}");
-        }
-
-        var ordens = await _ordemRepository.ObterPorStatusAsync(statusEnum, cancellationToken);
-        return ordens.Select(MapToDto);
-    }
-
     public async Task<OrdemDeServicoDto> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
@@ -310,13 +286,13 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AtualizarStatusAsync), "Ordem de servico nao encontrada para alteracao de status");
-                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
             }
 
             if (!Enum.TryParse<StatusOrdemDeServico>(dto.NovoStatus, out var novoStatus))
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AtualizarStatusAsync), "Status informado e invalido");
-                throw new InvalidOperationException($"Status invalido: {dto.NovoStatus}");
+                throw new ServiceValidationException($"Status invalido: {dto.NovoStatus}");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AtualizarStatusAsync), $"Alterando status da ordem para {novoStatus}");
@@ -327,7 +303,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AtualizarStatusAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AtualizarStatusAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -342,7 +318,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(IniciarDiagnosticoAsync), "Ordem de servico nao encontrada para iniciar diagnostico");
-                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(IniciarDiagnosticoAsync), "Alterando status da ordem para EmDiagnostico");
@@ -361,7 +337,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(IniciarDiagnosticoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(IniciarDiagnosticoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -376,7 +352,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(FinalizarDiagnosticoAsync), "Ordem de servico nao encontrada para finalizar diagnostico");
-                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarDiagnosticoAsync), "Validando composicao da OS e alterando status para AguardandoAprovacao");
@@ -395,7 +371,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(FinalizarDiagnosticoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(FinalizarDiagnosticoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -465,7 +441,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AprovarAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AprovarAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -480,7 +456,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(FinalizarAsync), "Ordem de servico nao encontrada para finalizacao");
-                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarAsync), "Finalizando servico e alterando status para Finalizada");
@@ -499,7 +475,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(FinalizarAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(FinalizarAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -514,7 +490,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(EntregarAsync), "Ordem de servico nao encontrada para entrega");
-                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(EntregarAsync), "Entregando veiculo e alterando status para Entregue");
@@ -533,7 +509,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(EntregarAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(EntregarAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -548,7 +524,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(RegistrarPagamentoAsync), "Ordem de servico nao encontrada para registro de pagamento");
-                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(RegistrarPagamentoAsync), "Registrando pagamento da ordem de servico");
@@ -566,7 +542,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(RegistrarPagamentoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(RegistrarPagamentoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -581,7 +557,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CancelarAsync), "Ordem de servico nao encontrada para cancelamento");
-                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CancelarAsync), "Cancelando ordem de servico com motivo informado");
@@ -600,7 +576,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CancelarAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CancelarAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -615,14 +591,14 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarServicoAsync), "Ordem de servico nao encontrada para adicionar servico");
-                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
             }
 
             var servico = await _servicoRepository.ObterPorIdAsync(dto.ServicoId, cancellationToken);
             if (servico == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarServicoAsync), "Servico nao encontrado para composicao do orcamento");
-                throw new KeyNotFoundException($"Servico com ID {dto.ServicoId} nao encontrado.");
+                throw new ServiceNotFoundException($"Servico com ID {dto.ServicoId} nao encontrado.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarServicoAsync), "Adicionando servico a ordem");
@@ -640,7 +616,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AdicionarServicoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AdicionarServicoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -655,14 +631,14 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarPecaAsync), "Ordem de servico nao encontrada para adicionar peca");
-                throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
             }
 
             var peca = await _pecaRepository.ObterPorIdAsync(dto.PecaId, cancellationToken);
             if (peca == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarPecaAsync), "Peca nao encontrada para composicao do orcamento");
-                throw new KeyNotFoundException($"Peca com ID {dto.PecaId} nao encontrada.");
+                throw new ServiceNotFoundException($"Peca com ID {dto.PecaId} nao encontrada.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarPecaAsync), "Adicionando peca a ordem");
@@ -680,7 +656,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AdicionarPecaAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AdicionarPecaAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -1000,3 +976,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
 
     private sealed record FaltaEstoqueItem(Peca Peca, int QuantidadeFaltante);
 }
+
+
+
+

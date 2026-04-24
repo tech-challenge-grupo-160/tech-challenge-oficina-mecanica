@@ -1,4 +1,5 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+﻿using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
@@ -47,7 +48,7 @@ public class ServicoApplicationService : IServicoApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarServicoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarServicoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -62,7 +63,7 @@ public class ServicoApplicationService : IServicoApplicationService
             if (servico == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(ObterServicoAsync), "Servico nao encontrado para o identificador informado");
-                throw new KeyNotFoundException($"Serviço com ID {id} não encontrado.");
+                throw new ServiceNotFoundException($"Servico com ID {id} nao encontrado.");
             }
 
             _logger.LogInformation(LogTemplate.End, LoggerName, "Servico obtido com sucesso.");
@@ -70,7 +71,7 @@ public class ServicoApplicationService : IServicoApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ObterServicoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ObterServicoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -88,7 +89,7 @@ public class ServicoApplicationService : IServicoApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ListarServicosAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ListarServicosAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -103,7 +104,7 @@ public class ServicoApplicationService : IServicoApplicationService
             if (servico == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AtualizarServicoAsync), "Servico nao encontrado para atualizacao");
-                throw new KeyNotFoundException($"Serviço com ID {id} não encontrado.");
+                throw new ServiceNotFoundException($"Servico com ID {id} nao encontrado.");
             }
 
             servico.Nome = dto.Nome;
@@ -118,7 +119,7 @@ public class ServicoApplicationService : IServicoApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AtualizarServicoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AtualizarServicoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -133,14 +134,14 @@ public class ServicoApplicationService : IServicoApplicationService
             if (servico == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarServicoAsync), "Servico nao encontrado para exclusao");
-                throw new KeyNotFoundException($"Serviço com ID {id} não encontrado.");
+                throw new ServiceNotFoundException($"Servico com ID {id} nao encontrado.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarServicoAsync), "Validando se existem ordens de servico ativas vinculadas ao servico");
             if (await _servicoRepository.ExisteEmOrdemDeServicoAtivaAsync(id, cancellationToken))
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarServicoAsync), "Servico possui ordens de servico ativas vinculadas");
-                throw new InvalidOperationException("Nao e possivel excluir o servico pois existem ordens de servico ativas vinculadas.");
+                throw new ServiceValidationException("Nao e possivel excluir o servico pois existem ordens de servico ativas vinculadas.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarServicoAsync), "Excluindo servico");
@@ -149,7 +150,7 @@ public class ServicoApplicationService : IServicoApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(DeletarServicoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(DeletarServicoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -166,3 +167,8 @@ public class ServicoApplicationService : IServicoApplicationService
         };
     }
 }
+
+
+
+
+
