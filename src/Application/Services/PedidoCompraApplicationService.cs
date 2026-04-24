@@ -264,6 +264,8 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
             OrdemDeServicoId = pedidoCompra.OrdemDeServicoId,
             PecaId = pedidoCompra.PecaId,
             NomePeca = pedidoCompra.Peca?.Nome ?? string.Empty,
+            MarcaPeca = pedidoCompra.Peca?.Marca ?? string.Empty,
+            ModeloPeca = pedidoCompra.Peca?.Modelo ?? string.Empty,
             QuantidadeSolicitada = pedidoCompra.QuantidadeSolicitada,
             QuantidadeRecebida = pedidoCompra.QuantidadeRecebida,
             Status = pedidoCompra.Status.ToString(),

@@ -6,6 +6,8 @@ public class PedidoCompraDto
     public int OrdemDeServicoId { get; set; }
     public int PecaId { get; set; }
     public string NomePeca { get; set; } = null!;
+    public string MarcaPeca { get; set; } = null!;
+    public string ModeloPeca { get; set; } = null!;
     public int QuantidadeSolicitada { get; set; }
     public int QuantidadeRecebida { get; set; }
     public string Status { get; set; } = null!;

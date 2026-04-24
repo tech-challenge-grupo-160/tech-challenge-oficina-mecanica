@@ -283,6 +283,16 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
                     NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
 
+                    b.Property<string>("Marca")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Modelo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(255)
