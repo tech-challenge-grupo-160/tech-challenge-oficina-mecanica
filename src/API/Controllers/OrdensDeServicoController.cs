@@ -38,6 +38,13 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(historico);
     }
 
+    [HttpGet("{id}/movimentacoes-estoque")]
+    public async Task<ActionResult<IEnumerable<MovimentacaoEstoqueDto>>> ObterMovimentacoesEstoque(int id, CancellationToken cancellationToken)
+    {
+        var movimentacoes = await _ordemService.ObterMovimentacoesEstoqueAsync(id, cancellationToken);
+        return Ok(movimentacoes);
+    }
+
     [HttpGet("monitoramento")]
     public async Task<ActionResult<ResumoMonitoramentoOrdensDeServicoDto>> ObterResumoMonitoramento(
         [FromQuery] int page = 1,
@@ -154,10 +161,24 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(ordem);
     }
 
+    [HttpDelete("{id}/servicos/{servicoId:int}")]
+    public async Task<ActionResult<OrdemDeServicoDto>> RemoverServico(int id, int servicoId, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemService.RemoverServicoAsync(id, servicoId, cancellationToken);
+        return Ok(ordem);
+    }
+
     [HttpPost("{id}/pecas")]
     public async Task<ActionResult<OrdemDeServicoDto>> AdicionarPeca(int id, [FromBody] AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
     {
         var ordem = await _ordemService.AdicionarPecaAsync(id, dto, cancellationToken);
+        return Ok(ordem);
+    }
+
+    [HttpDelete("{id}/pecas/{pecaId:int}")]
+    public async Task<ActionResult<OrdemDeServicoDto>> RemoverPeca(int id, int pecaId, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemService.RemoverPecaAsync(id, pecaId, cancellationToken);
         return Ok(ordem);
     }
 

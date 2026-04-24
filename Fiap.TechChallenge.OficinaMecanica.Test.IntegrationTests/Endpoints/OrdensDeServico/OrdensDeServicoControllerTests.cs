@@ -12,6 +12,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
 
     public OrdensDeServicoControllerTests(CustomWebApplicationFactory factory)
     {
+        factory.ResetDatabase();
         _client = factory.CreateClient();
     }
 
@@ -68,13 +69,14 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         obterHistorico.StatusCode.Should().Be(HttpStatusCode.OK);
         var historico = await obterHistorico.Content.ReadFromJsonAsync<List<OrdemServicoHistoricoDto>>();
         historico.Should().NotBeNull();
-        historico.Should().HaveCount(9);
+        historico.Should().HaveCount(10);
         historico![0].TipoEvento.Should().Be("OrdemCriada");
         historico[0].StatusAnterior.Should().BeNull();
         historico[0].StatusNovo.Should().Be("Recebida");
         historico.Should().OnlyContain(h =>
             h.UsuarioId == CustomWebApplicationFactory.UsuarioAutenticadoId &&
             h.UsuarioNome == CustomWebApplicationFactory.UsuarioAutenticadoNome);
+        historico.Should().Contain(h => h.TipoEvento == "EstoqueBaixado");
         historico[^1].TipoEvento.Should().Be("VeiculoEntregue");
         historico[^1].StatusAnterior.Should().Be("Finalizada");
         historico[^1].StatusNovo.Should().Be("Entregue");
@@ -166,6 +168,123 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         resumo.Ordens.Should().HaveCountLessThanOrEqualTo(2);
         resumo.TempoMedioFinalizacaoMinutos.Should().NotBeNull();
         resumo.Ordens.Should().Contain(x => x.Id == ordemCriada.Id && x.EstaFinalizada);
+    }
+
+    [Fact]
+    public async Task Aprovar_DeveBloquearOsGerarPedidoCompraEPermitirNovaAprovacaoAposRecebimento()
+    {
+        var ordemCriada = await CriarOrdemAsync();
+
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
+        await _client.PostAsJsonAsync(
+            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
+            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
+        await _client.PostAsJsonAsync(
+            $"/api/v1/ordens-servico/{ordemCriada.Id}/pecas",
+            new { pecaId = CustomWebApplicationFactory.PecaExistenteId, quantidade = 101 });
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar-diagnostico", null);
+
+        var primeiraAprovacao = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/aprovar", null);
+
+        primeiraAprovacao.StatusCode.Should().Be(HttpStatusCode.OK);
+        var aguardandoEstoque = await primeiraAprovacao.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        aguardandoEstoque.Should().NotBeNull();
+        aguardandoEstoque!.Status.Should().Be("AguardandoEstoque");
+
+        var pedidosResponse = await _client.GetAsync($"/api/v1/pedidos-compra/ordem/{ordemCriada.Id}");
+
+        pedidosResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var pedidos = await pedidosResponse.Content.ReadFromJsonAsync<List<PedidoCompraDto>>();
+        pedidos.Should().NotBeNull();
+        pedidos.Should().ContainSingle();
+        pedidos![0].QuantidadeSolicitada.Should().Be(1);
+        pedidos[0].Status.Should().Be("Pendente");
+
+        var receberPedido = await _client.PatchAsJsonAsync(
+            $"/api/v1/pedidos-compra/{pedidos[0].Id}/receber",
+            new { quantidadeRecebida = 1 });
+
+        receberPedido.StatusCode.Should().Be(HttpStatusCode.OK);
+        var pedidoRecebido = await receberPedido.Content.ReadFromJsonAsync<PedidoCompraDto>();
+        pedidoRecebido.Should().NotBeNull();
+        pedidoRecebido!.Status.Should().Be("Recebido");
+        pedidoRecebido.QuantidadeRecebida.Should().Be(1);
+
+        var segundaAprovacao = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/aprovar", null);
+
+        segundaAprovacao.StatusCode.Should().Be(HttpStatusCode.OK);
+        var emExecucao = await segundaAprovacao.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        emExecucao.Should().NotBeNull();
+        emExecucao!.Status.Should().Be("EmExecucao");
+
+        var movimentacoesResponse = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/movimentacoes-estoque");
+
+        movimentacoesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var movimentacoes = await movimentacoesResponse.Content.ReadFromJsonAsync<List<MovimentacaoEstoqueDto>>();
+        movimentacoes.Should().NotBeNull();
+        movimentacoes.Should().HaveCount(2);
+        movimentacoes.Should().Contain(x =>
+            x.TipoMovimentacao == "EntradaPorPedidoCompra" &&
+            x.Quantidade == 1 &&
+            x.QuantidadePosterior == 101);
+        movimentacoes.Should().Contain(x =>
+            x.TipoMovimentacao == "BaixaParaOrdemDeServico" &&
+            x.Quantidade == 101 &&
+            x.QuantidadePosterior == 0);
+    }
+
+    [Fact]
+    public async Task RemoverItens_DevePermitirSomenteQuandoOsEstiverEmDiagnostico()
+    {
+        var ordemCriada = await CriarOrdemAsync();
+
+        var iniciarDiagnostico = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
+        iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await _client.PostAsJsonAsync(
+            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
+            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
+        await _client.PostAsJsonAsync(
+            $"/api/v1/ordens-servico/{ordemCriada.Id}/pecas",
+            new { pecaId = CustomWebApplicationFactory.PecaExistenteId, quantidade = 1 });
+
+        var removerServico = await _client.DeleteAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/servicos/{CustomWebApplicationFactory.ServicoExistenteId}");
+        removerServico.StatusCode.Should().Be(HttpStatusCode.OK);
+        var ordemSemServico = await removerServico.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        ordemSemServico.Should().NotBeNull();
+        ordemSemServico!.Servicos.Should().BeEmpty();
+
+        await _client.PostAsJsonAsync(
+            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
+            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar-diagnostico", null);
+
+        var removerPeca = await _client.DeleteAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/pecas/{CustomWebApplicationFactory.PecaExistenteId}");
+        removerPeca.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await removerPeca.Content.ReadAsStringAsync();
+        body.Should().Contain("remover pecas durante o diagnostico");
+    }
+
+    [Fact]
+    public async Task AdicionarServico_DeveRetornarBadRequestQuandoServicoJaExistirNaOs()
+    {
+        var ordemCriada = await CriarOrdemAsync();
+
+        var iniciarDiagnostico = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
+        iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var primeiraInclusao = await _client.PostAsJsonAsync(
+            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
+            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
+        primeiraInclusao.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var segundaInclusao = await _client.PostAsJsonAsync(
+            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
+            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
+
+        segundaInclusao.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await segundaInclusao.Content.ReadAsStringAsync();
+        body.Should().Contain("ja foi adicionado");
     }
 
     private async Task<OrdemDeServicoDto> CriarOrdemAsync()

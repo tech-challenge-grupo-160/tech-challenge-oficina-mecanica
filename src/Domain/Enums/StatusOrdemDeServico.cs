@@ -8,5 +8,6 @@ public enum StatusOrdemDeServico
     EmExecucao = 3,
     Finalizada = 4,
     Entregue = 5,
-    Cancelada = 6
+    Cancelada = 6,
+    AguardandoEstoque = 7
 }

@@ -37,6 +37,8 @@ public class PecaApplicationService : IPecaApplicationService
             var peca = new Peca
             {
                 Nome = dto.Nome,
+                Marca = dto.Marca,
+                Modelo = dto.Modelo,
                 Preco = dto.Preco,
                 QuantidadeEstoque = dto.QuantidadeEstoque
             };
@@ -107,6 +109,8 @@ public class PecaApplicationService : IPecaApplicationService
             }
 
             peca.Nome = dto.Nome;
+            peca.Marca = dto.Marca;
+            peca.Modelo = dto.Modelo;
             peca.Preco = dto.Preco;
             peca.QuantidadeEstoque = dto.QuantidadeEstoque;
 
@@ -159,6 +163,8 @@ public class PecaApplicationService : IPecaApplicationService
         {
             Id = peca.Id,
             Nome = peca.Nome,
+            Marca = peca.Marca,
+            Modelo = peca.Modelo,
             Preco = peca.Preco,
             QuantidadeEstoque = peca.QuantidadeEstoque
         };

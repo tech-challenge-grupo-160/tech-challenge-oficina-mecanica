@@ -150,11 +150,11 @@ public static class OficinaDbContextSeeder
             {
                 var pecas = new[]
                 {
-                    new Peca { Nome = "Filtro de Oleo", Preco = 45.00m, QuantidadeEstoque = 50 },
-                    new Peca { Nome = "Filtro de Ar", Preco = 35.00m, QuantidadeEstoque = 40 },
-                    new Peca { Nome = "Pastilha de Freio", Preco = 120.00m, QuantidadeEstoque = 30 },
-                    new Peca { Nome = "Pneu Aro 15", Preco = 250.00m, QuantidadeEstoque = 20 },
-                    new Peca { Nome = "Vela de Ignicao", Preco = 25.00m, QuantidadeEstoque = 100 }
+                    new Peca { Nome = "Filtro de Oleo", Marca = "Mann", Modelo = "W610/3", Preco = 45.00m, QuantidadeEstoque = 50 },
+                    new Peca { Nome = "Filtro de Ar", Marca = "Bosch", Modelo = "0986AF", Preco = 35.00m, QuantidadeEstoque = 40 },
+                    new Peca { Nome = "Pastilha de Freio", Marca = "Cobreq", Modelo = "N-1234", Preco = 120.00m, QuantidadeEstoque = 30 },
+                    new Peca { Nome = "Pneu Aro 15", Marca = "Pirelli", Modelo = "175/65R15", Preco = 250.00m, QuantidadeEstoque = 20 },
+                    new Peca { Nome = "Vela de Ignicao", Marca = "NGK", Modelo = "BKR6E", Preco = 25.00m, QuantidadeEstoque = 100 }
                 };
 
                 await context.Pecas.AddRangeAsync(pecas);

@@ -230,6 +230,50 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                     b.ToTable("OrdemServicoHistorico", (string)null);
                 });
 
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.PedidoCompra", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1L, null, null, null, null, null);
+
+                    b.Property<DateTime?>("DataRecebimento")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("DataSolicitacao")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Observacao")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("OrdemDeServicoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PecaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuantidadeRecebida")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuantidadeSolicitada")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrdemDeServicoId", "PecaId", "Status");
+
+                    b.HasIndex("PecaId");
+
+                    b.ToTable("PedidoCompra", (string)null);
+                });
+
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Peca", b =>
                 {
                     b.Property<int>("Id")
@@ -238,6 +282,16 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
                     NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+
+                    b.Property<string>("Marca")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Modelo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -254,6 +308,57 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Peca", (string)null);
+                });
+
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.MovimentacaoEstoque", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1L, null, null, null, null, null);
+
+                    b.Property<DateTime>("DataMovimentacao")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int?>("OrdemDeServicoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PecaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PedidoCompraId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Quantidade")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuantidadeAnterior")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuantidadePosterior")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TipoMovimentacao")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DataMovimentacao");
+
+                    b.HasIndex("OrdemDeServicoId");
+
+                    b.HasIndex("PecaId");
+
+                    b.HasIndex("PedidoCompraId");
+
+                    b.ToTable("MovimentacaoEstoque", (string)null);
                 });
 
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Servico", b =>
@@ -432,6 +537,50 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                     b.Navigation("OrdemDeServico");
                 });
 
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.PedidoCompra", b =>
+                {
+                    b.HasOne("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServico", "OrdemDeServico")
+                        .WithMany()
+                        .HasForeignKey("OrdemDeServicoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Peca", "Peca")
+                        .WithMany("PedidosCompra")
+                        .HasForeignKey("PecaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("OrdemDeServico");
+
+                    b.Navigation("Peca");
+                });
+
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.MovimentacaoEstoque", b =>
+                {
+                    b.HasOne("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OrdemDeServico", "OrdemDeServico")
+                        .WithMany()
+                        .HasForeignKey("OrdemDeServicoId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Peca", "Peca")
+                        .WithMany("MovimentacoesEstoque")
+                        .HasForeignKey("PecaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.PedidoCompra", "PedidoCompra")
+                        .WithMany("MovimentacoesEstoque")
+                        .HasForeignKey("PedidoCompraId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("OrdemDeServico");
+
+                    b.Navigation("Peca");
+
+                    b.Navigation("PedidoCompra");
+                });
+
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Veiculo", b =>
                 {
                     b.HasOne("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Cliente", "Cliente")
@@ -461,7 +610,16 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
 
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Peca", b =>
                 {
+                    b.Navigation("MovimentacoesEstoque");
+
                     b.Navigation("OrdensDeServico");
+
+                    b.Navigation("PedidosCompra");
+                });
+
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.PedidoCompra", b =>
+                {
+                    b.Navigation("MovimentacoesEstoque");
                 });
 
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Servico", b =>
