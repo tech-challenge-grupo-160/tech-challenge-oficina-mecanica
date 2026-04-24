@@ -27,6 +27,13 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     public const string UsuarioAutenticadoNome = "integration-test-user";
     private readonly string _databaseName = $"OficinaInMemoryTests-{Guid.NewGuid()}";
 
+    public void ResetDatabase()
+    {
+        using var scope = Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
+        SeedData(context);
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -72,11 +79,14 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         context.OrdemDeServicoPecas.RemoveRange(context.OrdemDeServicoPecas);
         context.OrdemDeServicoServicos.RemoveRange(context.OrdemDeServicoServicos);
         context.OrdemServicoHistoricos.RemoveRange(context.OrdemServicoHistoricos);
+        context.MovimentacoesEstoque.RemoveRange(context.MovimentacoesEstoque);
+        context.PedidosCompra.RemoveRange(context.PedidosCompra);
         context.OrdensDeServico.RemoveRange(context.OrdensDeServico);
         context.Pecas.RemoveRange(context.Pecas);
         context.Servicos.RemoveRange(context.Servicos);
         context.Veiculos.RemoveRange(context.Veiculos);
         context.Clientes.RemoveRange(context.Clientes);
+        context.SaveChanges();
 
         context.Clientes.AddRange(
             new Cliente
@@ -124,8 +134,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             {
                 Id = PecaExistenteId,
                 Nome = "Pastilha de Freio",
+                Marca = "Cobreq",
+                Modelo = "N-1234",
                 Preco = 45m,
-                QuantidadeEstoque = 10
+                QuantidadeEstoque = 100
             });
 
         context.SaveChanges();
