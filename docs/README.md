@@ -1,6 +1,6 @@
 # Documentação
 
-Este diretório concentra a documentação operacional e técnica do projeto.
+Este diretório reúne a documentação viva do projeto, alinhada ao código atual do repositório.
 
 ## Leitura recomendada
 
@@ -13,19 +13,19 @@ Este diretório concentra a documentação operacional e técnica do projeto.
 
 ### [SETUP.md](SETUP.md)
 
-Guia para preparar o ambiente, executar a aplicação com Docker ou localmente, rodar testes e diagnosticar problemas comuns.
+Pré-requisitos, execução local, execução com Docker, testes e troubleshooting.
 
 ### [ARCHITECTURE.md](ARCHITECTURE.md)
 
-Descrição da arquitetura em camadas, componentes centrais, fluxo da requisição, persistência, autenticação e inicialização da aplicação.
+Organização em camadas, responsabilidades de cada módulo e fluxo principal da aplicação.
 
 ### [API_REFERENCE.md](API_REFERENCE.md)
 
-Resumo dos endpoints expostos, autenticação, contratos principais e fluxos típicos de uso da API.
+Rotas, autenticação, payloads principais, fluxo da OS, monitoramento e tratamento de erros.
 
 ## Convenções
 
-- `README.md` na raiz deve servir como ponto de entrada do projeto.
-- `docs/` deve conter apenas documentação viva e útil para operação ou manutenção.
-- Conteúdo histórico, incidentes pontuais e notas temporárias não devem permanecer como documentação principal.
+- a documentação deve refletir o estado atual do código;
+- `README.md` da raiz é o ponto de entrada para o projeto;
+- `docs/` deve conter documentação operacional e técnica, não anotações temporárias.
 

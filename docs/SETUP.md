@@ -93,6 +93,13 @@ Observações:
 dotnet test
 ```
 
+Para rodar suites separadas:
+
+```bash
+dotnet test Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.csproj
+dotnet test Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.csproj
+```
+
 ## Operação básica
 
 ### Subir em background
