@@ -46,6 +46,16 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
         return await _context.OrdensDeServico.AnyAsync(o => o.ClienteId == clienteId, cancellationToken);
     }
 
+    public async Task<bool> ExisteOrdemAtivaPorClienteEVeiculoAsync(int clienteId, int veiculoId, CancellationToken cancellationToken)
+    {
+        return await _context.OrdensDeServico.AnyAsync(
+            o => o.ClienteId == clienteId &&
+                 o.VeiculoId == veiculoId &&
+                 o.Status != StatusOrdemDeServico.Cancelada &&
+                 o.Status != StatusOrdemDeServico.Entregue,
+            cancellationToken);
+    }
+
     public async Task<int> ContarAsync(
         int? clienteId,
         StatusOrdemDeServico? status,
@@ -101,7 +111,11 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
 
     public async Task<OrdemDeServico> AtualizarAsync(OrdemDeServico ordem, CancellationToken cancellationToken)
     {
-        _context.OrdensDeServico.Update(ordem);
+        if (_context.Entry(ordem).State == EntityState.Detached)
+        {
+            _context.OrdensDeServico.Update(ordem);
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
         return ordem;
     }

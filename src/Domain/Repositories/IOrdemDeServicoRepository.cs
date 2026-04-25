@@ -9,6 +9,7 @@ public interface IOrdemDeServicoRepository
     Task<OrdemDeServico?> ObterPorIdAsync(int id, CancellationToken cancellationToken);
     Task<OrdemDeServico?> ObterPorNumeroAsync(string numero, CancellationToken cancellationToken);
     Task<bool> ExistePorClienteAsync(int clienteId, CancellationToken cancellationToken);
+    Task<bool> ExisteOrdemAtivaPorClienteEVeiculoAsync(int clienteId, int veiculoId, CancellationToken cancellationToken);
     Task<int> ContarAsync(
         int? clienteId,
         StatusOrdemDeServico? status,

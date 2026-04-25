@@ -98,6 +98,26 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
     }
 
     [Fact]
+    public async Task CriarOrdem_DeveRetornarBadRequestQuandoJaExistirOsAtivaParaMesmoClienteEVeiculo()
+    {
+        var primeiraOrdem = await CriarOrdemAsync();
+
+        var payload = new
+        {
+            clienteId = CustomWebApplicationFactory.PessoaFisicaClienteId,
+            veiculoId = CustomWebApplicationFactory.VeiculoExistenteId,
+            descricaoSolicitacao = "Nova tentativa para o mesmo cliente e veiculo.",
+            observacoesRecepcao = "Nao deve permitir duplicidade."
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/ordens-servico", payload);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("ordem de servico ativa");
+    }
+
+    [Fact]
     public async Task Entregar_DeveRetornarBadRequestQuandoPagamentoNaoTiverSidoRegistrado()
     {
         var ordemCriada = await CriarOrdemAsync();

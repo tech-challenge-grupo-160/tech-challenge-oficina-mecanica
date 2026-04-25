@@ -12,3 +12,4 @@ node_modules/
 .idea/
 #launchSettings.json
 .env
+artifacts/

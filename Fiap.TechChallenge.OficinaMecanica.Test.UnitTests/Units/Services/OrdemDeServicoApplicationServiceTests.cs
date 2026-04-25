@@ -1,4 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
@@ -81,6 +82,9 @@ public class OrdemDeServicoApplicationServiceTests
             .Setup(x => x.ObterPorIdAsync(dto.VeiculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(veiculo);
         _ordemRepositoryMock
+            .Setup(x => x.ExisteOrdemAtivaPorClienteEVeiculoAsync(dto.ClienteId, dto.VeiculoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _ordemRepositoryMock
             .Setup(x => x.CriarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico ordem, CancellationToken _) =>
             {
@@ -107,6 +111,29 @@ public class OrdemDeServicoApplicationServiceTests
                     h.TipoEvento == TipoEventoOrdemServico.OrdemCriada),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task CriarOrdemDeServicoAsync_DeveLancarQuandoJaExistirOsAtivaParaMesmoClienteEVeiculo()
+    {
+        var dto = CriarOrdemDeServicoDtoMock.Criar(clienteId: 1, veiculoId: 10);
+        var cliente = ClienteMock.Criar(id: 1);
+        var veiculo = VeiculoMock.Criar(id: 10, clienteId: 1);
+
+        _clienteRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(dto.ClienteId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cliente);
+        _veiculoRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(dto.VeiculoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(veiculo);
+        _ordemRepositoryMock
+            .Setup(x => x.ExisteOrdemAtivaPorClienteEVeiculoAsync(dto.ClienteId, dto.VeiculoId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var acao = () => _service.CriarOrdemDeServicoAsync(dto, CancellationToken.None);
+
+        await acao.Should().ThrowAsync<ServiceValidationException>()
+            .WithMessage("*ordem de servico ativa*");
     }
 
     [Fact]
@@ -387,7 +414,6 @@ public class OrdemDeServicoApplicationServiceTests
         _servicoRepositoryMock
             .Setup(x => x.ObterPorIdAsync(servico.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(servico);
-
         var acao = () => _service.AdicionarServicoAsync(
             ordem.Id,
             new AdicionarServicoAOrdemDto { ServicoId = servico.Id },
