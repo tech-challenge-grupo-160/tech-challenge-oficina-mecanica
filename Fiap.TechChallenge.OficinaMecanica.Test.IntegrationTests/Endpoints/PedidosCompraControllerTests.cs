@@ -19,8 +19,14 @@ public class PedidosCompraControllerTests : IClassFixture<CustomWebApplicationFa
     [Fact]
     public async Task Listar_DeveRetornarPedidosDeCompraPaginados()
     {
-        var primeiraOrdem = await CriarOrdemComPedidoCompraAsync("Barulho no freio dianteiro.");
-        var segundaOrdem = await CriarOrdemComPedidoCompraAsync("Barulho no freio traseiro.");
+        var primeiraOrdem = await CriarOrdemComPedidoCompraAsync(
+            "Barulho no freio dianteiro.",
+            CustomWebApplicationFactory.PessoaFisicaClienteId,
+            CustomWebApplicationFactory.VeiculoExistenteId);
+        var segundaOrdem = await CriarOrdemComPedidoCompraAsync(
+            "Barulho no freio traseiro.",
+            CustomWebApplicationFactory.PessoaJuridicaClienteId,
+            CustomWebApplicationFactory.SegundoVeiculoExistenteId);
 
         var response = await _client.GetAsync("/api/v1/pedidos-compra?page=1&pageSize=1");
 
@@ -40,7 +46,10 @@ public class PedidosCompraControllerTests : IClassFixture<CustomWebApplicationFa
     [Fact]
     public async Task Criar_DevePermitirPedidoCompraManualSemGeracaoAutomatica()
     {
-        var ordem = await CriarOrdemAsync("Troca preventiva de insumos.");
+        var ordem = await CriarOrdemAsync(
+            "Troca preventiva de insumos.",
+            CustomWebApplicationFactory.PessoaFisicaClienteId,
+            CustomWebApplicationFactory.VeiculoExistenteId);
 
         var response = await _client.PostAsJsonAsync(
             "/api/v1/pedidos-compra",
@@ -63,9 +72,9 @@ public class PedidosCompraControllerTests : IClassFixture<CustomWebApplicationFa
         pedido.Observacao.Should().Be("Pedido manual para reposicao");
     }
 
-    private async Task<OrdemDeServicoDto> CriarOrdemComPedidoCompraAsync(string descricaoSolicitacao)
+    private async Task<OrdemDeServicoDto> CriarOrdemComPedidoCompraAsync(string descricaoSolicitacao, int clienteId, int veiculoId)
     {
-        var ordem = await CriarOrdemAsync(descricaoSolicitacao);
+        var ordem = await CriarOrdemAsync(descricaoSolicitacao, clienteId, veiculoId);
 
         var iniciar = await _client.PatchAsync($"/api/v1/ordens-servico/{ordem!.Id}/iniciar-diagnostico", null);
         iniciar.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -93,12 +102,12 @@ public class PedidosCompraControllerTests : IClassFixture<CustomWebApplicationFa
         return ordem;
     }
 
-    private async Task<OrdemDeServicoDto> CriarOrdemAsync(string descricaoSolicitacao)
+    private async Task<OrdemDeServicoDto> CriarOrdemAsync(string descricaoSolicitacao, int clienteId, int veiculoId)
     {
         var payload = new
         {
-            clienteId = CustomWebApplicationFactory.PessoaFisicaClienteId,
-            veiculoId = CustomWebApplicationFactory.VeiculoExistenteId,
+            clienteId,
+            veiculoId,
             descricaoSolicitacao,
             observacoesRecepcao = "Pedido para gerar compra."
         };

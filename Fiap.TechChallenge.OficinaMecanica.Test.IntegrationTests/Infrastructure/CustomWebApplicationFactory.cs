@@ -21,6 +21,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     public const int PessoaFisicaClienteId = 1;
     public const int PessoaJuridicaClienteId = 2;
     public const int VeiculoExistenteId = 1;
+    public const int SegundoVeiculoExistenteId = 2;
     public const int ServicoExistenteId = 1000;
     public const int PecaExistenteId = 1000;
     public const string UsuarioAutenticadoId = "integration-test-user-id";
@@ -108,7 +109,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 DataCadastro = DateTimeHelper.UTCBrazilNow()
             });
 
-        context.Veiculos.Add(
+        context.Veiculos.AddRange(
             new Veiculo
             {
                 Id = VeiculoExistenteId,
@@ -117,6 +118,15 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 Modelo = "Gol",
                 Ano = 2020,
                 ClienteId = PessoaFisicaClienteId
+            },
+            new Veiculo
+            {
+                Id = SegundoVeiculoExistenteId,
+                Placa = "XYZ9A88",
+                Marca = "Fiat",
+                Modelo = "Argo",
+                Ano = 2022,
+                ClienteId = PessoaJuridicaClienteId
             });
 
         context.Servicos.Add(

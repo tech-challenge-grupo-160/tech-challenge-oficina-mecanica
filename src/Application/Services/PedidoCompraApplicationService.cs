@@ -109,7 +109,7 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -138,7 +138,7 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ListarAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ListarAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -156,7 +156,7 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ListarPorOrdemDeServicoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ListarPorOrdemDeServicoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -226,7 +226,7 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(RegistrarRecebimentoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(RegistrarRecebimentoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }

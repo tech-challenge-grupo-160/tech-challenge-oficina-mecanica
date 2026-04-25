@@ -33,6 +33,11 @@ public class OrdemDeServico
             throw new InvalidOperationException("So e possivel adicionar servicos durante o diagnostico. Nao e possivel neste status: " + Status);
         }
 
+        if (Servicos.Any(x => x.ServicoId == servico.Id))
+        {
+            throw new InvalidOperationException("O servico informado ja foi adicionado a ordem de servico.");
+        }
+
         Servicos.Add(new OrdemDeServicoServico
         {
             OrdemDeServicoId = Id,

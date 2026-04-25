@@ -108,6 +108,13 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 throw new ServiceValidationException("O veiculo informado nao pertence ao cliente informado.");
             }
 
+            var existeOrdemAtiva = await _ordemRepository.ExisteOrdemAtivaPorClienteEVeiculoAsync(dto.ClienteId, dto.VeiculoId, cancellationToken);
+            if (existeOrdemAtiva)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarOrdemDeServicoAsync), "Ja existe ordem de servico ativa para o cliente e veiculo informados");
+                throw new ServiceValidationException("Ja existe uma ordem de servico ativa para este cliente e veiculo.");
+            }
+
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarOrdemDeServicoAsync), "Persistindo ordem de servico em status Recebida");
             var ordem = new OrdemDeServico
             {
@@ -594,6 +601,12 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
             }
 
+            if (ordem.Servicos.Any(x => x.ServicoId == dto.ServicoId))
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarServicoAsync), "Servico ja adicionado a ordem de servico");
+                throw new ServiceValidationException("O servico informado ja foi adicionado a ordem de servico.");
+            }
+
             var servico = await _servicoRepository.ObterPorIdAsync(dto.ServicoId, cancellationToken);
             if (servico == null)
             {
@@ -691,7 +704,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(RemoverServicoAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(RemoverServicoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
@@ -726,7 +739,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(RemoverPecaAsync), ex.Message);
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(RemoverPecaAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
