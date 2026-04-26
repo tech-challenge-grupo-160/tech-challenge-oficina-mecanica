@@ -152,7 +152,7 @@ builder.Services.AddScoped<IPecaApplicationService, PecaApplicationService>();
 builder.Services.AddScoped<IOrdemDeServicoApplicationService, OrdemDeServicoApplicationService>();
 builder.Services.AddScoped<IAuthApplicationService, AuthApplicationService>();
 builder.Services.AddScoped<IPedidoCompraApplicationService, PedidoCompraApplicationService>();
-builder.Services.AddScoped<IAcompanhamentoOrdemServicoApplicationService, AcompanhamentoOrdemServicoApplicationService>();
+builder.Services.AddScoped<IAcompanhamentoOSApplicationService, AcompanhamentoOSApplicationService>();
 builder.Services.AddScoped<IUsuarioAutenticadoService, UsuarioAutenticadoService>();
 
 // CORS
