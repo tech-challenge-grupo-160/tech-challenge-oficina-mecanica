@@ -41,6 +41,14 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
             .FirstOrDefaultAsync(o => o.Numero == numero, cancellationToken);
     }
 
+    public async Task<OrdemDeServico?> ObterPorCodigoAcompanhamentoAsync(string codigoAcompanhamento, CancellationToken cancellationToken)
+    {
+        return await _context.OrdensDeServico
+            .Include(o => o.Servicos)
+            .Include(o => o.Pecas)
+            .FirstOrDefaultAsync(o => o.CodigoAcompanhamento == codigoAcompanhamento, cancellationToken);
+    }
+
     public async Task<bool> ExistePorClienteAsync(int clienteId, CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico.AnyAsync(o => o.ClienteId == clienteId, cancellationToken);

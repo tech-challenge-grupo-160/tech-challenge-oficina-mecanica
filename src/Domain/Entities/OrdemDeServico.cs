@@ -7,6 +7,8 @@ public class OrdemDeServico
 {
     public int Id { get; set; }
     public string Numero { get; set; } = null!;
+    public string CodigoAcompanhamento { get; set; } = null!;
+    public string TokenAcompanhamentoHash { get; set; } = null!;
     public int ClienteId { get; set; }
     public int VeiculoId { get; set; }
     public string DescricaoSolicitacao { get; set; } = null!;
@@ -25,6 +27,7 @@ public class OrdemDeServico
     public ICollection<OrdemDeServicoServico> Servicos { get; set; } = new List<OrdemDeServicoServico>();
     public ICollection<OrdemDeServicoPeca> Pecas { get; set; } = new List<OrdemDeServicoPeca>();
     public ICollection<OrdemServicoHistorico> Historicos { get; set; } = new List<OrdemServicoHistorico>();
+    public ICollection<NotificacaoCliente> NotificacoesCliente { get; set; } = new List<NotificacaoCliente>();
 
     public void AdicionarServico(Servico servico)
     {
