@@ -1,9 +1,15 @@
+using System.Text.Json.Serialization;
+
 namespace Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 
 public class OrdemDeServicoDto
 {
     public int Id { get; set; }
     public string Numero { get; set; } = null!;
+    public string CodigoAcompanhamento { get; set; } = null!;
+    public string UrlAcompanhamento { get; set; } = null!;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TokenAcompanhamento { get; set; }
     public int ClienteId { get; set; }
     public int VeiculoId { get; set; }
     public string DescricaoSolicitacao { get; set; } = null!;

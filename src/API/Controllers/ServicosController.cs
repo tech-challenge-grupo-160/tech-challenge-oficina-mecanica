@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
@@ -5,6 +6,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/v1/[controller]")]
 public class ServicosController : ControllerBase
 {

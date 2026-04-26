@@ -23,6 +23,7 @@ public class OrdemDeServicoApplicationServiceTests
     private readonly Mock<IPedidoCompraRepository> _pedidoCompraRepositoryMock;
     private readonly Mock<IMovimentacaoEstoqueRepository> _movimentacaoEstoqueRepositoryMock;
     private readonly Mock<IOrdemServicoHistoricoRepository> _historicoRepositoryMock;
+    private readonly Mock<INotificacaoClienteRepository> _notificacaoClienteRepositoryMock;
     private readonly Mock<IUsuarioAutenticadoService> _usuarioAutenticadoServiceMock;
     private readonly Mock<ITransactionManager> _transactionManagerMock;
     private readonly OrdemDeServicoApplicationService _service;
@@ -37,6 +38,7 @@ public class OrdemDeServicoApplicationServiceTests
         _pedidoCompraRepositoryMock = new Mock<IPedidoCompraRepository>(MockBehavior.Strict);
         _movimentacaoEstoqueRepositoryMock = new Mock<IMovimentacaoEstoqueRepository>(MockBehavior.Strict);
         _historicoRepositoryMock = new Mock<IOrdemServicoHistoricoRepository>(MockBehavior.Strict);
+        _notificacaoClienteRepositoryMock = new Mock<INotificacaoClienteRepository>(MockBehavior.Strict);
         _usuarioAutenticadoServiceMock = new Mock<IUsuarioAutenticadoService>(MockBehavior.Strict);
         _transactionManagerMock = new Mock<ITransactionManager>(MockBehavior.Strict);
 
@@ -50,9 +52,15 @@ public class OrdemDeServicoApplicationServiceTests
         _historicoRepositoryMock
             .Setup(x => x.CriarAsync(It.IsAny<OrdemServicoHistorico>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemServicoHistorico historico, CancellationToken _) => historico);
+        _notificacaoClienteRepositoryMock
+            .Setup(x => x.CriarAsync(It.IsAny<NotificacaoCliente>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((NotificacaoCliente notificacao, CancellationToken _) => notificacao);
         _transactionManagerMock
             .Setup(x => x.ExecuteAsync(It.IsAny<Func<CancellationToken, Task<OrdemDeServico>>>(), It.IsAny<CancellationToken>()))
             .Returns((Func<CancellationToken, Task<OrdemDeServico>> action, CancellationToken ct) => action(ct));
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorCodigoAcompanhamentoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OrdemDeServico?)null);
 
         _service = new OrdemDeServicoApplicationService(
             _ordemRepositoryMock.Object,
@@ -63,6 +71,7 @@ public class OrdemDeServicoApplicationServiceTests
             _pedidoCompraRepositoryMock.Object,
             _movimentacaoEstoqueRepositoryMock.Object,
             _historicoRepositoryMock.Object,
+            _notificacaoClienteRepositoryMock.Object,
             _usuarioAutenticadoServiceMock.Object,
             _transactionManagerMock.Object,
             NullLoggerFactory.Instance);
@@ -223,6 +232,24 @@ public class OrdemDeServicoApplicationServiceTests
         _historicoRepositoryMock.Verify(
             x => x.CriarAsync(It.IsAny<OrdemServicoHistorico>(), It.IsAny<CancellationToken>()),
             Times.Exactly(9));
+        _notificacaoClienteRepositoryMock.Verify(
+            x => x.CriarAsync(
+                It.Is<NotificacaoCliente>(n =>
+                    n.OrdemDeServicoId == ordem.Id &&
+                    n.TipoNotificacao == TipoNotificacaoCliente.OrcamentoDisponivel &&
+                    n.Canal == CanalNotificacaoCliente.WhatsApp &&
+                    n.Recebida),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _notificacaoClienteRepositoryMock.Verify(
+            x => x.CriarAsync(
+                It.Is<NotificacaoCliente>(n =>
+                    n.OrdemDeServicoId == ordem.Id &&
+                    n.TipoNotificacao == TipoNotificacaoCliente.ServicoFinalizado &&
+                    n.Canal == CanalNotificacaoCliente.WhatsApp &&
+                    n.Recebida),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

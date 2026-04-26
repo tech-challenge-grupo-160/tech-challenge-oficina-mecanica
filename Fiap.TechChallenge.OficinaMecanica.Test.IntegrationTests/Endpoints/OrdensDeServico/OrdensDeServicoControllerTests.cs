@@ -80,6 +80,15 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         historico[^1].TipoEvento.Should().Be("VeiculoEntregue");
         historico[^1].StatusAnterior.Should().Be("Finalizada");
         historico[^1].StatusNovo.Should().Be("Entregue");
+
+        var obterNotificacoes = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/notificacoes");
+        obterNotificacoes.StatusCode.Should().Be(HttpStatusCode.OK);
+        var notificacoes = await obterNotificacoes.Content.ReadFromJsonAsync<List<NotificacaoClienteDto>>();
+        notificacoes.Should().NotBeNull();
+        notificacoes.Should().HaveCount(3);
+        notificacoes.Should().Contain(n => n.TipoNotificacao == "LinkAcompanhamentoEnviado" && n.Canal == "Email" && n.Recebida);
+        notificacoes.Should().Contain(n => n.TipoNotificacao == "OrcamentoDisponivel" && n.Canal == "WhatsApp" && n.Recebida);
+        notificacoes.Should().Contain(n => n.TipoNotificacao == "ServicoFinalizado" && n.Canal == "WhatsApp" && n.Recebida);
     }
 
     [Fact]

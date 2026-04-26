@@ -38,6 +38,13 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(historico);
     }
 
+    [HttpGet("{id}/notificacoes")]
+    public async Task<ActionResult<IEnumerable<NotificacaoClienteDto>>> ObterNotificacoes(int id, CancellationToken cancellationToken)
+    {
+        var notificacoes = await _ordemService.ObterNotificacoesAsync(id, cancellationToken);
+        return Ok(notificacoes);
+    }
+
     [HttpGet("{id}/movimentacoes-estoque")]
     public async Task<ActionResult<IEnumerable<MovimentacaoEstoqueDto>>> ObterMovimentacoesEstoque(int id, CancellationToken cancellationToken)
     {
