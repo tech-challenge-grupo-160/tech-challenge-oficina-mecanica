@@ -7,11 +7,11 @@ namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
 [ApiController]
 [Route("api/v1/acompanhamento-os")]
-public class AcompanhamentoController : ControllerBase
+public class AcompanhamentoOSController : ControllerBase
 {
-    private readonly IAcompanhamentoOrdemServicoApplicationService _acompanhamentoService;
+    private readonly IAcompanhamentoOSApplicationService _acompanhamentoService;
 
-    public AcompanhamentoController(IAcompanhamentoOrdemServicoApplicationService acompanhamentoService)
+    public AcompanhamentoOSController(IAcompanhamentoOSApplicationService acompanhamentoService)
     {
         _acompanhamentoService = acompanhamentoService;
     }

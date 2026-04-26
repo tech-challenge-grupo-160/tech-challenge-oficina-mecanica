@@ -6,12 +6,12 @@ using FluentAssertions;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Endpoints.Acompanhamento;
 
-public class AcompanhamentoControllerTests : IClassFixture<CustomWebApplicationFactory>
+public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
     private readonly CustomWebApplicationFactory _factory;
 
-    public AcompanhamentoControllerTests(CustomWebApplicationFactory factory)
+    public AcompanhamentoOSControllerTests(CustomWebApplicationFactory factory)
     {
         _factory = factory;
         _client = factory.CreateClient();

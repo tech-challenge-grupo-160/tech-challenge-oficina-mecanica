@@ -8,19 +8,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
-public interface IAcompanhamentoOrdemServicoApplicationService
+public interface IAcompanhamentoOSApplicationService
 {
     Task<AcompanhamentoOrdemDeServicoDto> ObterStatusAsync(string codigo, string token, CancellationToken cancellationToken);
 }
 
-public sealed class AcompanhamentoOrdemServicoApplicationService : IAcompanhamentoOrdemServicoApplicationService
+public sealed class AcompanhamentoOSApplicationService : IAcompanhamentoOSApplicationService
 {
-    private const string LoggerName = nameof(AcompanhamentoOrdemServicoApplicationService);
+    private const string LoggerName = nameof(AcompanhamentoOSApplicationService);
     private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly IOrdemServicoHistoricoRepository _historicoRepository;
     private readonly ILogger _logger;
 
-    public AcompanhamentoOrdemServicoApplicationService(
+    public AcompanhamentoOSApplicationService(
         IOrdemDeServicoRepository ordemRepository,
         IOrdemServicoHistoricoRepository historicoRepository,
         ILoggerFactory loggerFactory)
