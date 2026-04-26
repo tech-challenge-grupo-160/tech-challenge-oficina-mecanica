@@ -29,6 +29,26 @@ public class OrdemDeServico
     public ICollection<OrdemServicoHistorico> Historicos { get; set; } = new List<OrdemServicoHistorico>();
     public ICollection<NotificacaoCliente> NotificacoesCliente { get; set; } = new List<NotificacaoCliente>();
 
+    public OrdemDeServicoEventoDominio CriarEventoOrdemCriada()
+    {
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.OrdemCriada,
+            null,
+            Status,
+            "Ordem de servico criada.");
+    }
+
+    public OrdemDeServicoEventoDominio IniciarDiagnostico()
+    {
+        var statusAnterior = Status;
+        AlterarStatus(StatusOrdemDeServico.EmDiagnostico);
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.DiagnosticoIniciado,
+            statusAnterior,
+            Status,
+            "Diagnostico iniciado.");
+    }
+
     public void AdicionarServico(Servico servico)
     {
         if (Status != StatusOrdemDeServico.EmDiagnostico)
@@ -52,6 +72,16 @@ public class OrdemDeServico
         RecalcularTotal();
     }
 
+    public OrdemDeServicoEventoDominio AdicionarServicoComEvento(Servico servico)
+    {
+        AdicionarServico(servico);
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.ServicoAdicionado,
+            Status,
+            Status,
+            $"Servico adicionado ao orcamento: {servico.Nome}.");
+    }
+
     public void RemoverServico(int servicoId)
     {
         if (Status != StatusOrdemDeServico.EmDiagnostico)
@@ -67,6 +97,16 @@ public class OrdemDeServico
 
         Servicos.Remove(item);
         RecalcularTotal();
+    }
+
+    public OrdemDeServicoEventoDominio RemoverServicoComEvento(int servicoId, string nomeServico)
+    {
+        RemoverServico(servicoId);
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.ServicoAdicionado,
+            Status,
+            Status,
+            $"Servico removido do orcamento: {nomeServico}.");
     }
 
     public void AdicionarPeca(Peca peca, int quantidade)
@@ -103,6 +143,16 @@ public class OrdemDeServico
         RecalcularTotal();
     }
 
+    public OrdemDeServicoEventoDominio AdicionarPecaComEvento(Peca peca, int quantidade)
+    {
+        AdicionarPeca(peca, quantidade);
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.PecaAdicionada,
+            Status,
+            Status,
+            $"Peca adicionada ao orcamento: {peca.Nome}. Quantidade: {quantidade}.");
+    }
+
     public void RemoverPeca(int pecaId)
     {
         if (Status != StatusOrdemDeServico.EmDiagnostico)
@@ -118,6 +168,16 @@ public class OrdemDeServico
 
         Pecas.Remove(item);
         RecalcularTotal();
+    }
+
+    public OrdemDeServicoEventoDominio RemoverPecaComEvento(int pecaId, string nomePeca)
+    {
+        RemoverPeca(pecaId);
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.PecaAdicionada,
+            Status,
+            Status,
+            $"Peca removida do orcamento: {nomePeca}.");
     }
 
     public void AlterarStatus(StatusOrdemDeServico novoStatus)
@@ -156,6 +216,17 @@ public class OrdemDeServico
         OrcamentoEnviadoEm = DateTimeHelper.UTCBrazilNow();
     }
 
+    public OrdemDeServicoEventoDominio FinalizarDiagnosticoComEvento()
+    {
+        var statusAnterior = Status;
+        FinalizarDiagnostico();
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.DiagnosticoFinalizado,
+            statusAnterior,
+            Status,
+            "Diagnostico finalizado e orcamento enviado para aprovacao.");
+    }
+
     public void Cancelar(string motivoCancelamento)
     {
         if (Status != StatusOrdemDeServico.Recebida &&
@@ -173,6 +244,17 @@ public class OrdemDeServico
 
         Status = StatusOrdemDeServico.Cancelada;
         MotivoCancelamento = motivoCancelamento.Trim();
+    }
+
+    public OrdemDeServicoEventoDominio CancelarComEvento(string motivoCancelamento)
+    {
+        var statusAnterior = Status;
+        Cancelar(motivoCancelamento);
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.OrdemCancelada,
+            statusAnterior,
+            Status,
+            $"Ordem cancelada. Motivo: {MotivoCancelamento}");
     }
 
     public void AprovarOrcamento()
@@ -194,6 +276,17 @@ public class OrdemDeServico
         Status = StatusOrdemDeServico.AguardandoEstoque;
     }
 
+    public OrdemDeServicoEventoDominio BloquearPorFaltaEstoqueComEvento(string descricaoFaltas)
+    {
+        var statusAnterior = Status;
+        BloquearPorFaltaEstoque();
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.BloqueioPorFaltaEstoque,
+            statusAnterior,
+            Status,
+            $"Execucao bloqueada por falta de estoque: {descricaoFaltas}");
+    }
+
     public void LiberarExecucaoAposValidacaoEstoque()
     {
         if (Status != StatusOrdemDeServico.AguardandoAprovacao &&
@@ -205,6 +298,17 @@ public class OrdemDeServico
         AlterarStatus(StatusOrdemDeServico.EmExecucao);
     }
 
+    public OrdemDeServicoEventoDominio LiberarExecucaoComEvento()
+    {
+        var statusAnterior = Status;
+        LiberarExecucaoAposValidacaoEstoque();
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.OrcamentoAprovado,
+            statusAnterior,
+            Status,
+            "Orcamento aprovado pelo cliente e estoque validado com sucesso.");
+    }
+
     public void FinalizarServico()
     {
         if (Status != StatusOrdemDeServico.EmExecucao)
@@ -214,6 +318,17 @@ public class OrdemDeServico
 
         DataFinalizacao = DateTimeHelper.UTCBrazilNow();
         AlterarStatus(StatusOrdemDeServico.Finalizada);
+    }
+
+    public OrdemDeServicoEventoDominio FinalizarServicoComEvento()
+    {
+        var statusAnterior = Status;
+        FinalizarServico();
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.ServicoFinalizado,
+            statusAnterior,
+            Status,
+            "Servico finalizado.");
     }
 
     public void RegistrarPagamento()
@@ -231,6 +346,16 @@ public class OrdemDeServico
         DataPagamento = DateTimeHelper.UTCBrazilNow();
     }
 
+    public OrdemDeServicoEventoDominio RegistrarPagamentoComEvento()
+    {
+        RegistrarPagamento();
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.PagamentoRegistrado,
+            Status,
+            Status,
+            "Pagamento registrado para a ordem de servico.");
+    }
+
     public void Entregar()
     {
         if (Status != StatusOrdemDeServico.Finalizada)
@@ -244,6 +369,17 @@ public class OrdemDeServico
         }
 
         AlterarStatus(StatusOrdemDeServico.Entregue);
+    }
+
+    public OrdemDeServicoEventoDominio EntregarComEvento()
+    {
+        var statusAnterior = Status;
+        Entregar();
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.VeiculoEntregue,
+            statusAnterior,
+            Status,
+            "Veiculo entregue ao cliente.");
     }
 
     private bool ValidarTransicaoDeStatus(StatusOrdemDeServico statusAtual, StatusOrdemDeServico novoStatus)
@@ -267,6 +403,12 @@ public class OrdemDeServico
         ValorTotal = totalServicos + totalPecas;
     }
 }
+
+public sealed record OrdemDeServicoEventoDominio(
+    TipoEventoOrdemServico TipoEvento,
+    StatusOrdemDeServico? StatusAnterior,
+    StatusOrdemDeServico? StatusNovo,
+    string Descricao);
 
 public class OrdemDeServicoServico
 {
