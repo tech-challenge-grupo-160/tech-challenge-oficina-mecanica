@@ -368,6 +368,111 @@ public class OrdemDeServicoApplicationServiceTests
     }
 
     [Fact]
+    public async Task AprovarAsync_DeveLancarQuandoOsEstiverAguardandoEstoque()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoEstoque, clienteId: 1, veiculoId: 10);
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+
+        var acao = () => _service.AprovarAsync(ordem.Id, CancellationToken.None);
+
+        await acao.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*aguardando estoque*");
+    }
+
+    [Fact]
+    public async Task LiberarExecucaoAsync_DeveBaixarEstoqueEMudarParaEmExecucaoQuandoHouverDisponibilidade()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoEstoque, clienteId: 1, veiculoId: 10);
+        ordem.Pecas.Add(new OrdemDeServicoPeca
+        {
+            OrdemDeServicoId = ordem.Id,
+            PecaId = 1000,
+            Quantidade = 3,
+            Preco = 45m
+        });
+
+        var peca = PecaMock.Criar(id: 1000, quantidadeEstoque: 3);
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+        _pecaRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(peca.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(peca);
+        _pecaRepositoryMock
+            .Setup(x => x.AtualizarAsync(It.IsAny<Peca>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Peca item, CancellationToken _) => item);
+        _movimentacaoEstoqueRepositoryMock
+            .Setup(x => x.CriarAsync(It.IsAny<MovimentacaoEstoque>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MovimentacaoEstoque item, CancellationToken _) => item);
+        _ordemRepositoryMock
+            .Setup(x => x.AtualizarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OrdemDeServico item, CancellationToken _) => item);
+
+        var resultado = await _service.LiberarExecucaoAsync(ordem.Id, CancellationToken.None);
+
+        resultado.Status.Should().Be(nameof(StatusOrdemDeServico.EmExecucao));
+        peca.QuantidadeEstoque.Should().Be(0);
+        _movimentacaoEstoqueRepositoryMock.Verify(x => x.CriarAsync(It.Is<MovimentacaoEstoque>(m =>
+            m.OrdemDeServicoId == ordem.Id &&
+            m.PecaId == peca.Id &&
+            m.Quantidade == 3 &&
+            m.QuantidadeAnterior == 3 &&
+            m.QuantidadePosterior == 0), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task LiberarExecucaoAsync_DeveLancarQuandoEstoqueContinuarIndisponivel()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoEstoque, clienteId: 1, veiculoId: 10);
+        ordem.Pecas.Add(new OrdemDeServicoPeca
+        {
+            OrdemDeServicoId = ordem.Id,
+            PecaId = 1000,
+            Quantidade = 3,
+            Preco = 45m
+        });
+
+        var peca = PecaMock.Criar(id: 1000, quantidadeEstoque: 1);
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+        _pecaRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(peca.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(peca);
+
+        var acao = () => _service.LiberarExecucaoAsync(ordem.Id, CancellationToken.None);
+
+        await acao.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Estoque indisponivel*");
+        ordem.Status.Should().Be(StatusOrdemDeServico.AguardandoEstoque);
+    }
+
+    [Fact]
+    public async Task AtualizarStatusAsync_DeveLancarQuandoTentativaDiretaParaEmExecucao()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoEstoque, clienteId: 1, veiculoId: 10);
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+
+        var acao = () => _service.AtualizarStatusAsync(
+            ordem.Id,
+            new AtualizarStatusOrdemDeServicoDto { NovoStatus = nameof(StatusOrdemDeServico.EmExecucao) },
+            CancellationToken.None);
+
+        await acao.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*diretamente para EmExecucao*");
+        ordem.Status.Should().Be(StatusOrdemDeServico.AguardandoEstoque);
+        _ordemRepositoryMock.Verify(x => x.AtualizarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task RemoverServicoAsync_DeveRemoverServicoQuandoOsEstiverEmDiagnostico()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.EmDiagnostico, clienteId: 1, veiculoId: 10);

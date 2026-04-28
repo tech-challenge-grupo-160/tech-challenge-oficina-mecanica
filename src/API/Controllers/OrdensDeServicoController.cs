@@ -133,6 +133,13 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(ordem);
     }
 
+    [HttpPatch("{id}/liberar-execucao")]
+    public async Task<ActionResult<OrdemDeServicoDto>> LiberarExecucao(int id, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemService.LiberarExecucaoAsync(id, cancellationToken);
+        return Ok(ordem);
+    }
+
     [HttpPatch("{id}/finalizar")]
     public async Task<ActionResult<OrdemDeServicoDto>> Finalizar(int id, CancellationToken cancellationToken)
     {
