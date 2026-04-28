@@ -255,14 +255,19 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var movimentacoesResponse = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/movimentacoes-estoque");
 
         movimentacoesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var movimentacoes = await movimentacoesResponse.Content.ReadFromJsonAsync<List<MovimentacaoEstoqueDto>>();
-        movimentacoes.Should().NotBeNull();
-        movimentacoes.Should().HaveCount(2);
-        movimentacoes.Should().Contain(x =>
+        var movimentacoesPorPeca = await movimentacoesResponse.Content.ReadFromJsonAsync<List<MovimentacoesEstoquePorPecaDto>>();
+        movimentacoesPorPeca.Should().NotBeNull();
+        movimentacoesPorPeca.Should().ContainSingle(x => x.PecaId == CustomWebApplicationFactory.PecaExistenteId);
+
+        var grupoPeca = movimentacoesPorPeca!.Single(x => x.PecaId == CustomWebApplicationFactory.PecaExistenteId);
+        grupoPeca.QuantidadeNaOrdem.Should().Be(101);
+        grupoPeca.TotalMovimentacoes.Should().Be(2);
+        grupoPeca.Movimentacoes.Should().HaveCount(2);
+        grupoPeca.Movimentacoes.Should().Contain(x =>
             x.TipoMovimentacao == "EntradaPorPedidoCompra" &&
             x.Quantidade == 1 &&
             x.QuantidadePosterior == 101);
-        movimentacoes.Should().Contain(x =>
+        grupoPeca.Movimentacoes.Should().Contain(x =>
             x.TipoMovimentacao == "BaixaParaOrdemDeServico" &&
             x.Quantidade == 101 &&
             x.QuantidadePosterior == 0);

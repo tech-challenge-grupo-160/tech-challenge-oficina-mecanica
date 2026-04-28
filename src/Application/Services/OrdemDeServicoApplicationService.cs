@@ -16,7 +16,7 @@ public interface IOrdemDeServicoApplicationService
     Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(int id, CancellationToken cancellationToken);
     Task<IEnumerable<OrdemServicoHistoricoDto>> ObterHistoricoAsync(int id, CancellationToken cancellationToken);
     Task<IEnumerable<NotificacaoClienteDto>> ObterNotificacoesAsync(int id, CancellationToken cancellationToken);
-    Task<IEnumerable<MovimentacaoEstoqueDto>> ObterMovimentacoesEstoqueAsync(int id, CancellationToken cancellationToken);
+    Task<IEnumerable<MovimentacoesEstoquePorPecaDto>> ObterMovimentacoesEstoqueAsync(int id, CancellationToken cancellationToken);
     Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken);
     Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken);
     Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(
@@ -203,7 +203,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         return notificacoes.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<MovimentacaoEstoqueDto>> ObterMovimentacoesEstoqueAsync(int id, CancellationToken cancellationToken)
+    public async Task<IEnumerable<MovimentacoesEstoquePorPecaDto>> ObterMovimentacoesEstoqueAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -211,8 +211,33 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
-        var movimentacoes = await _movimentacaoEstoqueRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken);
-        return movimentacoes.Select(MapToDto);
+        var movimentacoes = (await _movimentacaoEstoqueRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken))
+            .Select(MapToDto)
+            .GroupBy(x => x.PecaId)
+            .ToDictionary(x => x.Key, x => x.ToList());
+
+        var grupos = new List<MovimentacoesEstoquePorPecaDto>();
+
+        foreach (var item in ordem.Pecas.OrderBy(x => x.PecaId))
+        {
+            var peca = item.Peca ?? await _pecaRepository.ObterPorIdAsync(item.PecaId, cancellationToken);
+            var movimentacoesDaPeca = movimentacoes.TryGetValue(item.PecaId, out var valores)
+                ? valores
+                : new List<MovimentacaoEstoqueDto>();
+
+            grupos.Add(new MovimentacoesEstoquePorPecaDto
+            {
+                PecaId = item.PecaId,
+                NomePeca = peca?.Nome ?? movimentacoesDaPeca.FirstOrDefault()?.NomePeca ?? string.Empty,
+                MarcaPeca = peca?.Marca ?? string.Empty,
+                ModeloPeca = peca?.Modelo ?? string.Empty,
+                QuantidadeNaOrdem = item.Quantidade,
+                TotalMovimentacoes = movimentacoesDaPeca.Count,
+                Movimentacoes = movimentacoesDaPeca
+            });
+        }
+
+        return grupos;
     }
 
     public async Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
