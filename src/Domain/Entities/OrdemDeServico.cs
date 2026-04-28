@@ -295,7 +295,7 @@ public class OrdemDeServico
             throw new InvalidOperationException("So e possivel iniciar execucao apos aprovacao e validacao do estoque.");
         }
 
-        AlterarStatus(StatusOrdemDeServico.EmExecucao);
+        Status = StatusOrdemDeServico.EmExecucao;
     }
 
     public OrdemDeServicoEventoDominio LiberarExecucaoComEvento()
@@ -389,7 +389,6 @@ public class OrdemDeServico
             (StatusOrdemDeServico.Recebida, StatusOrdemDeServico.EmDiagnostico) => true,
             (StatusOrdemDeServico.EmDiagnostico, StatusOrdemDeServico.AguardandoAprovacao) => true,
             (StatusOrdemDeServico.AguardandoAprovacao, StatusOrdemDeServico.EmExecucao) => true,
-            (StatusOrdemDeServico.AguardandoEstoque, StatusOrdemDeServico.EmExecucao) => true,
             (StatusOrdemDeServico.EmExecucao, StatusOrdemDeServico.Finalizada) => true,
             (StatusOrdemDeServico.Finalizada, StatusOrdemDeServico.Entregue) => true,
             _ => false

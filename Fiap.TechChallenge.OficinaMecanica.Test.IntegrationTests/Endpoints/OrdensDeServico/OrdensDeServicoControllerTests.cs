@@ -200,7 +200,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
     }
 
     [Fact]
-    public async Task Aprovar_DeveBloquearOsGerarPedidoCompraEPermitirNovaAprovacaoAposRecebimento()
+    public async Task LiberarExecucao_DeveValidarEstoqueBaixarItensEAtualizarStatusAposRecebimento()
     {
         var ordemCriada = await CriarOrdemAsync();
 
@@ -239,10 +239,16 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         pedidoRecebido!.Status.Should().Be("Recebido");
         pedidoRecebido.QuantidadeRecebida.Should().Be(1);
 
-        var segundaAprovacao = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/aprovar", null);
+        var aprovacaoIndevida = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/aprovar", null);
 
-        segundaAprovacao.StatusCode.Should().Be(HttpStatusCode.OK);
-        var emExecucao = await segundaAprovacao.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        aprovacaoIndevida.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var mensagemErroAprovacao = await aprovacaoIndevida.Content.ReadAsStringAsync();
+        mensagemErroAprovacao.Should().Contain("aguardando estoque");
+
+        var liberacaoExecucao = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/liberar-execucao", null);
+
+        liberacaoExecucao.StatusCode.Should().Be(HttpStatusCode.OK);
+        var emExecucao = await liberacaoExecucao.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
         emExecucao.Should().NotBeNull();
         emExecucao!.Status.Should().Be("EmExecucao");
 

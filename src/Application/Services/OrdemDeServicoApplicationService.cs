@@ -31,6 +31,7 @@ public interface IOrdemDeServicoApplicationService
     Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken);
+    Task<OrdemDeServicoDto> LiberarExecucaoAsync(int id, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken);
     Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken);
@@ -332,6 +333,11 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 throw new ServiceValidationException($"Status invalido: {dto.NovoStatus}");
             }
 
+            if (novoStatus == StatusOrdemDeServico.EmExecucao)
+            {
+                throw new InvalidOperationException("Nao e permitido alterar uma ordem de servico diretamente para EmExecucao. Use as rotas de aprovacao ou liberacao de execucao para garantir a validacao e baixa de estoque.");
+            }
+
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AtualizarStatusAsync), $"Alterando status da ordem para {novoStatus}");
             ordem.AlterarStatus(novoStatus);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
@@ -433,10 +439,14 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                         throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
                     }
 
-                    if (ordem.Status != StatusOrdemDeServico.AguardandoAprovacao &&
-                        ordem.Status != StatusOrdemDeServico.AguardandoEstoque)
+                    if (ordem.Status == StatusOrdemDeServico.AguardandoEstoque)
                     {
-                        throw new InvalidOperationException($"A ordem de servico nao pode iniciar execucao no status atual: {ordem.Status}");
+                        throw new InvalidOperationException("A ordem de servico esta aguardando estoque. Use a rota de liberacao de execucao apos reposicao do estoque.");
+                    }
+
+                    if (ordem.Status != StatusOrdemDeServico.AguardandoAprovacao)
+                    {
+                        throw new InvalidOperationException($"A ordem de servico nao pode ser aprovada no status atual: {ordem.Status}");
                     }
 
                     var faltasEstoque = await ObterFaltasDeEstoqueAsync(ordem, token);
@@ -482,6 +492,58 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         catch (Exception ex)
         {
             _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AprovarAsync), LogTemplate.CurrentTraceId(), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<OrdemDeServicoDto> LiberarExecucaoAsync(int id, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            var ordemAtualizada = await _transactionManager.ExecuteAsync(
+                async token =>
+                {
+                    _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(LiberarExecucaoAsync), "Consultando ordem de servico aguardando estoque para liberacao de execucao");
+                    var ordem = await _ordemRepository.ObterPorIdAsync(id, token);
+                    if (ordem == null)
+                    {
+                        _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(LiberarExecucaoAsync), "Ordem de servico nao encontrada para liberacao de execucao");
+                        throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+                    }
+
+                    if (ordem.Status != StatusOrdemDeServico.AguardandoEstoque)
+                    {
+                        throw new InvalidOperationException($"A ordem de servico so pode ser liberada para execucao quando estiver aguardando estoque. Status atual: {ordem.Status}");
+                    }
+
+                    var faltasEstoque = await ObterFaltasDeEstoqueAsync(ordem, token);
+                    if (faltasEstoque.Count > 0)
+                    {
+                        throw new InvalidOperationException($"Estoque indisponivel para liberar execucao da ordem de servico: {FormatarFaltasDeEstoque(faltasEstoque)}.");
+                    }
+
+                    _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(LiberarExecucaoAsync), "Baixando estoque das pecas e liberando ordem para execucao");
+                    await BaixarEstoqueDaOrdemAsync(ordem, token);
+                    var eventoLiberacao = ordem.LiberarExecucaoComEvento();
+                    var ordemExecutando = await _ordemRepository.AtualizarAsync(ordem, token);
+                    await RegistrarHistoricoAsync(
+                        ordemExecutando,
+                        eventoLiberacao.TipoEvento,
+                        eventoLiberacao.StatusAnterior,
+                        eventoLiberacao.StatusNovo,
+                        eventoLiberacao.Descricao,
+                        token);
+                    return ordemExecutando;
+                },
+                cancellationToken);
+
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Execucao liberada com sucesso para a ordem {ordemAtualizada.Numero}");
+            return MapToDto(ordemAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(LiberarExecucaoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
