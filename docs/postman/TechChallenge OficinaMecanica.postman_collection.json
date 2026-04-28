@@ -1,7 +1,7 @@
 {
   "info": {
     "_postman_id": "73fac854-db72-4e06-bffd-0dc2814f7b80",
-    "name": "FIAP - TechChallenge OficinaMecanica",
+    "name": "TechChallenge OficinaMecanica",
     "description": "Colecao de endpoints do fluxo principal ate abertura e diagnostico inicial da OS.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "21797310"
@@ -777,6 +777,27 @@
           "response": []
         },
         {
+          "name": "Liberar Execucao OS",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ordens-servico/{{ordemServicoId}}/liberar-execucao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordens-servico",
+                "{{ordemServicoId}}",
+                "liberar-execucao"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Finalizar OS",
           "request": {
             "method": "PATCH",
@@ -881,7 +902,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"pecaId\": {{pecaId}},\n  \"quantidade\": 500\n}"
+              "raw": "{\n  \"pecaId\": {{pecaId}},\n  \"quantidade\": 300\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/ordens-servico/{{ordemServicoId}}/pecas",
@@ -1267,7 +1288,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n  \"quantidadeRecebida\": 10\r\n}",
+              "raw": "{\r\n  \"quantidadeRecebida\": 280\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
