@@ -305,9 +305,39 @@ Regra central:
 Rastreabilidade:
 
 - `GET /ordens-servico/{id}/historico`
-- `GET /ordens-servico/{id}/movimentacoes-estoque`
+- `GET /ordens-servico/{id}/movimentacoes-estoque`, com retorno agrupado por peça da OS
 - `GET /pedidos-compra/ordem/{ordemDeServicoId}`
 - `GET /pedidos-compra?page=1&pageSize=10`
+
+Exemplo resumido do agrupamento de movimentações:
+
+```json
+[
+  {
+    "pecaId": 1000,
+    "nomePeca": "Filtro de Oleo",
+    "marcaPeca": "Bosch",
+    "modeloPeca": "F-0001",
+    "quantidadeNaOrdem": 2,
+    "totalMovimentacoes": 1,
+    "movimentacoes": [
+      {
+        "id": 10,
+        "pecaId": 1000,
+        "ordemDeServicoId": 3001,
+        "pedidoCompraId": null,
+        "nomePeca": "Filtro de Oleo",
+        "tipoMovimentacao": "BaixaParaOrdemDeServico",
+        "quantidade": 2,
+        "quantidadeAnterior": 10,
+        "quantidadePosterior": 8,
+        "descricao": "Baixa de estoque para a ordem de servico OS-20260428-3001.",
+        "dataMovimentacao": "2026-04-28T10:00:00"
+      }
+    ]
+  }
+]
+```
 
 ## Regras de domínio relevantes
 

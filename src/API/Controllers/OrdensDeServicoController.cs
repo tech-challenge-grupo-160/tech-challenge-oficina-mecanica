@@ -46,7 +46,7 @@ public class OrdensDeServicoController : ControllerBase
     }
 
     [HttpGet("{id}/movimentacoes-estoque")]
-    public async Task<ActionResult<IEnumerable<MovimentacaoEstoqueDto>>> ObterMovimentacoesEstoque(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<IEnumerable<MovimentacoesEstoquePorPecaDto>>> ObterMovimentacoesEstoque(int id, CancellationToken cancellationToken)
     {
         var movimentacoes = await _ordemService.ObterMovimentacoesEstoqueAsync(id, cancellationToken);
         return Ok(movimentacoes);

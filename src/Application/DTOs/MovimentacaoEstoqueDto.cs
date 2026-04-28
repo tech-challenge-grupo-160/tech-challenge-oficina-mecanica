@@ -14,3 +14,14 @@ public class MovimentacaoEstoqueDto
     public string Descricao { get; set; } = null!;
     public DateTime DataMovimentacao { get; set; }
 }
+
+public class MovimentacoesEstoquePorPecaDto
+{
+    public int PecaId { get; set; }
+    public string NomePeca { get; set; } = null!;
+    public string MarcaPeca { get; set; } = null!;
+    public string ModeloPeca { get; set; } = null!;
+    public int QuantidadeNaOrdem { get; set; }
+    public int TotalMovimentacoes { get; set; }
+    public List<MovimentacaoEstoqueDto> Movimentacoes { get; set; } = new();
+}
