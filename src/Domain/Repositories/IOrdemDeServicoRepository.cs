@@ -8,6 +8,7 @@ public interface IOrdemDeServicoRepository
     Task<IEnumerable<OrdemDeServico>> ObterTodasAsync(CancellationToken cancellationToken);
     Task<OrdemDeServico?> ObterPorIdAsync(int id, CancellationToken cancellationToken);
     Task<OrdemDeServico?> ObterPorNumeroAsync(string numero, CancellationToken cancellationToken);
+    Task<OrdemDeServico?> ObterPorCodigoAcompanhamentoAsync(string codigoAcompanhamento, CancellationToken cancellationToken);
     Task<bool> ExistePorClienteAsync(int clienteId, CancellationToken cancellationToken);
     Task<bool> ExisteOrdemAtivaPorClienteEVeiculoAsync(int clienteId, int veiculoId, CancellationToken cancellationToken);
     Task<int> ContarAsync(

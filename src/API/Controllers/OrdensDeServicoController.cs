@@ -38,8 +38,15 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(historico);
     }
 
+    [HttpGet("{id}/notificacoes")]
+    public async Task<ActionResult<IEnumerable<NotificacaoClienteDto>>> ObterNotificacoes(int id, CancellationToken cancellationToken)
+    {
+        var notificacoes = await _ordemService.ObterNotificacoesAsync(id, cancellationToken);
+        return Ok(notificacoes);
+    }
+
     [HttpGet("{id}/movimentacoes-estoque")]
-    public async Task<ActionResult<IEnumerable<MovimentacaoEstoqueDto>>> ObterMovimentacoesEstoque(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<IEnumerable<MovimentacoesEstoquePorPecaDto>>> ObterMovimentacoesEstoque(int id, CancellationToken cancellationToken)
     {
         var movimentacoes = await _ordemService.ObterMovimentacoesEstoqueAsync(id, cancellationToken);
         return Ok(movimentacoes);
@@ -123,6 +130,13 @@ public class OrdensDeServicoController : ControllerBase
     public async Task<ActionResult<OrdemDeServicoDto>> Aprovar(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemService.AprovarAsync(id, cancellationToken);
+        return Ok(ordem);
+    }
+
+    [HttpPatch("{id}/liberar-execucao")]
+    public async Task<ActionResult<OrdemDeServicoDto>> LiberarExecucao(int id, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemService.LiberarExecucaoAsync(id, cancellationToken);
         return Ok(ordem);
     }
 

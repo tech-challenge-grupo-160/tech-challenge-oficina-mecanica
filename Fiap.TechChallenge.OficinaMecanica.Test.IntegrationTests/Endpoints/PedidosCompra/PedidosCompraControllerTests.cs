@@ -4,7 +4,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Infrastructure;
 using FluentAssertions;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Endpoints;
+namespace Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Endpoints.PedidosCompra;
 
 public class PedidosCompraControllerTests : IClassFixture<CustomWebApplicationFactory>
 {

@@ -80,6 +80,15 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         historico[^1].TipoEvento.Should().Be("VeiculoEntregue");
         historico[^1].StatusAnterior.Should().Be("Finalizada");
         historico[^1].StatusNovo.Should().Be("Entregue");
+
+        var obterNotificacoes = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/notificacoes");
+        obterNotificacoes.StatusCode.Should().Be(HttpStatusCode.OK);
+        var notificacoes = await obterNotificacoes.Content.ReadFromJsonAsync<List<NotificacaoClienteDto>>();
+        notificacoes.Should().NotBeNull();
+        notificacoes.Should().HaveCount(3);
+        notificacoes.Should().Contain(n => n.TipoNotificacao == "LinkAcompanhamentoEnviado" && n.Canal == "Email" && n.Recebida);
+        notificacoes.Should().Contain(n => n.TipoNotificacao == "OrcamentoDisponivel" && n.Canal == "WhatsApp" && n.Recebida);
+        notificacoes.Should().Contain(n => n.TipoNotificacao == "ServicoFinalizado" && n.Canal == "WhatsApp" && n.Recebida);
     }
 
     [Fact]
@@ -191,7 +200,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
     }
 
     [Fact]
-    public async Task Aprovar_DeveBloquearOsGerarPedidoCompraEPermitirNovaAprovacaoAposRecebimento()
+    public async Task LiberarExecucao_DeveValidarEstoqueBaixarItensEAtualizarStatusAposRecebimento()
     {
         var ordemCriada = await CriarOrdemAsync();
 
@@ -230,24 +239,35 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         pedidoRecebido!.Status.Should().Be("Recebido");
         pedidoRecebido.QuantidadeRecebida.Should().Be(1);
 
-        var segundaAprovacao = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/aprovar", null);
+        var aprovacaoIndevida = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/aprovar", null);
 
-        segundaAprovacao.StatusCode.Should().Be(HttpStatusCode.OK);
-        var emExecucao = await segundaAprovacao.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        aprovacaoIndevida.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var mensagemErroAprovacao = await aprovacaoIndevida.Content.ReadAsStringAsync();
+        mensagemErroAprovacao.Should().Contain("aguardando estoque");
+
+        var liberacaoExecucao = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/liberar-execucao", null);
+
+        liberacaoExecucao.StatusCode.Should().Be(HttpStatusCode.OK);
+        var emExecucao = await liberacaoExecucao.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
         emExecucao.Should().NotBeNull();
         emExecucao!.Status.Should().Be("EmExecucao");
 
         var movimentacoesResponse = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/movimentacoes-estoque");
 
         movimentacoesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var movimentacoes = await movimentacoesResponse.Content.ReadFromJsonAsync<List<MovimentacaoEstoqueDto>>();
-        movimentacoes.Should().NotBeNull();
-        movimentacoes.Should().HaveCount(2);
-        movimentacoes.Should().Contain(x =>
+        var movimentacoesPorPeca = await movimentacoesResponse.Content.ReadFromJsonAsync<List<MovimentacoesEstoquePorPecaDto>>();
+        movimentacoesPorPeca.Should().NotBeNull();
+        movimentacoesPorPeca.Should().ContainSingle(x => x.PecaId == CustomWebApplicationFactory.PecaExistenteId);
+
+        var grupoPeca = movimentacoesPorPeca!.Single(x => x.PecaId == CustomWebApplicationFactory.PecaExistenteId);
+        grupoPeca.QuantidadeNaOrdem.Should().Be(101);
+        grupoPeca.TotalMovimentacoes.Should().Be(2);
+        grupoPeca.Movimentacoes.Should().HaveCount(2);
+        grupoPeca.Movimentacoes.Should().Contain(x =>
             x.TipoMovimentacao == "EntradaPorPedidoCompra" &&
             x.Quantidade == 1 &&
             x.QuantidadePosterior == 101);
-        movimentacoes.Should().Contain(x =>
+        grupoPeca.Movimentacoes.Should().Contain(x =>
             x.TipoMovimentacao == "BaixaParaOrdemDeServico" &&
             x.Quantidade == 101 &&
             x.QuantidadePosterior == 0);

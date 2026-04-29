@@ -18,6 +18,7 @@ public class OficinaDbContext : DbContext
     public DbSet<OrdemDeServicoServico> OrdemDeServicoServicos { get; set; } = null!;
     public DbSet<OrdemDeServicoPeca> OrdemDeServicoPecas { get; set; } = null!;
     public DbSet<OrdemServicoHistorico> OrdemServicoHistoricos { get; set; } = null!;
+    public DbSet<NotificacaoCliente> NotificacoesCliente { get; set; } = null!;
     public DbSet<PedidoCompra> PedidosCompra { get; set; } = null!;
     public DbSet<MovimentacaoEstoque> MovimentacoesEstoque { get; set; } = null!;
     public DbSet<Usuario> Usuarios { get; set; } = null!;
@@ -101,6 +102,8 @@ public class OficinaDbContext : DbContext
                 .ValueGeneratedOnAdd()
                 .HasIdentityOptions(startValue: 3000);
             entity.Property(e => e.Numero).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.CodigoAcompanhamento).IsRequired().HasMaxLength(40);
+            entity.Property(e => e.TokenAcompanhamentoHash).IsRequired().HasMaxLength(64);
             entity.Property(e => e.DescricaoSolicitacao).IsRequired().HasMaxLength(1000);
             entity.Property(e => e.ObservacoesRecepcao).HasMaxLength(1000);
             entity.Property(e => e.MotivoCancelamento).HasMaxLength(1000);
@@ -112,10 +115,12 @@ public class OficinaDbContext : DbContext
             entity.Property(e => e.DataConclusao).HasColumnType("timestamp without time zone");
             entity.Property(e => e.ValorTotal).HasPrecision(18, 2);
             entity.HasIndex(e => e.Numero).IsUnique();
+            entity.HasIndex(e => e.CodigoAcompanhamento).IsUnique();
             entity.HasIndex(e => e.Status);
             entity.HasMany(e => e.Servicos).WithOne(os => os.OrdemDeServico).HasForeignKey(os => os.OrdemDeServicoId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.Pecas).WithOne(op => op.OrdemDeServico).HasForeignKey(op => op.OrdemDeServicoId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(e => e.Historicos).WithOne(h => h.OrdemDeServico).HasForeignKey(h => h.OrdemDeServicoId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(e => e.NotificacoesCliente).WithOne(n => n.OrdemDeServico).HasForeignKey(n => n.OrdemDeServicoId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany<PedidoCompra>().WithOne(pc => pc.OrdemDeServico).HasForeignKey(pc => pc.OrdemDeServicoId).OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -155,6 +160,21 @@ public class OficinaDbContext : DbContext
             entity.Property(e => e.TipoEvento).HasConversion<string>().HasMaxLength(50);
             entity.HasIndex(e => e.OrdemDeServicoId);
             entity.HasIndex(e => e.DataEvento);
+        });
+
+        modelBuilder.Entity<NotificacaoCliente>(entity =>
+        {
+            entity.ToTable("NotificacaoCliente");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasIdentityOptions(startValue: 1);
+            entity.Property(e => e.DataNotificacao).HasColumnType("timestamp without time zone");
+            entity.Property(e => e.Canal).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.TipoNotificacao).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.Mensagem).IsRequired().HasMaxLength(2000);
+            entity.HasIndex(e => e.OrdemDeServicoId);
+            entity.HasIndex(e => e.DataNotificacao);
         });
 
         modelBuilder.Entity<PedidoCompra>(entity =>

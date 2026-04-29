@@ -113,6 +113,7 @@ GET    /ordens-servico/status/{status}
 PATCH  /ordens-servico/{id}/iniciar-diagnostico
 PATCH  /ordens-servico/{id}/finalizar-diagnostico
 PATCH  /ordens-servico/{id}/aprovar
+PATCH  /ordens-servico/{id}/liberar-execucao
 PATCH  /ordens-servico/{id}/finalizar
 PATCH  /ordens-servico/{id}/registrar-pagamento
 PATCH  /ordens-servico/{id}/entregar
@@ -298,14 +299,45 @@ Regra central:
 - a transição `AguardandoAprovacao -> EmExecucao` só ocorre após validação de estoque;
 - se houver disponibilidade total, o sistema baixa estoque e registra movimentação;
 - se faltar item, a OS vai para `AguardandoEstoque` e o sistema pode gerar pedido de compra;
-- após o recebimento do pedido e reposição do estoque, a OS pode ser aprovada novamente.
+- `/aprovar` não aceita OS em `AguardandoEstoque`;
+- após o recebimento do pedido e reposição do estoque, use `PATCH /ordens-servico/{id}/liberar-execucao`.
 
 Rastreabilidade:
 
 - `GET /ordens-servico/{id}/historico`
-- `GET /ordens-servico/{id}/movimentacoes-estoque`
+- `GET /ordens-servico/{id}/movimentacoes-estoque`, com retorno agrupado por peça da OS
 - `GET /pedidos-compra/ordem/{ordemDeServicoId}`
 - `GET /pedidos-compra?page=1&pageSize=10`
+
+Exemplo resumido do agrupamento de movimentações:
+
+```json
+[
+  {
+    "pecaId": 1000,
+    "nomePeca": "Filtro de Oleo",
+    "marcaPeca": "Bosch",
+    "modeloPeca": "F-0001",
+    "quantidadeNaOrdem": 2,
+    "totalMovimentacoes": 1,
+    "movimentacoes": [
+      {
+        "id": 10,
+        "pecaId": 1000,
+        "ordemDeServicoId": 3001,
+        "pedidoCompraId": null,
+        "nomePeca": "Filtro de Oleo",
+        "tipoMovimentacao": "BaixaParaOrdemDeServico",
+        "quantidade": 2,
+        "quantidadeAnterior": 10,
+        "quantidadePosterior": 8,
+        "descricao": "Baixa de estoque para a ordem de servico OS-20260428-3001.",
+        "dataMovimentacao": "2026-04-28T10:00:00"
+      }
+    ]
+  }
+]
+```
 
 ## Regras de domínio relevantes
 
@@ -316,6 +348,7 @@ Rastreabilidade:
 - peças só podem ser removidas em `EmDiagnostico`;
 - peças podem ser adicionadas em `EmDiagnostico`, `AguardandoAprovacao` e `AguardandoEstoque`;
 - a OS não entra em `EmExecucao` sem validação de estoque bem-sucedida;
+- uma OS em `AguardandoEstoque` só pode ir para `EmExecucao` pela rota de liberação de execução;
 - pagamento só pode ser registrado após finalização;
 - entrega só pode ocorrer após pagamento.
 

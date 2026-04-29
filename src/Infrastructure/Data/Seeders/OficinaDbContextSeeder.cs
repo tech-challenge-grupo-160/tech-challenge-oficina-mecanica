@@ -190,6 +190,8 @@ public static class OficinaDbContextSeeder
                 var ordem1 = new OrdemDeServico
                 {
                     Numero = "OS-20260413-3000",
+                    CodigoAcompanhamento = "AC-SEED-3000",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3000"),
                     ClienteId = clienteVanessa.Id,
                     VeiculoId = veiculoCorolla.Id,
                     DescricaoSolicitacao = "Cliente relatou troca de oleo e revisao preventiva.",
@@ -206,6 +208,8 @@ public static class OficinaDbContextSeeder
                 var ordem2 = new OrdemDeServico
                 {
                     Numero = "OS-20260416-3001",
+                    CodigoAcompanhamento = "AC-SEED-3001",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3001"),
                     ClienteId = clienteRafael.Id,
                     VeiculoId = veiculoCivic.Id,
                     DescricaoSolicitacao = "Cliente informou ruido na suspensao dianteira.",
@@ -221,6 +225,8 @@ public static class OficinaDbContextSeeder
                 var ordem3 = new OrdemDeServico
                 {
                     Numero = "OS-20260420-3002",
+                    CodigoAcompanhamento = "AC-SEED-3002",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3002"),
                     ClienteId = clienteBetina.Id,
                     VeiculoId = veiculoGol.Id,
                     DescricaoSolicitacao = "Veiculo com falha de ignicao intermitente.",
@@ -234,6 +240,8 @@ public static class OficinaDbContextSeeder
                 var ordem4 = new OrdemDeServico
                 {
                     Numero = "OS-20260421-3003",
+                    CodigoAcompanhamento = "AC-SEED-3003",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3003"),
                     ClienteId = clienteVanessa.Id,
                     VeiculoId = veiculoCorolla.Id,
                     DescricaoSolicitacao = "Luz da injecao acesa no painel.",
@@ -247,6 +255,8 @@ public static class OficinaDbContextSeeder
                 var ordem5 = new OrdemDeServico
                 {
                     Numero = "OS-20260421-3004",
+                    CodigoAcompanhamento = "AC-SEED-3004",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3004"),
                     ClienteId = clienteRafael.Id,
                     VeiculoId = veiculoCivic.Id,
                     DescricaoSolicitacao = "Revisao de freios e alinhamento.",
@@ -259,6 +269,8 @@ public static class OficinaDbContextSeeder
                 var ordem6 = new OrdemDeServico
                 {
                     Numero = "OS-20260422-3005",
+                    CodigoAcompanhamento = "AC-SEED-3005",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3005"),
                     ClienteId = clienteVicente.Id,
                     VeiculoId = veiculoStrada.Id,
                     DescricaoSolicitacao = "Veiculo recebido para revisao basica.",
@@ -271,6 +283,8 @@ public static class OficinaDbContextSeeder
                 var ordem7 = new OrdemDeServico
                 {
                     Numero = "OS-20260419-3006",
+                    CodigoAcompanhamento = "AC-SEED-3006",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3006"),
                     ClienteId = clienteBetina.Id,
                     VeiculoId = veiculoGol.Id,
                     DescricaoSolicitacao = "Solicitada avaliacao de pneus e suspensao.",
