@@ -18,6 +18,7 @@ public interface IOrdemDeServicoApplicationService
     Task<IEnumerable<NotificacaoClienteDto>> ObterNotificacoesAsync(int id, CancellationToken cancellationToken);
     Task<IEnumerable<MovimentacoesEstoquePorPecaDto>> ObterMovimentacoesEstoqueAsync(int id, CancellationToken cancellationToken);
     Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken);
+    Task<EstimativaTempoOrdemDeServicoDto> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken);
     Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken);
     Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(
         int page,
@@ -249,6 +250,17 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
 
         return MapToMonitoramentoDto(ordem, DateTimeHelper.UTCBrazilNow());
+    }
+
+    public async Task<EstimativaTempoOrdemDeServicoDto> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+        if (ordem == null)
+        {
+            throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+        }
+
+        return MapToEstimativaTempoDto(ordem);
     }
 
     public async Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
@@ -1167,6 +1179,32 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             TempoFinalizacaoHoras = tempoFinalizacao.HasValue
                 ? Math.Max(0, Math.Round(tempoFinalizacao.Value.TotalHours, 2))
                 : null
+        };
+    }
+
+    private static EstimativaTempoOrdemDeServicoDto MapToEstimativaTempoDto(OrdemDeServico ordem)
+    {
+        var servicos = ordem.Servicos
+            .OrderBy(x => x.ServicoId)
+            .Select(x => new EstimativaTempoServicoDto
+            {
+                ServicoId = x.ServicoId,
+                TempoEstimadoMinutos = x.TempoEstimado,
+                TempoEstimadoHoras = Math.Round(x.TempoEstimado / 60d, 2)
+            })
+            .ToList();
+
+        var totalMinutos = servicos.Sum(x => x.TempoEstimadoMinutos);
+
+        return new EstimativaTempoOrdemDeServicoDto
+        {
+            OrdemDeServicoId = ordem.Id,
+            Numero = ordem.Numero,
+            Status = ordem.Status.ToString(),
+            TotalServicos = servicos.Count,
+            TempoEstimadoMinutos = totalMinutos,
+            TempoEstimadoHoras = Math.Round(totalMinutos / 60d, 2),
+            Servicos = servicos
         };
     }
 

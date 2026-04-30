@@ -107,6 +107,7 @@ GET    /ordens-servico/{id}
 GET    /ordens-servico/{id}/historico
 GET    /ordens-servico/{id}/movimentacoes-estoque
 GET    /ordens-servico/{id}/monitoramento
+GET    /ordens-servico/{id}/estimativa-tempo
 GET    /ordens-servico/monitoramento?page=1&pageSize=10
 GET    /ordens-servico/cliente/{clienteId}
 GET    /ordens-servico/status/{status}
@@ -291,6 +292,37 @@ Retorna:
 - data de finalização, quando houver;
 - tempo decorrido;
 - tempo total de finalização, quando aplicável.
+
+### Estimativa de tempo por OS
+
+```http
+GET /ordens-servico/{id}/estimativa-tempo
+```
+
+Retorna a soma do tempo estimado dos serviços vinculados à OS:
+
+```json
+{
+  "ordemDeServicoId": 3001,
+  "numero": "OS-20260428-3001",
+  "status": "EmDiagnostico",
+  "totalServicos": 2,
+  "tempoEstimadoMinutos": 120,
+  "tempoEstimadoHoras": 2.0,
+  "servicos": [
+    {
+      "servicoId": 1000,
+      "tempoEstimadoMinutos": 30,
+      "tempoEstimadoHoras": 0.5
+    },
+    {
+      "servicoId": 1001,
+      "tempoEstimadoMinutos": 90,
+      "tempoEstimadoHoras": 1.5
+    }
+  ]
+}
+```
 
 ## Estoque e compras
 
