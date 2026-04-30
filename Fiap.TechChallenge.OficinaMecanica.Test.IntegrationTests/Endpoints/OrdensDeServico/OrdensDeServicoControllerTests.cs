@@ -181,7 +181,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
             $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
             new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
 
-        var response = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/estimativa-tempo");
+        var response = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/estimativa-tempo-servico");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var estimativa = await response.Content.ReadFromJsonAsync<EstimativaTempoOrdemDeServicoDto>();
