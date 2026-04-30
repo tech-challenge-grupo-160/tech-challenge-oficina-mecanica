@@ -325,6 +325,39 @@ public class OrdemDeServicoApplicationServiceTests
     }
 
     [Fact]
+    public async Task ObterEstimativaTempoAsync_DeveSomarTempoEstimadoDosServicosDaOs()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.EmDiagnostico, clienteId: 1, veiculoId: 10);
+        ordem.Servicos.Add(new OrdemDeServicoServico
+        {
+            OrdemDeServicoId = ordem.Id,
+            ServicoId = 1000,
+            Preco = 150m,
+            TempoEstimado = 30
+        });
+        ordem.Servicos.Add(new OrdemDeServicoServico
+        {
+            OrdemDeServicoId = ordem.Id,
+            ServicoId = 1001,
+            Preco = 300m,
+            TempoEstimado = 90
+        });
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+
+        var resultado = await _service.ObterEstimativaTempoAsync(ordem.Id, CancellationToken.None);
+
+        resultado.OrdemDeServicoId.Should().Be(ordem.Id);
+        resultado.TotalServicos.Should().Be(2);
+        resultado.TempoEstimadoMinutos.Should().Be(120);
+        resultado.TempoEstimadoHoras.Should().Be(2);
+        resultado.Servicos.Should().Contain(x => x.ServicoId == 1000 && x.TempoEstimadoMinutos == 30 && x.TempoEstimadoHoras == 0.5);
+        resultado.Servicos.Should().Contain(x => x.ServicoId == 1001 && x.TempoEstimadoMinutos == 90 && x.TempoEstimadoHoras == 1.5);
+    }
+
+    [Fact]
     public async Task AprovarAsync_DeveBloquearExecucaoEGerarPedidoCompraQuandoFaltarEstoque()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoAprovacao, clienteId: 1, veiculoId: 10);

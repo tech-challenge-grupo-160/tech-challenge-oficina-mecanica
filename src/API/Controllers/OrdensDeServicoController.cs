@@ -79,6 +79,13 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(monitoramento);
     }
 
+    [HttpGet("{id}/estimativa-tempo-servico")]
+    public async Task<ActionResult<EstimativaTempoOrdemDeServicoDto>> ObterEstimativaTempo(int id, CancellationToken cancellationToken)
+    {
+        var estimativa = await _ordemService.ObterEstimativaTempoAsync(id, cancellationToken);
+        return Ok(estimativa);
+    }
+
     [HttpGet]
     public async Task<ActionResult<PagedResultDto<OrdemDeServicoDto>>> Listar(
         [FromQuery] int page = 1,
