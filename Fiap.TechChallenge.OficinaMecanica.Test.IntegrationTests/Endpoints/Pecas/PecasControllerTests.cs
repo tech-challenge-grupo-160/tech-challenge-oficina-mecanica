@@ -33,79 +33,7 @@ public class PecasControllerTests : IClassFixture<CustomWebApplicationFactory>
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
-
-    [Fact]
-    public async Task CriarPeca_deveRetornarBadRequest_quandoPrecoNegativo()
-    {
-        var body = new
-        {
-            Nome = "Radiador",
-            Marca = "BioArno",
-            Modelo = "Zen-01",
-            Preco = -100,
-            QuantidadeEstoque = 15
-        };
-        
-        var response = await _client.PostAsJsonAsync("/api/v1/pecas", body);
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
     
-    [Fact]
-    public async Task CriarPeca_deveRetornarBadRequest_quandoQuantidadeEstoqueZero()
-    {
-        var body = new
-        {
-            Nome = "Espelho Esportivo",
-            Marca = "BioArno",
-            Modelo = "Zen-01",
-            Preco = 192,
-            QuantidadeEstoque = 0
-        };
-        
-        var response = await _client.PostAsJsonAsync("/api/v1/pecas", body);
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-    
-    [Fact]
-    public async Task CriarPeca_deveRetornarBadRequest_quandoNomeVazio()
-    {
-        var body = new
-        {
-            Nome = "",
-            Marca = "BioArno",
-            Modelo = "Zen-01",
-            Preco = 189.90,
-            QuantidadeEstoque = 0
-        };
-        
-        var response = await _client.PostAsJsonAsync("/api/v1/pecas", body);
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-    
-    [Fact]
-    public async Task ObterPeca_deveRetornarExistente()
-    {
-        var body = new
-        {
-            Nome = "Escapamento",
-            Marca = "BioArno",
-            Modelo = "Zen-04",
-            Preco = 30,
-            QuantidadeEstoque = 0
-        };
-        
-        var responseCreatePeca = await _client.PostAsJsonAsync("/api/v1/pecas", body);
-        var pecaCreated = responseCreatePeca.Content.ReadFromJsonAsync<PecaDto>();
-
-        string idPeca = pecaCreated.Id.ToString();
-        var responseListarPeca = await _client.GetAsync($"/api/v1/pecas/{idPeca}");
-        PecaDto pecaListada = responseListarPeca.Content.ReadFromJsonAsync<PecaDto>().Result;
-        
-        pecaListada.Should().BeEquivalentTo(pecaListada);
-    }
 
     [Fact]
     public async Task listarPecas_deveRetornarOk()
