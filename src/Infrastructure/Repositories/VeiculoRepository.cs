@@ -14,6 +14,14 @@ public class VeiculoRepository : IVeiculoRepository
         _context = context;
     }
 
+    public async Task<bool> ExisteEmOrdemDeServicoAtivaAsync(int veiculoId, CancellationToken cancellationToken)
+    {
+        return await _context.OrdensDeServico
+            .AnyAsync(
+                ordem => ordem.VeiculoId == veiculoId,
+                cancellationToken);
+    }
+
     public async Task<Veiculo?> ObterPorIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _context.Veiculos.FirstOrDefaultAsync(v => v.Id == id, cancellationToken);

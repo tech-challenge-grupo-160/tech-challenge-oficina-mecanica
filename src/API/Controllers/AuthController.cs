@@ -20,14 +20,7 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginRequestDto dto, CancellationToken cancellationToken)
     {
-        try
-        {
-            var result = await _authService.LoginAsync(dto, cancellationToken);
-            return Ok(result);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Unauthorized(new { message = "Usuário ou senha inválidos." });
-        }
+        var result = await _authService.LoginAsync(dto, cancellationToken);
+        return Ok(result);
     }
 }

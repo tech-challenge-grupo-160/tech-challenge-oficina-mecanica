@@ -105,4 +105,42 @@ public class VeiculoApplicationServiceTests
         resultado.Placa.Should().Be("BRA2E19");
         resultado.ClienteId.Should().Be(clienteId);
     }
+
+    [Fact]
+    public async Task DeletarVeiculo_DeveLancarQuandoExistiremOrdensDeServicoAtivasVinculadas()
+    {
+        var veiculo = VeiculoMock.Criar(id: 10, placa: "BRA2E19");
+
+        _veiculoRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(veiculo.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(veiculo);
+        _veiculoRepositoryMock
+            .Setup(x => x.ExisteEmOrdemDeServicoAtivaAsync(veiculo.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var acao = () => _service.DeletarVeiculoAsync(veiculo.Id, CancellationToken.None);
+
+        await acao.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*ordens de servico ativas vinculadas*");
+    }
+
+    [Fact]
+    public async Task DeletarVeiculo_DeveExcluirQuandoNaoExistiremOrdensDeServicoAtivasVinculadas()
+    {
+        var veiculo = VeiculoMock.Criar(id: 10, placa: "BRA2E19");
+
+        _veiculoRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(veiculo.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(veiculo);
+        _veiculoRepositoryMock
+            .Setup(x => x.ExisteEmOrdemDeServicoAtivaAsync(veiculo.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _veiculoRepositoryMock
+            .Setup(x => x.DeletarAsync(veiculo.Id, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        await _service.DeletarVeiculoAsync(veiculo.Id, CancellationToken.None);
+
+        _veiculoRepositoryMock.Verify(x => x.DeletarAsync(veiculo.Id, It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

@@ -11,5 +11,10 @@ public enum TipoEventoOrdemServico
     ServicoFinalizado = 6,
     PagamentoRegistrado = 7,
     VeiculoEntregue = 8,
-    OrdemCancelada = 9
+    OrdemCancelada = 9,
+    BloqueioPorFaltaEstoque = 10,
+    PedidoCompraGerado = 11,
+    EstoqueBaixado = 12,
+    PedidoCompraRecebido = 13,
+    EstoqueReposto = 14
 }

@@ -4,6 +4,7 @@ namespace Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 
 public interface IVeiculoRepository
 {
+    Task<bool> ExisteEmOrdemDeServicoAtivaAsync(int veiculoId, CancellationToken cancellationToken);
     Task<Veiculo?> ObterPorIdAsync(int id, CancellationToken cancellationToken);
     Task<Veiculo?> ObterPorPlacaAsync(string placa, CancellationToken cancellationToken);
     Task<IEnumerable<Veiculo>> ObterPorClienteAsync(int clienteId, CancellationToken cancellationToken);

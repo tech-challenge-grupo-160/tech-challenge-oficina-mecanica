@@ -21,11 +21,19 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     public const int PessoaFisicaClienteId = 1;
     public const int PessoaJuridicaClienteId = 2;
     public const int VeiculoExistenteId = 1;
+    public const int SegundoVeiculoExistenteId = 2;
     public const int ServicoExistenteId = 1000;
     public const int PecaExistenteId = 1000;
     public const string UsuarioAutenticadoId = "integration-test-user-id";
     public const string UsuarioAutenticadoNome = "integration-test-user";
     private readonly string _databaseName = $"OficinaInMemoryTests-{Guid.NewGuid()}";
+
+    public void ResetDatabase()
+    {
+        using var scope = Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
+        SeedData(context);
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -72,11 +80,14 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         context.OrdemDeServicoPecas.RemoveRange(context.OrdemDeServicoPecas);
         context.OrdemDeServicoServicos.RemoveRange(context.OrdemDeServicoServicos);
         context.OrdemServicoHistoricos.RemoveRange(context.OrdemServicoHistoricos);
+        context.MovimentacoesEstoque.RemoveRange(context.MovimentacoesEstoque);
+        context.PedidosCompra.RemoveRange(context.PedidosCompra);
         context.OrdensDeServico.RemoveRange(context.OrdensDeServico);
         context.Pecas.RemoveRange(context.Pecas);
         context.Servicos.RemoveRange(context.Servicos);
         context.Veiculos.RemoveRange(context.Veiculos);
         context.Clientes.RemoveRange(context.Clientes);
+        context.SaveChanges();
 
         context.Clientes.AddRange(
             new Cliente
@@ -98,7 +109,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 DataCadastro = DateTimeHelper.UTCBrazilNow()
             });
 
-        context.Veiculos.Add(
+        context.Veiculos.AddRange(
             new Veiculo
             {
                 Id = VeiculoExistenteId,
@@ -107,6 +118,15 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 Modelo = "Gol",
                 Ano = 2020,
                 ClienteId = PessoaFisicaClienteId
+            },
+            new Veiculo
+            {
+                Id = SegundoVeiculoExistenteId,
+                Placa = "XYZ9A88",
+                Marca = "Fiat",
+                Modelo = "Argo",
+                Ano = 2022,
+                ClienteId = PessoaJuridicaClienteId
             });
 
         context.Servicos.Add(
@@ -124,8 +144,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             {
                 Id = PecaExistenteId,
                 Nome = "Pastilha de Freio",
+                Marca = "Cobreq",
+                Modelo = "N-1234",
                 Preco = 45m,
-                QuantidadeEstoque = 10
+                QuantidadeEstoque = 100
             });
 
         context.SaveChanges();

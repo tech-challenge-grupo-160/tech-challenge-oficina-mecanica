@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data.Seeders;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Extensions;
 
@@ -11,6 +12,8 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Extensions;
 /// </summary>
 public static class HostExtensions
 {
+    private const string LoggerName = nameof(HostExtensions);
+
     /// <summary>
     /// Executa migrations pendentes e seed dos dados iniciais.
     /// </summary>
@@ -21,11 +24,17 @@ public static class HostExtensions
     {
         using var scope = host.Services.CreateScope();
         var serviceProvider = scope.ServiceProvider;
-        var logger = serviceProvider.GetRequiredService<ILogger<object>>();
+        var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+        var logger = loggerFactory.CreateLogger(LoggerName);
 
         try
         {
-            logger.LogInformation("Iniciando processo de migration e seeding do banco de dados...");
+            logger.LogInformation(LogTemplate.Start, LoggerName);
+            logger.LogDebug(
+                LogTemplate.Trace,
+                LoggerName,
+                nameof(MigrateAndSeedAsync),
+                "Iniciando processo de migration e seeding do banco de dados");
 
             var context = serviceProvider.GetRequiredService<OficinaDbContext>();
 
@@ -35,16 +44,26 @@ public static class HostExtensions
             // Executar seeding apenas em desenvolvimento
             if (isDevelopment)
             {
-                logger.LogInformation("Iniciando seeding de dados mocados...");
+                logger.LogDebug(
+                    LogTemplate.Trace,
+                    LoggerName,
+                    nameof(MigrateAndSeedAsync),
+                    "Iniciando seeding de dados mocados");
                 await OficinaDbContextSeeder.SeedAsync(context);
-                logger.LogInformation("Seeding completado com sucesso!");
+                logger.LogInformation(LogTemplate.End, LoggerName, "Seeding completado com sucesso.");
             }
 
-            logger.LogInformation("Migration e seeding finalizados com sucesso!");
+            logger.LogInformation(LogTemplate.End, LoggerName, "Migration e seeding finalizados com sucesso.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Erro crítico ao executar migrations e seeding. A aplicação será encerrada.");
+            logger.LogError(
+                ex,
+                LogTemplate.Error,
+                LoggerName,
+                nameof(MigrateAndSeedAsync),
+                LogTemplate.CurrentTraceId(),
+                "Erro critico ao executar migrations e seeding. A aplicacao sera encerrada.");
             throw;
         }
 
@@ -67,11 +86,15 @@ public static class HostExtensions
         {
             try
             {
-                logger.LogInformation($"Tentativa {attempt + 1}/{maxRetries} de executar migrations...");
+                logger.LogDebug(
+                    LogTemplate.Trace,
+                    LoggerName,
+                    nameof(MigrateWithRetryAsync),
+                    $"Tentativa {attempt + 1}/{maxRetries} de executar migrations");
 
                 await context.Database.MigrateAsync();
 
-                logger.LogInformation("Migrations executadas com sucesso!");
+                logger.LogInformation(LogTemplate.End, LoggerName, "Migrations executadas com sucesso.");
                 return;
             }
             catch (Exception ex)
@@ -80,17 +103,22 @@ public static class HostExtensions
 
                 if (attempt >= maxRetries)
                 {
-                    logger.LogError(ex, "Falha ao conectar ao banco de dados após {MaxRetries} tentativas.", maxRetries);
+                    logger.LogError(
+                        ex,
+                        LogTemplate.Error,
+                        LoggerName,
+                        nameof(MigrateWithRetryAsync),
+                        LogTemplate.CurrentTraceId(),
+                        $"Falha ao conectar ao banco de dados apos {maxRetries} tentativas.");
                     throw;
                 }
 
                 logger.LogWarning(
                     ex,
-                    "Falha ao conectar ao banco de dados. Tentativa {Attempt}/{MaxRetries}. " +
-                    "Aguardando {DelaySeconds}s antes de tentar novamente...",
-                    attempt,
-                    maxRetries,
-                    delayMilliseconds / 1000);
+                    LogTemplate.Warning,
+                    LoggerName,
+                    nameof(MigrateWithRetryAsync),
+                    $"Falha ao conectar ao banco de dados. Tentativa {attempt}/{maxRetries}. Aguardando {delayMilliseconds / 1000}s antes de tentar novamente.");
 
                 await Task.Delay(delayMilliseconds);
             }

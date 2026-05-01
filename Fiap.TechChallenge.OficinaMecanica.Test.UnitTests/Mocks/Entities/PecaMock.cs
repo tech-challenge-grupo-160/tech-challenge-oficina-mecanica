@@ -7,6 +7,8 @@ public static class PecaMock
     public static Peca Criar(
         int id = 1000,
         string nome = "Pastilha de Freio",
+        string marca = "Cobreq",
+        string modelo = "N-1234",
         decimal preco = 45m,
         int quantidadeEstoque = 10)
     {
@@ -14,6 +16,8 @@ public static class PecaMock
         {
             Id = id,
             Nome = nome,
+            Marca = marca,
+            Modelo = modelo,
             Preco = preco,
             QuantidadeEstoque = quantidadeEstoque
         };

@@ -38,6 +38,54 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(historico);
     }
 
+    [HttpGet("{id}/notificacoes")]
+    public async Task<ActionResult<IEnumerable<NotificacaoClienteDto>>> ObterNotificacoes(int id, CancellationToken cancellationToken)
+    {
+        var notificacoes = await _ordemService.ObterNotificacoesAsync(id, cancellationToken);
+        return Ok(notificacoes);
+    }
+
+    [HttpGet("{id}/movimentacoes-estoque")]
+    public async Task<ActionResult<IEnumerable<MovimentacoesEstoquePorPecaDto>>> ObterMovimentacoesEstoque(int id, CancellationToken cancellationToken)
+    {
+        var movimentacoes = await _ordemService.ObterMovimentacoesEstoqueAsync(id, cancellationToken);
+        return Ok(movimentacoes);
+    }
+
+    [HttpGet("monitoramento")]
+    public async Task<ActionResult<ResumoMonitoramentoOrdensDeServicoDto>> ObterResumoMonitoramento(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+    {
+        if (page <= 0)
+        {
+            return BadRequest("page deve ser maior que zero.");
+        }
+
+        if (pageSize <= 0)
+        {
+            return BadRequest("pageSize deve ser maior que zero.");
+        }
+
+        var resumo = await _ordemService.ObterResumoMonitoramentoAsync(page, pageSize, cancellationToken);
+        return Ok(resumo);
+    }
+
+    [HttpGet("{id}/monitoramento")]
+    public async Task<ActionResult<MonitoramentoOrdemDeServicoDto>> ObterMonitoramento(int id, CancellationToken cancellationToken)
+    {
+        var monitoramento = await _ordemService.ObterMonitoramentoAsync(id, cancellationToken);
+        return Ok(monitoramento);
+    }
+
+    [HttpGet("{id}/estimativa-tempo-servico")]
+    public async Task<ActionResult<EstimativaTempoOrdemDeServicoDto>> ObterEstimativaTempo(int id, CancellationToken cancellationToken)
+    {
+        var estimativa = await _ordemService.ObterEstimativaTempoAsync(id, cancellationToken);
+        return Ok(estimativa);
+    }
+
     [HttpGet]
     public async Task<ActionResult<PagedResultDto<OrdemDeServicoDto>>> Listar(
         [FromQuery] int page = 1,
@@ -71,20 +119,6 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(ordens);
     }
 
-    [HttpGet("cliente/{clienteId}")]
-    public async Task<ActionResult<IEnumerable<OrdemDeServicoDto>>> ListarPorCliente(int clienteId, CancellationToken cancellationToken)
-    {
-        var ordens = await _ordemService.ListarOrdensDeServicoPorClienteAsync(clienteId, cancellationToken);
-        return Ok(ordens);
-    }
-
-    [HttpGet("status/{status}")]
-    public async Task<ActionResult<IEnumerable<OrdemDeServicoDto>>> ListarPorStatus(string status, CancellationToken cancellationToken)
-    {
-        var ordens = await _ordemService.ListarOrdensDeServicoPorStatusAsync(status, cancellationToken);
-        return Ok(ordens);
-    }
-
     [HttpPatch("{id}/iniciar-diagnostico")]
     public async Task<ActionResult<OrdemDeServicoDto>> IniciarDiagnostico(int id, CancellationToken cancellationToken)
     {
@@ -103,6 +137,13 @@ public class OrdensDeServicoController : ControllerBase
     public async Task<ActionResult<OrdemDeServicoDto>> Aprovar(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemService.AprovarAsync(id, cancellationToken);
+        return Ok(ordem);
+    }
+
+    [HttpPatch("{id}/liberar-execucao")]
+    public async Task<ActionResult<OrdemDeServicoDto>> LiberarExecucao(int id, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemService.LiberarExecucaoAsync(id, cancellationToken);
         return Ok(ordem);
     }
 
@@ -141,10 +182,24 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(ordem);
     }
 
+    [HttpDelete("{id}/servicos/{servicoId:int}")]
+    public async Task<ActionResult<OrdemDeServicoDto>> RemoverServico(int id, int servicoId, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemService.RemoverServicoAsync(id, servicoId, cancellationToken);
+        return Ok(ordem);
+    }
+
     [HttpPost("{id}/pecas")]
     public async Task<ActionResult<OrdemDeServicoDto>> AdicionarPeca(int id, [FromBody] AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
     {
         var ordem = await _ordemService.AdicionarPecaAsync(id, dto, cancellationToken);
+        return Ok(ordem);
+    }
+
+    [HttpDelete("{id}/pecas/{pecaId:int}")]
+    public async Task<ActionResult<OrdemDeServicoDto>> RemoverPeca(int id, int pecaId, CancellationToken cancellationToken)
+    {
+        var ordem = await _ordemService.RemoverPecaAsync(id, pecaId, cancellationToken);
         return Ok(ordem);
     }
 

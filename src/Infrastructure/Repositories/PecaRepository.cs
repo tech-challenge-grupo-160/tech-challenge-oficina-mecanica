@@ -14,6 +14,14 @@ public class PecaRepository : IPecaRepository
         _context = context;
     }
 
+    public async Task<bool> ExisteEmOrdemDeServicoAtivaAsync(int pecaId, CancellationToken cancellationToken)
+    {
+        return await _context.OrdemDeServicoPecas
+            .AnyAsync(
+                item => item.PecaId == pecaId,
+                cancellationToken);
+    }
+
     public async Task<Peca?> ObterPorIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _context.Pecas.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
