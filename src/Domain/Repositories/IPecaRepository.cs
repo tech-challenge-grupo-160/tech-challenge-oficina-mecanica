@@ -1,12 +1,13 @@
-using oficina_mecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
-namespace oficina_mecanica.Domain.Repositories;
+namespace Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 
 public interface IPecaRepository
 {
-    Task<Peca?> ObterPorIdAsync(Guid id);
-    Task<IEnumerable<Peca>> ObterTodosAsync();
-    Task<Peca> CriarAsync(Peca peca);
-    Task<Peca> AtualizarAsync(Peca peca);
-    Task DeletarAsync(Guid id);
+    Task<bool> ExisteEmOrdemDeServicoAtivaAsync(int pecaId, CancellationToken cancellationToken);
+    Task<Peca?> ObterPorIdAsync(int id, CancellationToken cancellationToken);
+    Task<IEnumerable<Peca>> ObterTodosAsync(CancellationToken cancellationToken);
+    Task<Peca> CriarAsync(Peca peca, CancellationToken cancellationToken);
+    Task<Peca> AtualizarAsync(Peca peca, CancellationToken cancellationToken);
+    Task DeletarAsync(int id, CancellationToken cancellationToken);
 }

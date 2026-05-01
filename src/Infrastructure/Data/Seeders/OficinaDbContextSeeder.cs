@@ -1,7 +1,9 @@
-using oficina_mecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 using Microsoft.EntityFrameworkCore;
 
-namespace oficina_mecanica.Infrastructure.Data.Seeders;
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data.Seeders;
 
 public static class OficinaDbContextSeeder
 {
@@ -9,37 +11,41 @@ public static class OficinaDbContextSeeder
     {
         try
         {
-            // Seed Clientes
             if (!await context.Clientes.AnyAsync())
             {
                 var clientes = new[]
                 {
                     new Cliente
                     {
-                        Id = Guid.NewGuid(),
-                        Nome = "João Silva",
-                        CpfCnpj = "123.456.789-10",
-                        Telefone = "(11) 98765-4321",
-                        Email = "joao.silva@email.com",
-                        DataCadastro = DateTime.UtcNow
+                        Nome = "Vanessa Luna Duarte",
+                        CpfCnpj = DocumentoHelper.NormalizarCpf("476.548.668-01"),
+                        Telefone = StringHelper.OnlyDigits("15984608796"),
+                        Email = "vanessa_luna_duarte@maissaude.adm.br",
+                        DataCadastro = DateTimeHelper.UTCBrazilNow()
                     },
                     new Cliente
                     {
-                        Id = Guid.NewGuid(),
-                        Nome = "Maria Santos",
-                        CpfCnpj = "987.654.321-10",
-                        Telefone = "(11) 97654-3210",
-                        Email = "maria.santos@email.com",
-                        DataCadastro = DateTime.UtcNow
+                        Nome = "Rafael Mateus Cesar Souza",
+                        CpfCnpj = DocumentoHelper.NormalizarCpf("093.678.498-93"),
+                        Telefone = StringHelper.OnlyDigits("15983042238"),
+                        Email = "rafael-souza91@gilbertorodrigues.com",
+                        DataCadastro = DateTimeHelper.UTCBrazilNow()
                     },
                     new Cliente
                     {
-                        Id = Guid.NewGuid(),
-                        Nome = "Transportadora XYZ LTDA",
-                        CpfCnpj = "12.345.678/0001-90",
-                        Telefone = "(11) 3456-7890",
-                        Email = "contato@transportadora.com",
-                        DataCadastro = DateTime.UtcNow
+                        Nome = "Betina e Fernanda Contabil Ltda",
+                        CpfCnpj = DocumentoHelper.NormalizarCnpj("60.617.051/0001-99"),
+                        Telefone = StringHelper.OnlyDigits("16985344781"),
+                        Email = "ouvidoria@betinaefernandacontabilltda.com.br",
+                        DataCadastro = DateTimeHelper.UTCBrazilNow()
+                    },
+                    new Cliente
+                    {
+                        Nome = "Vicente e Giovanni Advocacia Ltda",
+                        CpfCnpj = DocumentoHelper.NormalizarCnpj("46.981.686/0001-40"),
+                        Telefone = StringHelper.OnlyDigits("11983202194"),
+                        Email = "contato@vicenteegiovanniadvocacialtda.com.br",
+                        DataCadastro = DateTimeHelper.UTCBrazilNow()
                     }
                 };
 
@@ -47,38 +53,47 @@ public static class OficinaDbContextSeeder
                 await context.SaveChangesAsync();
             }
 
-            // Seed Veículos
             if (!await context.Veiculos.AnyAsync())
             {
-                var clientes = await context.Clientes.ToListAsync();
+                var clientes = await context.Clientes.OrderBy(c => c.Id).ToListAsync();
+                var clienteVanessa = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("476.548.668-01"));
+                var clienteRafael = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("093.678.498-93"));
+                var clienteBetina = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCnpj("60.617.051/0001-99"));
+                var clienteVicente = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCnpj("46.981.686/0001-40"));
+
                 var veiculos = new[]
                 {
                     new Veiculo
                     {
-                        Id = Guid.NewGuid(),
-                        Placa = "ABC-1234",
+                        Placa = "ABC1234",
                         Marca = "Toyota",
                         Modelo = "Corolla",
                         Ano = 2020,
-                        ClienteId = clientes[0].Id
+                        ClienteId = clienteVanessa.Id
                     },
                     new Veiculo
                     {
-                        Id = Guid.NewGuid(),
-                        Placa = "XYZ-5678",
+                        Placa = "XYZ5678",
                         Marca = "Honda",
                         Modelo = "Civic",
                         Ano = 2019,
-                        ClienteId = clientes[1].Id
+                        ClienteId = clienteRafael.Id
                     },
                     new Veiculo
                     {
-                        Id = Guid.NewGuid(),
-                        Placa = "DEF-9101",
+                        Placa = "DEF9101",
                         Marca = "Volkswagen",
                         Modelo = "Gol",
                         Ano = 2021,
-                        ClienteId = clientes[2].Id
+                        ClienteId = clienteBetina.Id
+                    },
+                    new Veiculo
+                    {
+                        Placa = "GHI2345",
+                        Marca = "Fiat",
+                        Modelo = "Strada",
+                        Ano = 2022,
+                        ClienteId = clienteVicente.Id
                     }
                 };
 
@@ -86,30 +101,26 @@ public static class OficinaDbContextSeeder
                 await context.SaveChangesAsync();
             }
 
-            // Seed Serviços
             if (!await context.Servicos.AnyAsync())
             {
                 var servicos = new[]
                 {
                     new Servico
                     {
-                        Id = Guid.NewGuid(),
-                        Nome = "Troca de Óleo",
-                        Descricao = "Troca de óleo do motor e filtro",
+                        Nome = "Troca de Oleo",
+                        Descricao = "Troca de oleo do motor e filtro",
                         Preco = 150.00m,
                         TempoEstimado = 30
                     },
                     new Servico
                     {
-                        Id = Guid.NewGuid(),
-                        Nome = "Revisão Completa",
-                        Descricao = "Revisão completa do veículo",
+                        Nome = "Revisao Completa",
+                        Descricao = "Revisao completa do veiculo",
                         Preco = 500.00m,
                         TempoEstimado = 180
                     },
                     new Servico
                     {
-                        Id = Guid.NewGuid(),
                         Nome = "Alinhamento",
                         Descricao = "Alinhamento e balanceamento",
                         Preco = 200.00m,
@@ -117,17 +128,15 @@ public static class OficinaDbContextSeeder
                     },
                     new Servico
                     {
-                        Id = Guid.NewGuid(),
                         Nome = "Troca de Pneus",
-                        Descricao = "Troca de pneus do veículo",
+                        Descricao = "Troca de pneus do veiculo",
                         Preco = 300.00m,
                         TempoEstimado = 90
                     },
                     new Servico
                     {
-                        Id = Guid.NewGuid(),
-                        Nome = "Diagnóstico Eletrônico",
-                        Descricao = "Diagnóstico eletrônico do motor",
+                        Nome = "Diagnostico Eletronico",
+                        Descricao = "Diagnostico eletronico do motor",
                         Preco = 100.00m,
                         TempoEstimado = 45
                     }
@@ -137,147 +146,266 @@ public static class OficinaDbContextSeeder
                 await context.SaveChangesAsync();
             }
 
-            // Seed Peças
             if (!await context.Pecas.AnyAsync())
             {
                 var pecas = new[]
                 {
-                    new Peca
-                    {
-                        Id = Guid.NewGuid(),
-                        Nome = "Filtro de Óleo",
-                        Preco = 45.00m,
-                        QuantidadeEstoque = 50
-                    },
-                    new Peca
-                    {
-                        Id = Guid.NewGuid(),
-                        Nome = "Filtro de Ar",
-                        Preco = 35.00m,
-                        QuantidadeEstoque = 40
-                    },
-                    new Peca
-                    {
-                        Id = Guid.NewGuid(),
-                        Nome = "Pastilha de Freio",
-                        Preco = 120.00m,
-                        QuantidadeEstoque = 30
-                    },
-                    new Peca
-                    {
-                        Id = Guid.NewGuid(),
-                        Nome = "Pneu Aro 15",
-                        Preco = 250.00m,
-                        QuantidadeEstoque = 20
-                    },
-                    new Peca
-                    {
-                        Id = Guid.NewGuid(),
-                        Nome = "Vela de Ignição",
-                        Preco = 25.00m,
-                        QuantidadeEstoque = 100
-                    }
+                    new Peca { Nome = "Filtro de Oleo", Marca = "Mann", Modelo = "W610/3", Preco = 45.00m, QuantidadeEstoque = 50 },
+                    new Peca { Nome = "Filtro de Ar", Marca = "Bosch", Modelo = "0986AF", Preco = 35.00m, QuantidadeEstoque = 40 },
+                    new Peca { Nome = "Pastilha de Freio", Marca = "Cobreq", Modelo = "N-1234", Preco = 120.00m, QuantidadeEstoque = 30 },
+                    new Peca { Nome = "Pneu Aro 15", Marca = "Pirelli", Modelo = "175/65R15", Preco = 250.00m, QuantidadeEstoque = 20 },
+                    new Peca { Nome = "Vela de Ignicao", Marca = "NGK", Modelo = "BKR6E", Preco = 25.00m, QuantidadeEstoque = 100 }
                 };
 
                 await context.Pecas.AddRangeAsync(pecas);
                 await context.SaveChangesAsync();
             }
 
-            // Seed Ordens de Serviço
             if (!await context.OrdensDeServico.AnyAsync())
             {
-                var clientes = await context.Clientes.ToListAsync();
-                var veiculos = await context.Veiculos.ToListAsync();
-                var servicos = await context.Servicos.ToListAsync();
-                var pecas = await context.Pecas.ToListAsync();
+                var agora = DateTimeHelper.UTCBrazilNow();
+                var clientes = await context.Clientes.OrderBy(c => c.Id).ToListAsync();
+                var veiculos = await context.Veiculos.OrderBy(v => v.Id).ToListAsync();
+                var servicos = await context.Servicos.OrderBy(s => s.Id).ToListAsync();
+                var pecas = await context.Pecas.OrderBy(p => p.Id).ToListAsync();
+                var clienteVanessa = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("476.548.668-01"));
+                var clienteRafael = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("093.678.498-93"));
+                var clienteBetina = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCnpj("60.617.051/0001-99"));
+                var clienteVicente = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCnpj("46.981.686/0001-40"));
+                var veiculoCorolla = veiculos.Single(v => v.Placa == "ABC1234");
+                var veiculoCivic = veiculos.Single(v => v.Placa == "XYZ5678");
+                var veiculoGol = veiculos.Single(v => v.Placa == "DEF9101");
+                var veiculoStrada = veiculos.Single(v => v.Placa == "GHI2345");
+                var servicoTrocaOleo = servicos.Single(s => s.Nome == "Troca de Oleo");
+                var servicoRevisaoCompleta = servicos.Single(s => s.Nome == "Revisao Completa");
+                var servicoAlinhamento = servicos.Single(s => s.Nome == "Alinhamento");
+                var servicoTrocaPneus = servicos.Single(s => s.Nome == "Troca de Pneus");
+                var servicoDiagnosticoEletronico = servicos.Single(s => s.Nome == "Diagnostico Eletronico");
+                var pecaFiltroOleo = pecas.Single(p => p.Nome == "Filtro de Oleo");
+                var pecaFiltroAr = pecas.Single(p => p.Nome == "Filtro de Ar");
+                var pecaPastilhaFreio = pecas.Single(p => p.Nome == "Pastilha de Freio");
+                var pecaPneuAro15 = pecas.Single(p => p.Nome == "Pneu Aro 15");
+                var pecaVelaIgnicao = pecas.Single(p => p.Nome == "Vela de Ignicao");
 
-                var ordemId1 = Guid.NewGuid();
-                var ordemId2 = Guid.NewGuid();
-
-                var ordens = new[]
+                var ordem1 = new OrdemDeServico
                 {
-                    new OrdemDeServico
-                    {
-                        Id = ordemId1,
-                        Numero = "OS-001",
-                        ClienteId = clientes[0].Id,
-                        VeiculoId = veiculos[0].Id,
-                        Status = StatusOrdemDeServico.Entregue,
-                        DataAbertura = DateTime.UtcNow.AddDays(-5),
-                        DataConclusao = DateTime.UtcNow.AddDays(-1),
-                        ValorTotal = 195.00m
-                    },
-                    new OrdemDeServico
-                    {
-                        Id = ordemId2,
-                        Numero = "OS-002",
-                        ClienteId = clientes[1].Id,
-                        VeiculoId = veiculos[1].Id,
-                        Status = StatusOrdemDeServico.EmExecucao,
-                        DataAbertura = DateTime.UtcNow.AddDays(-2),
-                        DataConclusao = null,
-                        ValorTotal = 700.00m
-                    }
+                    Numero = "OS-20260413-3000",
+                    CodigoAcompanhamento = "AC-SEED-3000",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3000"),
+                    ClienteId = clienteVanessa.Id,
+                    VeiculoId = veiculoCorolla.Id,
+                    DescricaoSolicitacao = "Cliente relatou troca de oleo e revisao preventiva.",
+                    ObservacoesRecepcao = "Veiculo recebido sem avarias aparentes.",
+                    Status = StatusOrdemDeServico.Entregue,
+                    DataAbertura = agora.AddDays(-5),
+                    OrcamentoEnviadoEm = agora.AddDays(-4).AddHours(2),
+                    DataFinalizacao = agora.AddDays(-2),
+                    DataPagamento = agora.AddDays(-2).AddHours(4),
+                    DataConclusao = agora.AddDays(-1),
+                    ValorTotal = 195.00m
                 };
 
-                await context.OrdensDeServico.AddRangeAsync(ordens);
+                var ordem2 = new OrdemDeServico
+                {
+                    Numero = "OS-20260416-3001",
+                    CodigoAcompanhamento = "AC-SEED-3001",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3001"),
+                    ClienteId = clienteRafael.Id,
+                    VeiculoId = veiculoCivic.Id,
+                    DescricaoSolicitacao = "Cliente informou ruido na suspensao dianteira.",
+                    ObservacoesRecepcao = "Barulho identificado em baixa velocidade.",
+                    Status = StatusOrdemDeServico.Finalizada,
+                    DataAbertura = agora.AddDays(-2),
+                    OrcamentoEnviadoEm = agora.AddDays(-1).AddHours(-18),
+                    DataFinalizacao = agora.AddHours(-8),
+                    DataConclusao = null,
+                    ValorTotal = 975.00m
+                };
+
+                var ordem3 = new OrdemDeServico
+                {
+                    Numero = "OS-20260420-3002",
+                    CodigoAcompanhamento = "AC-SEED-3002",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3002"),
+                    ClienteId = clienteBetina.Id,
+                    VeiculoId = veiculoGol.Id,
+                    DescricaoSolicitacao = "Veiculo com falha de ignicao intermitente.",
+                    ObservacoesRecepcao = "Motor falhando apos aquecimento.",
+                    Status = StatusOrdemDeServico.EmExecucao,
+                    DataAbertura = agora.AddDays(-1).AddHours(-6),
+                    OrcamentoEnviadoEm = agora.AddDays(-1).AddHours(-1),
+                    ValorTotal = 650.00m
+                };
+
+                var ordem4 = new OrdemDeServico
+                {
+                    Numero = "OS-20260421-3003",
+                    CodigoAcompanhamento = "AC-SEED-3003",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3003"),
+                    ClienteId = clienteVanessa.Id,
+                    VeiculoId = veiculoCorolla.Id,
+                    DescricaoSolicitacao = "Luz da injecao acesa no painel.",
+                    ObservacoesRecepcao = "Cliente autorizou apenas diagnostico inicial.",
+                    Status = StatusOrdemDeServico.AguardandoAprovacao,
+                    DataAbertura = agora.AddHours(-18),
+                    OrcamentoEnviadoEm = agora.AddHours(-6),
+                    ValorTotal = 100.00m
+                };
+
+                var ordem5 = new OrdemDeServico
+                {
+                    Numero = "OS-20260421-3004",
+                    CodigoAcompanhamento = "AC-SEED-3004",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3004"),
+                    ClienteId = clienteRafael.Id,
+                    VeiculoId = veiculoCivic.Id,
+                    DescricaoSolicitacao = "Revisao de freios e alinhamento.",
+                    ObservacoesRecepcao = "Veiculo puxando para a direita.",
+                    Status = StatusOrdemDeServico.EmDiagnostico,
+                    DataAbertura = agora.AddHours(-10),
+                    ValorTotal = 300.00m
+                };
+
+                var ordem6 = new OrdemDeServico
+                {
+                    Numero = "OS-20260422-3005",
+                    CodigoAcompanhamento = "AC-SEED-3005",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3005"),
+                    ClienteId = clienteVicente.Id,
+                    VeiculoId = veiculoStrada.Id,
+                    DescricaoSolicitacao = "Veiculo recebido para revisao basica.",
+                    ObservacoesRecepcao = "Aguardando entrada na oficina.",
+                    Status = StatusOrdemDeServico.Recebida,
+                    DataAbertura = agora.AddHours(-3),
+                    ValorTotal = 0.00m
+                };
+
+                var ordem7 = new OrdemDeServico
+                {
+                    Numero = "OS-20260419-3006",
+                    CodigoAcompanhamento = "AC-SEED-3006",
+                    TokenAcompanhamentoHash = StringHelper.ToSha256Hash("seed-token-os-3006"),
+                    ClienteId = clienteBetina.Id,
+                    VeiculoId = veiculoGol.Id,
+                    DescricaoSolicitacao = "Solicitada avaliacao de pneus e suspensao.",
+                    ObservacoesRecepcao = "Cliente desistiu antes da aprovacao do orcamento.",
+                    MotivoCancelamento = "Cliente optou por nao prosseguir com o reparo.",
+                    Status = StatusOrdemDeServico.Cancelada,
+                    DataAbertura = agora.AddDays(-3),
+                    ValorTotal = 0.00m
+                };
+
+                await context.OrdensDeServico.AddRangeAsync(ordem1, ordem2, ordem3, ordem4, ordem5, ordem6, ordem7);
                 await context.SaveChangesAsync();
 
-                // Seed Ordem de Serviço - Serviços
                 var ordensServicos = new List<OrdemDeServicoServico>
                 {
                     new OrdemDeServicoServico
                     {
-                        OrdemDeServicoId = ordemId1,
-                        ServicoId = servicos[0].Id,
-                        Preco = servicos[0].Preco,
-                        TempoEstimado = servicos[0].TempoEstimado
+                        OrdemDeServicoId = ordem1.Id,
+                        ServicoId = servicoTrocaOleo.Id,
+                        Preco = servicoTrocaOleo.Preco,
+                        TempoEstimado = servicoTrocaOleo.TempoEstimado
                     },
                     new OrdemDeServicoServico
                     {
-                        OrdemDeServicoId = ordemId2,
-                        ServicoId = servicos[1].Id,
-                        Preco = servicos[1].Preco,
-                        TempoEstimado = servicos[1].TempoEstimado
+                        OrdemDeServicoId = ordem2.Id,
+                        ServicoId = servicoRevisaoCompleta.Id,
+                        Preco = servicoRevisaoCompleta.Preco,
+                        TempoEstimado = servicoRevisaoCompleta.TempoEstimado
                     },
                     new OrdemDeServicoServico
                     {
-                        OrdemDeServicoId = ordemId2,
-                        ServicoId = servicos[2].Id,
-                        Preco = servicos[2].Preco,
-                        TempoEstimado = servicos[2].TempoEstimado
+                        OrdemDeServicoId = ordem2.Id,
+                        ServicoId = servicoAlinhamento.Id,
+                        Preco = servicoAlinhamento.Preco,
+                        TempoEstimado = servicoAlinhamento.TempoEstimado
+                    },
+                    new OrdemDeServicoServico
+                    {
+                        OrdemDeServicoId = ordem3.Id,
+                        ServicoId = servicoTrocaPneus.Id,
+                        Preco = servicoTrocaPneus.Preco,
+                        TempoEstimado = servicoTrocaPneus.TempoEstimado
+                    },
+                    new OrdemDeServicoServico
+                    {
+                        OrdemDeServicoId = ordem3.Id,
+                        ServicoId = servicoDiagnosticoEletronico.Id,
+                        Preco = servicoDiagnosticoEletronico.Preco,
+                        TempoEstimado = servicoDiagnosticoEletronico.TempoEstimado
+                    },
+                    new OrdemDeServicoServico
+                    {
+                        OrdemDeServicoId = ordem4.Id,
+                        ServicoId = servicoDiagnosticoEletronico.Id,
+                        Preco = servicoDiagnosticoEletronico.Preco,
+                        TempoEstimado = servicoDiagnosticoEletronico.TempoEstimado
+                    },
+                    new OrdemDeServicoServico
+                    {
+                        OrdemDeServicoId = ordem5.Id,
+                        ServicoId = servicoAlinhamento.Id,
+                        Preco = servicoAlinhamento.Preco,
+                        TempoEstimado = servicoAlinhamento.TempoEstimado
                     }
                 };
 
-                await context.OrdemDeServicoServicos.AddRangeAsync(ordensServicos);
-
-                // Seed Ordem de Serviço - Peças
                 var ordensPecas = new List<OrdemDeServicoPeca>
                 {
                     new OrdemDeServicoPeca
                     {
-                        OrdemDeServicoId = ordemId1,
-                        PecaId = pecas[0].Id,
+                        OrdemDeServicoId = ordem1.Id,
+                        PecaId = pecaFiltroOleo.Id,
                         Quantidade = 1,
-                        Preco = pecas[0].Preco
+                        Preco = pecaFiltroOleo.Preco
                     },
                     new OrdemDeServicoPeca
                     {
-                        OrdemDeServicoId = ordemId2,
-                        PecaId = pecas[1].Id,
+                        OrdemDeServicoId = ordem2.Id,
+                        PecaId = pecaFiltroAr.Id,
                         Quantidade = 1,
-                        Preco = pecas[1].Preco
+                        Preco = pecaFiltroAr.Preco
                     },
                     new OrdemDeServicoPeca
                     {
-                        OrdemDeServicoId = ordemId2,
-                        PecaId = pecas[2].Id,
+                        OrdemDeServicoId = ordem2.Id,
+                        PecaId = pecaPastilhaFreio.Id,
                         Quantidade = 2,
-                        Preco = pecas[2].Preco
+                        Preco = pecaPastilhaFreio.Preco
+                    },
+                    new OrdemDeServicoPeca
+                    {
+                        OrdemDeServicoId = ordem3.Id,
+                        PecaId = pecaPneuAro15.Id,
+                        Quantidade = 1,
+                        Preco = pecaPneuAro15.Preco
+                    },
+                    new OrdemDeServicoPeca
+                    {
+                        OrdemDeServicoId = ordem5.Id,
+                        PecaId = pecaVelaIgnicao.Id,
+                        Quantidade = 4,
+                        Preco = pecaVelaIgnicao.Preco
                     }
                 };
 
+                await context.OrdemDeServicoServicos.AddRangeAsync(ordensServicos);
                 await context.OrdemDeServicoPecas.AddRangeAsync(ordensPecas);
+                await context.SaveChangesAsync();
+            }
+
+            if (!await context.Usuarios.AnyAsync())
+            {
+                var usuario = new Usuario
+                {
+                    Nome = "Administrador",
+                    UsuarioLogin = "admin",
+                    Role = "Administrador",
+                    SenhaHash = StringHelper.ToMd5Hash("admin123")
+                };
+
+                await context.Usuarios.AddAsync(usuario);
                 await context.SaveChangesAsync();
             }
         }

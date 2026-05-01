@@ -1,14 +1,16 @@
-using oficina_mecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
-namespace oficina_mecanica.Domain.Repositories;
+namespace Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 
 public interface IVeiculoRepository
 {
-    Task<Veiculo?> ObterPorIdAsync(Guid id);
-    Task<Veiculo?> ObterPorPlacaAsync(string placa);
-    Task<IEnumerable<Veiculo>> ObterPorClienteAsync(Guid clienteId);
-    Task<IEnumerable<Veiculo>> ObterTodosAsync();
-    Task<Veiculo> CriarAsync(Veiculo veiculo);
-    Task<Veiculo> AtualizarAsync(Veiculo veiculo);
-    Task DeletarAsync(Guid id);
+    Task<bool> ExisteEmOrdemDeServicoAtivaAsync(int veiculoId, CancellationToken cancellationToken);
+    Task<Veiculo?> ObterPorIdAsync(int id, CancellationToken cancellationToken);
+    Task<Veiculo?> ObterPorPlacaAsync(string placa, CancellationToken cancellationToken);
+    Task<IEnumerable<Veiculo>> ObterPorClienteAsync(int clienteId, CancellationToken cancellationToken);
+    Task<bool> ExistePorClienteAsync(int clienteId, CancellationToken cancellationToken);
+    Task<IEnumerable<Veiculo>> ObterTodosAsync(CancellationToken cancellationToken);
+    Task<Veiculo> CriarAsync(Veiculo veiculo, CancellationToken cancellationToken);
+    Task<Veiculo> AtualizarAsync(Veiculo veiculo, CancellationToken cancellationToken);
+    Task DeletarAsync(int id, CancellationToken cancellationToken);
 }

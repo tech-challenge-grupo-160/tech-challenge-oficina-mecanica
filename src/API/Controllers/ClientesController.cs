@@ -1,52 +1,78 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using oficina_mecanica.Application.DTOs;
-using oficina_mecanica.Application.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
-namespace oficina_mecanica.API.Controllers;
+namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Authorize]
+[Route("api/v1/[controller]")]
 public class ClientesController : ControllerBase
 {
     private readonly IClienteApplicationService _clienteService;
+    private readonly IVeiculoApplicationService _veiculoService;
 
-    public ClientesController(IClienteApplicationService clienteService)
+    public ClientesController(IClienteApplicationService clienteService, IVeiculoApplicationService veiculoService)
     {
         _clienteService = clienteService;
+        _veiculoService = veiculoService;
     }
 
     [HttpPost]
-    public async Task<ActionResult<ClienteDto>> Criar([FromBody] CriarClienteDto dto)
+    public async Task<ActionResult<ClienteDto>> Criar([FromBody] CriarClienteDto dto, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteService.CriarClienteAsync(dto);
-        return CreatedAtAction(nameof(Obter), new { id = cliente.Id }, cliente);
-    }
-
-    [HttpGet("{id}")]
-    public async Task<ActionResult<ClienteDto>> Obter(Guid id)
-    {
-        var cliente = await _clienteService.ObterClienteAsync(id);
-        return Ok(cliente);
+        var cliente = await _clienteService.CriarClienteAsync(dto, cancellationToken);
+        return CreatedAtAction(nameof(ObterPorDocumento), new { cpfCnpj = cliente.CpfCnpj }, cliente);
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ClienteDto>>> Listar()
+    public async Task<ActionResult<PagedResultDto<ClienteDto>>> Listar(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? nome = null,
+        [FromQuery] string? cpfCnpj = null,
+        CancellationToken cancellationToken = default)
     {
-        var clientes = await _clienteService.ListarClientesAsync();
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize < 1 ? 10 : Math.Min(pageSize, 100);
+
+        var clientes = await _clienteService.ListarClientesAsync(page, pageSize, nome, cpfCnpj, cancellationToken);
         return Ok(clientes);
     }
 
-    [HttpPut("{id}")]
-    public async Task<ActionResult<ClienteDto>> Atualizar(Guid id, [FromBody] AtualizarClienteDto dto)
+    [HttpGet("documento/{cpfCnpj}")]
+    public async Task<ActionResult<ClienteDto>> ObterPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteService.AtualizarClienteAsync(id, dto);
+        var cliente = await _clienteService.ObterClientePorCpfCnpjAsync(cpfCnpj, cancellationToken);
         return Ok(cliente);
     }
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Deletar(Guid id)
+    [HttpGet("{cpfCnpj}/veiculos")]
+    public async Task<ActionResult<IEnumerable<VeiculoDto>>> ListarVeiculosPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
     {
-        await _clienteService.DeletarClienteAsync(id);
+        var veiculos = await _veiculoService.ListarVeiculosPorCpfCnpjAsync(cpfCnpj, cancellationToken);
+        return Ok(veiculos);
+    }
+
+    [HttpPost("{cpfCnpj}/veiculos")]
+    public async Task<ActionResult<VeiculoDto>> CriarVeiculo(string cpfCnpj, [FromBody] CriarVeiculoParaClienteDto dto, CancellationToken cancellationToken)
+    {
+        var veiculo = await _veiculoService.CriarVeiculoParaClienteAsync(cpfCnpj, dto, cancellationToken);
+        return CreatedAtAction("ObterPorPlaca", "Veiculos", new { placa = veiculo.Placa }, veiculo);
+    }
+
+    [HttpPut("documento/{cpfCnpj}")]
+    public async Task<ActionResult<ClienteDto>> AtualizarPorDocumento(string cpfCnpj, [FromBody] AtualizarClienteDto dto, CancellationToken cancellationToken)
+    {
+        var cliente = await _clienteService.AtualizarClientePorCpfCnpjAsync(cpfCnpj, dto, cancellationToken);
+        return Ok(cliente);
+    }
+
+    [HttpDelete("documento/{cpfCnpj}")]
+    public async Task<IActionResult> DeletarPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
+    {
+        await _clienteService.DeletarClientePorCpfCnpjAsync(cpfCnpj, cancellationToken);
         return NoContent();
     }
 }

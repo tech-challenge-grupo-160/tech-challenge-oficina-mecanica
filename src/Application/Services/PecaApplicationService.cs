@@ -1,83 +1,160 @@
-using oficina_mecanica.Application.DTOs;
-using oficina_mecanica.Domain.Entities;
-using oficina_mecanica.Domain.Repositories;
+﻿using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
+using Microsoft.Extensions.Logging;
 
-namespace oficina_mecanica.Application.Services;
+namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
 public interface IPecaApplicationService
 {
-    Task<PecaDto> CriarPecaAsync(CriarPecaDto dto);
-    Task<PecaDto> ObterPecaAsync(Guid id);
-    Task<IEnumerable<PecaDto>> ListarPecasAsync();
-    Task<PecaDto> AtualizarPecaAsync(Guid id, AtualizarPecaDto dto);
-    Task DeletarPecaAsync(Guid id);
+    Task<PecaDto> CriarPecaAsync(CriarPecaDto dto, CancellationToken cancellationToken);
+    Task<PecaDto> ObterPecaAsync(int id, CancellationToken cancellationToken);
+    Task<IEnumerable<PecaDto>> ListarPecasAsync(CancellationToken cancellationToken);
+    Task<PecaDto> AtualizarPecaAsync(int id, AtualizarPecaDto dto, CancellationToken cancellationToken);
+    Task DeletarPecaAsync(int id, CancellationToken cancellationToken);
 }
 
 public class PecaApplicationService : IPecaApplicationService
 {
+    private const string LoggerName = nameof(PecaApplicationService);
     private readonly IPecaRepository _pecaRepository;
+    private readonly ILogger _logger;
 
-    public PecaApplicationService(IPecaRepository pecaRepository)
+    public PecaApplicationService(IPecaRepository pecaRepository, ILoggerFactory loggerFactory)
     {
         _pecaRepository = pecaRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public async Task<PecaDto> CriarPecaAsync(CriarPecaDto dto)
+    public async Task<PecaDto> CriarPecaAsync(CriarPecaDto dto, CancellationToken cancellationToken)
     {
-        var peca = new Peca
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
         {
-            Id = Guid.NewGuid(),
-            Nome = dto.Nome,
-            Preco = dto.Preco,
-            QuantidadeEstoque = dto.QuantidadeEstoque
-        };
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarPecaAsync), "Persistindo nova peca");
+            var peca = new Peca
+            {
+                Nome = dto.Nome,
+                Marca = dto.Marca,
+                Modelo = dto.Modelo,
+                Preco = dto.Preco,
+                QuantidadeEstoque = dto.QuantidadeEstoque
+            };
 
-        var pecaCriada = await _pecaRepository.CriarAsync(peca);
-        return MapToDto(pecaCriada);
-    }
-
-    public async Task<PecaDto> ObterPecaAsync(Guid id)
-    {
-        var peca = await _pecaRepository.ObterPorIdAsync(id);
-        if (peca == null)
-        {
-            throw new KeyNotFoundException($"Peça com ID {id} não encontrada.");
+            var pecaCriada = await _pecaRepository.CriarAsync(peca, cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, "Peca criada com sucesso.");
+            return MapToDto(pecaCriada);
         }
-
-        return MapToDto(peca);
-    }
-
-    public async Task<IEnumerable<PecaDto>> ListarPecasAsync()
-    {
-        var pecas = await _pecaRepository.ObterTodosAsync();
-        return pecas.Select(MapToDto);
-    }
-
-    public async Task<PecaDto> AtualizarPecaAsync(Guid id, AtualizarPecaDto dto)
-    {
-        var peca = await _pecaRepository.ObterPorIdAsync(id);
-        if (peca == null)
+        catch (Exception ex)
         {
-            throw new KeyNotFoundException($"Peça com ID {id} não encontrada.");
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarPecaAsync), LogTemplate.CurrentTraceId(), ex.Message);
+            throw;
         }
-
-        peca.Nome = dto.Nome;
-        peca.Preco = dto.Preco;
-        peca.QuantidadeEstoque = dto.QuantidadeEstoque;
-
-        var pecaAtualizada = await _pecaRepository.AtualizarAsync(peca);
-        return MapToDto(pecaAtualizada);
     }
 
-    public async Task DeletarPecaAsync(Guid id)
+    public async Task<PecaDto> ObterPecaAsync(int id, CancellationToken cancellationToken)
     {
-        var peca = await _pecaRepository.ObterPorIdAsync(id);
-        if (peca == null)
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
         {
-            throw new KeyNotFoundException($"Peça com ID {id} não encontrada.");
-        }
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(ObterPecaAsync), "Consultando peca por identificador");
+            var peca = await _pecaRepository.ObterPorIdAsync(id, cancellationToken);
+            if (peca == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(ObterPecaAsync), "Peca nao encontrada para o identificador informado");
+                throw new ServiceNotFoundException($"Peca com ID {id} nao encontrada.");
+            }
 
-        await _pecaRepository.DeletarAsync(id);
+            _logger.LogInformation(LogTemplate.End, LoggerName, "Peca obtida com sucesso.");
+            return MapToDto(peca);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ObterPecaAsync), LogTemplate.CurrentTraceId(), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<IEnumerable<PecaDto>> ListarPecasAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(ListarPecasAsync), "Consultando todas as pecas");
+            var pecas = await _pecaRepository.ObterTodosAsync(cancellationToken);
+            var resultado = pecas.Select(MapToDto).ToArray();
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Consulta de pecas concluida. Total de registros: {resultado.Length}");
+            return resultado;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ListarPecasAsync), LogTemplate.CurrentTraceId(), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<PecaDto> AtualizarPecaAsync(int id, AtualizarPecaDto dto, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AtualizarPecaAsync), "Consultando peca para atualizacao");
+            var peca = await _pecaRepository.ObterPorIdAsync(id, cancellationToken);
+            if (peca == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AtualizarPecaAsync), "Peca nao encontrada para atualizacao");
+                throw new ServiceNotFoundException($"Peca com ID {id} nao encontrada.");
+            }
+
+            peca.Nome = dto.Nome;
+            peca.Marca = dto.Marca;
+            peca.Modelo = dto.Modelo;
+            peca.Preco = dto.Preco;
+            peca.QuantidadeEstoque = dto.QuantidadeEstoque;
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AtualizarPecaAsync), "Persistindo atualizacao da peca");
+            var pecaAtualizada = await _pecaRepository.AtualizarAsync(peca, cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, "Peca atualizada com sucesso.");
+            return MapToDto(pecaAtualizada);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(AtualizarPecaAsync), LogTemplate.CurrentTraceId(), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task DeletarPecaAsync(int id, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarPecaAsync), "Consultando peca para exclusao");
+            var peca = await _pecaRepository.ObterPorIdAsync(id, cancellationToken);
+            if (peca == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarPecaAsync), "Peca nao encontrada para exclusao");
+                throw new ServiceNotFoundException($"Peca com ID {id} nao encontrada.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarPecaAsync), "Validando se existem ordens de servico ativas vinculadas a peca");
+            if (await _pecaRepository.ExisteEmOrdemDeServicoAtivaAsync(id, cancellationToken))
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarPecaAsync), "Peca possui ordens de servico ativas vinculadas");
+                throw new ServiceValidationException("Nao e possivel excluir a peca pois existem ordens de servico ativas vinculadas.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarPecaAsync), "Excluindo peca");
+            await _pecaRepository.DeletarAsync(id, cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, "Peca excluida com sucesso.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(DeletarPecaAsync), LogTemplate.CurrentTraceId(), ex.Message);
+            throw;
+        }
     }
 
     private static PecaDto MapToDto(Peca peca)
@@ -86,8 +163,15 @@ public class PecaApplicationService : IPecaApplicationService
         {
             Id = peca.Id,
             Nome = peca.Nome,
+            Marca = peca.Marca,
+            Modelo = peca.Modelo,
             Preco = peca.Preco,
             QuantidadeEstoque = peca.QuantidadeEstoque
         };
     }
 }
+
+
+
+
+

@@ -1,112 +1,214 @@
-using oficina_mecanica.Application.DTOs;
-using oficina_mecanica.Domain.Entities;
-using oficina_mecanica.Domain.Repositories;
+﻿using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
+using Microsoft.Extensions.Logging;
 
-namespace oficina_mecanica.Application.Services;
+namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
 public interface IVeiculoApplicationService
 {
-    Task<VeiculoDto> CriarVeiculoAsync(CriarVeiculoDto dto);
-    Task<VeiculoDto> ObterVeiculoAsync(Guid id);
-    Task<IEnumerable<VeiculoDto>> ListarVeiculosAsync();
-    Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(Guid clienteId);
-    Task<VeiculoDto> AtualizarVeiculoAsync(Guid id, AtualizarVeiculoDto dto);
-    Task DeletarVeiculoAsync(Guid id);
+    Task<VeiculoDto> CriarVeiculoAsync(CriarVeiculoDto dto, CancellationToken cancellationToken);
+    Task<VeiculoDto> CriarVeiculoParaClienteAsync(string cpfCnpj, CriarVeiculoParaClienteDto dto, CancellationToken cancellationToken);
+    Task<VeiculoDto> ObterVeiculoAsync(int id, CancellationToken cancellationToken);
+    Task<VeiculoDto> ObterVeiculoPorPlacaAsync(string placa, CancellationToken cancellationToken);
+    Task<IEnumerable<VeiculoDto>> ListarVeiculosAsync(CancellationToken cancellationToken);
+    Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(int clienteId, CancellationToken cancellationToken);
+    Task<IEnumerable<VeiculoDto>> ListarVeiculosPorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken);
+    Task<VeiculoDto> AtualizarVeiculoAsync(int id, AtualizarVeiculoDto dto, CancellationToken cancellationToken);
+    Task DeletarVeiculoAsync(int id, CancellationToken cancellationToken);
 }
 
 public class VeiculoApplicationService : IVeiculoApplicationService
 {
+    private const string LoggerName = nameof(VeiculoApplicationService);
     private readonly IVeiculoRepository _veiculoRepository;
     private readonly IClienteRepository _clienteRepository;
+    private readonly ILogger _logger;
 
-    public VeiculoApplicationService(IVeiculoRepository veiculoRepository, IClienteRepository clienteRepository)
+    public VeiculoApplicationService(
+        IVeiculoRepository veiculoRepository,
+        IClienteRepository clienteRepository,
+        ILoggerFactory loggerFactory)
     {
         _veiculoRepository = veiculoRepository;
         _clienteRepository = clienteRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public async Task<VeiculoDto> CriarVeiculoAsync(CriarVeiculoDto dto)
+    public async Task<VeiculoDto> CriarVeiculoAsync(CriarVeiculoDto dto, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(dto.ClienteId);
-        if (cliente == null)
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
         {
-            throw new KeyNotFoundException($"Cliente com ID {dto.ClienteId} não encontrado.");
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarVeiculoAsync), "Obtendo cliente por documento");
+            var cliente = await ObterClientePorDocumentoAsync(dto.CpfCnpj, cancellationToken);
+            var veiculoCriado = await CriarVeiculoInternoAsync(dto.Placa, dto.Marca, dto.Modelo, dto.Ano, cliente.Id, cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, "Veiculo criado com sucesso.");
+            return MapToDto(veiculoCriado);
         }
-
-        var veiculoExistente = await _veiculoRepository.ObterPorPlacaAsync(dto.Placa);
-        if (veiculoExistente != null)
+        catch (Exception ex)
         {
-            throw new InvalidOperationException("Veículo com esta placa já existe.");
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarVeiculoAsync), LogTemplate.CurrentTraceId(), ex.Message);
+            throw;
         }
-
-        var veiculo = new Veiculo
-        {
-            Id = Guid.NewGuid(),
-            Placa = dto.Placa.ToUpper(),
-            Marca = dto.Marca,
-            Modelo = dto.Modelo,
-            Ano = dto.Ano,
-            ClienteId = dto.ClienteId
-        };
-
-        var veiculoCriado = await _veiculoRepository.CriarAsync(veiculo);
-        return MapToDto(veiculoCriado);
     }
 
-    public async Task<VeiculoDto> ObterVeiculoAsync(Guid id)
+    public async Task<VeiculoDto> CriarVeiculoParaClienteAsync(string cpfCnpj, CriarVeiculoParaClienteDto dto, CancellationToken cancellationToken)
     {
-        var veiculo = await _veiculoRepository.ObterPorIdAsync(id);
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarVeiculoParaClienteAsync), "Obtendo cliente por documento");
+            var cliente = await ObterClientePorDocumentoAsync(cpfCnpj, cancellationToken);
+            var veiculoCriado = await CriarVeiculoInternoAsync(dto.Placa, dto.Marca, dto.Modelo, dto.Ano, cliente.Id, cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, "Veiculo criado para o cliente com sucesso.");
+            return MapToDto(veiculoCriado);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarVeiculoParaClienteAsync), LogTemplate.CurrentTraceId(), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<VeiculoDto> ObterVeiculoAsync(int id, CancellationToken cancellationToken)
+    {
+        var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
         if (veiculo == null)
         {
-            throw new KeyNotFoundException($"Veículo com ID {id} não encontrado.");
+            throw new ServiceNotFoundException($"Veiculo com ID {id} nao encontrado.");
         }
 
         return MapToDto(veiculo);
     }
 
-    public async Task<IEnumerable<VeiculoDto>> ListarVeiculosAsync()
+    public async Task<VeiculoDto> ObterVeiculoPorPlacaAsync(string placa, CancellationToken cancellationToken)
     {
-        var veiculos = await _veiculoRepository.ObterTodosAsync();
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
+        {
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(ObterVeiculoPorPlacaAsync), "Normalizando placa e consultando veiculo");
+            var placaNormalizada = PlacaVeiculo.Parse(placa).Valor;
+            var veiculo = await _veiculoRepository.ObterPorPlacaAsync(placaNormalizada, cancellationToken);
+            if (veiculo == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(ObterVeiculoPorPlacaAsync), "Veiculo nao encontrado para a placa informada");
+                throw new ServiceNotFoundException($"Veiculo com placa {placa} nao encontrado.");
+            }
+
+            _logger.LogInformation(LogTemplate.End, LoggerName, "Veiculo obtido com sucesso.");
+            return MapToDto(veiculo);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(ObterVeiculoPorPlacaAsync), LogTemplate.CurrentTraceId(), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<IEnumerable<VeiculoDto>> ListarVeiculosAsync(CancellationToken cancellationToken)
+    {
+        var veiculos = await _veiculoRepository.ObterTodosAsync(cancellationToken);
         return veiculos.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(Guid clienteId)
+    public async Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(int clienteId, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteRepository.ObterPorIdAsync(clienteId);
+        var cliente = await _clienteRepository.ObterPorIdAsync(clienteId, cancellationToken);
         if (cliente == null)
         {
-            throw new KeyNotFoundException($"Cliente com ID {clienteId} não encontrado.");
+            throw new ServiceNotFoundException($"Cliente com ID {clienteId} nao encontrado.");
         }
 
-        var veiculos = await _veiculoRepository.ObterPorClienteAsync(clienteId);
+        var veiculos = await _veiculoRepository.ObterPorClienteAsync(clienteId, cancellationToken);
         return veiculos.Select(MapToDto);
     }
 
-    public async Task<VeiculoDto> AtualizarVeiculoAsync(Guid id, AtualizarVeiculoDto dto)
+    public async Task<IEnumerable<VeiculoDto>> ListarVeiculosPorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken)
     {
-        var veiculo = await _veiculoRepository.ObterPorIdAsync(id);
+        var cliente = await ObterClientePorDocumentoAsync(cpfCnpj, cancellationToken);
+        var veiculos = await _veiculoRepository.ObterPorClienteAsync(cliente.Id, cancellationToken);
+        return veiculos.Select(MapToDto);
+    }
+
+    public async Task<VeiculoDto> AtualizarVeiculoAsync(int id, AtualizarVeiculoDto dto, CancellationToken cancellationToken)
+    {
+        var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
         if (veiculo == null)
         {
-            throw new KeyNotFoundException($"Veículo com ID {id} não encontrado.");
+            throw new ServiceNotFoundException($"Veiculo com ID {id} nao encontrado.");
         }
 
-        veiculo.Marca = dto.Marca;
-        veiculo.Modelo = dto.Modelo;
-        veiculo.Ano = dto.Ano;
+        veiculo.AtualizarDados(dto.Marca, dto.Modelo, dto.Ano);
 
-        var veiculoAtualizado = await _veiculoRepository.AtualizarAsync(veiculo);
+        var veiculoAtualizado = await _veiculoRepository.AtualizarAsync(veiculo, cancellationToken);
         return MapToDto(veiculoAtualizado);
     }
 
-    public async Task DeletarVeiculoAsync(Guid id)
+    public async Task DeletarVeiculoAsync(int id, CancellationToken cancellationToken)
     {
-        var veiculo = await _veiculoRepository.ObterPorIdAsync(id);
-        if (veiculo == null)
+        _logger.LogInformation(LogTemplate.Start, LoggerName);
+        try
         {
-            throw new KeyNotFoundException($"Veículo com ID {id} não encontrado.");
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarVeiculoAsync), "Consultando veiculo para exclusao");
+            var veiculo = await _veiculoRepository.ObterPorIdAsync(id, cancellationToken);
+            if (veiculo == null)
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarVeiculoAsync), "Veiculo nao encontrado para exclusao");
+                throw new ServiceNotFoundException($"Veiculo com ID {id} nao encontrado.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarVeiculoAsync), "Validando se existem ordens de servico ativas vinculadas ao veiculo");
+            if (await _veiculoRepository.ExisteEmOrdemDeServicoAtivaAsync(id, cancellationToken))
+            {
+                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(DeletarVeiculoAsync), "Veiculo possui ordens de servico ativas vinculadas");
+                throw new ServiceValidationException("Nao e possivel excluir o veiculo pois existem ordens de servico ativas vinculadas.");
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(DeletarVeiculoAsync), "Excluindo veiculo");
+            await _veiculoRepository.DeletarAsync(id, cancellationToken);
+            _logger.LogInformation(LogTemplate.End, LoggerName, "Veiculo excluido com sucesso.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(DeletarVeiculoAsync), LogTemplate.CurrentTraceId(), ex.Message);
+            throw;
+        }
+    }
+
+    private async Task<Cliente> ObterClientePorDocumentoAsync(string cpfCnpj, CancellationToken cancellationToken)
+    {
+        var documento = Documento.Parse(cpfCnpj).Valor;
+        var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
+        if (cliente == null)
+        {
+            throw new ServiceNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} nao encontrado.");
         }
 
-        await _veiculoRepository.DeletarAsync(id);
+        return cliente;
+    }
+
+    private async Task<Veiculo> CriarVeiculoInternoAsync(
+        string placaInformada,
+        string marca,
+        string modelo,
+        int ano,
+        int clienteId,
+        CancellationToken cancellationToken)
+    {
+        var placa = PlacaVeiculo.Parse(placaInformada);
+        var veiculoExistente = await _veiculoRepository.ObterPorPlacaAsync(placa.Valor, cancellationToken);
+        if (veiculoExistente != null)
+        {
+            throw new ServiceValidationException("Veiculo com esta placa ja existe.");
+        }
+
+        var veiculo = Veiculo.Criar(placa, marca, modelo, ano, clienteId);
+
+        return await _veiculoRepository.CriarAsync(veiculo, cancellationToken);
     }
 
     private static VeiculoDto MapToDto(Veiculo veiculo)
@@ -122,3 +224,8 @@ public class VeiculoApplicationService : IVeiculoApplicationService
         };
     }
 }
+
+
+
+
+

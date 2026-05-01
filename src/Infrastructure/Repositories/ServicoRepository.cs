@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using oficina_mecanica.Domain.Entities;
-using oficina_mecanica.Domain.Repositories;
-using oficina_mecanica.Infrastructure.Data;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 
-namespace oficina_mecanica.Infrastructure.Repositories;
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
 
 public class ServicoRepository : IServicoRepository
 {
@@ -14,37 +14,45 @@ public class ServicoRepository : IServicoRepository
         _context = context;
     }
 
-    public async Task<Servico?> ObterPorIdAsync(Guid id)
+    public async Task<bool> ExisteEmOrdemDeServicoAtivaAsync(int servicoId, CancellationToken cancellationToken)
     {
-        return await _context.Servicos.FirstOrDefaultAsync(s => s.Id == id);
+        return await _context.OrdemDeServicoServicos
+            .AnyAsync(
+                item => item.ServicoId == servicoId,
+                cancellationToken);
     }
 
-    public async Task<IEnumerable<Servico>> ObterTodosAsync()
+    public async Task<Servico?> ObterPorIdAsync(int id, CancellationToken cancellationToken)
     {
-        return await _context.Servicos.ToListAsync();
+        return await _context.Servicos.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
     }
 
-    public async Task<Servico> CriarAsync(Servico servico)
+    public async Task<IEnumerable<Servico>> ObterTodosAsync(CancellationToken cancellationToken)
+    {
+        return await _context.Servicos.ToListAsync(cancellationToken);
+    }
+
+    public async Task<Servico> CriarAsync(Servico servico, CancellationToken cancellationToken)
     {
         _context.Servicos.Add(servico);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return servico;
     }
 
-    public async Task<Servico> AtualizarAsync(Servico servico)
+    public async Task<Servico> AtualizarAsync(Servico servico, CancellationToken cancellationToken)
     {
         _context.Servicos.Update(servico);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return servico;
     }
 
-    public async Task DeletarAsync(Guid id)
+    public async Task DeletarAsync(int id, CancellationToken cancellationToken)
     {
-        var servico = await _context.Servicos.FirstOrDefaultAsync(s => s.Id == id);
+        var servico = await _context.Servicos.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
         if (servico != null)
         {
             _context.Servicos.Remove(servico);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }
