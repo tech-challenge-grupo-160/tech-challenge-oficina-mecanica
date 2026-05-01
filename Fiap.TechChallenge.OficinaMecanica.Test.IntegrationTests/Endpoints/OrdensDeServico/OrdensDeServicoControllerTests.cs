@@ -172,6 +172,31 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
     }
 
     [Fact]
+    public async Task ObterEstimativaTempo_DeveRetornarTempoEstimadoComBaseNosServicosDaOs()
+    {
+        var ordemCriada = await CriarOrdemAsync();
+
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
+        await _client.PostAsJsonAsync(
+            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
+            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
+
+        var response = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/estimativa-tempo-servico");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var estimativa = await response.Content.ReadFromJsonAsync<EstimativaTempoOrdemDeServicoDto>();
+        estimativa.Should().NotBeNull();
+        estimativa!.OrdemDeServicoId.Should().Be(ordemCriada.Id);
+        estimativa.TotalServicos.Should().Be(1);
+        estimativa.TempoEstimadoMinutos.Should().Be(30);
+        estimativa.TempoEstimadoHoras.Should().Be(0.5);
+        estimativa.Servicos.Should().ContainSingle(x =>
+            x.ServicoId == CustomWebApplicationFactory.ServicoExistenteId &&
+            x.TempoEstimadoMinutos == 30 &&
+            x.TempoEstimadoHoras == 0.5);
+    }
+
+    [Fact]
     public async Task ObterResumoMonitoramento_DeveRetornarVisaoGeralComMedia()
     {
         var ordemCriada = await CriarOrdemAsync();
