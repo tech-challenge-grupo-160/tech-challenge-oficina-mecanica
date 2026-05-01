@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -10,6 +11,7 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
 {
     [DbContext(typeof(OficinaDbContext))]
     [Migration("20260423120000_AddGestaoPecasEInsumosOrdemServico")]
+    [ExcludeFromCodeCoverage]
     public partial class AddGestaoPecasEInsumosOrdemServico : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

@@ -4,12 +4,14 @@ using Microsoft.Extensions.Logging;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data.Seeders;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Extensions;
 
 /// <summary>
 /// Extensões para IHost para executar migrations e seeding na inicialização da aplicação.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public static class HostExtensions
 {
     private const string LoggerName = nameof(HostExtensions);

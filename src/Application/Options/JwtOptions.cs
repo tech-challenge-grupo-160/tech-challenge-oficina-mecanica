@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Options;
 
+[ExcludeFromCodeCoverage]
 public class JwtOptions
 {
     public const string SectionName = "Jwt";

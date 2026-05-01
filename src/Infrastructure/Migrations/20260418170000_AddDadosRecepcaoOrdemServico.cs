@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
+using System.Diagnostics.CodeAnalysis;
 
 #nullable disable
 
@@ -8,6 +9,7 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
 {
     [DbContext(typeof(OficinaDbContext))]
     [Migration("20260418170000_AddDadosRecepcaoOrdemServico")]
+    [ExcludeFromCodeCoverage]
     public partial class AddDadosRecepcaoOrdemServico : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

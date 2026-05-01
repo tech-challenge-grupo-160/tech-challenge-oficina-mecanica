@@ -2,9 +2,11 @@ using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data.Seeders;
 
+[ExcludeFromCodeCoverage]
 public static class OficinaDbContextSeeder
 {
     public static async Task SeedAsync(OficinaDbContext context)
