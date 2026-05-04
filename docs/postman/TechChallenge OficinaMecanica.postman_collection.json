@@ -450,6 +450,34 @@
           "response": []
         },
         {
+          "name": "Estimativa Tempo Servico por OS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ordens-servico/{{ordemServicoId}}/estimativa-tempo-servico",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordens-servico",
+                "{{ordemServicoId}}",
+                "estimativa-tempo-servico"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "Recebida",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Monitoramento OS por id",
           "request": {
             "method": "GET",
@@ -902,7 +930,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"pecaId\": {{pecaId}},\n  \"quantidade\": 300\n}"
+              "raw": "{\n  \"pecaId\": {{pecaId}},\n  \"quantidade\": 100\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/ordens-servico/{{ordemServicoId}}/pecas",
@@ -977,6 +1005,26 @@
                 "{{ordemServicoId}}",
                 "servicos",
                 "{{servicoId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Acompanhamento OS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/acompanhamento-os/{{ordemServicoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "acompanhamento-os",
+                "{{ordemServicoId}}"
               ]
             }
           },
@@ -1288,7 +1336,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n  \"quantidadeRecebida\": 280\r\n}",
+              "raw": "{\r\n  \"quantidadeRecebida\": 4\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
