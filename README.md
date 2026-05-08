@@ -94,5 +94,5 @@ dotnet test
 ## Observações
 
 - Swagger só é exposto em `Development`.
-- `Clientes`, `Veiculos`, `Pecas`, `OrdensDeServico` e `PedidosCompra` exigem token JWT.
-- `Servicos` e `Auth` estão públicos no estado atual do código.
+- `Clientes`, `Veiculos`, `Servicos`, `Pecas`, `OrdensDeServico` e `PedidosCompra` exigem token JWT.
+- `Auth` e o acompanhamento público de OS estão públicos no estado atual do código.

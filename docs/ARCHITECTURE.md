@@ -84,6 +84,7 @@ Principais serviços:
 - `OrdemDeServicoApplicationService`
 - `PedidoCompraApplicationService`
 - `AuthApplicationService`
+- `AcompanhamentoOSApplicationService`
 
 ### Domain
 
@@ -104,6 +105,7 @@ Entidades centrais:
 - `OrdemServicoHistorico`
 - `PedidoCompra`
 - `MovimentacaoEstoque`
+- `NotificacaoCliente`
 - `Usuario`
 
 `OrdemDeServico` concentra:
@@ -165,6 +167,14 @@ Banco principal:
 
 - PostgreSQL 16
 
+Justificativa da escolha do PostgreSQL:
+
+O PostgreSQL foi escolhido por ser um banco relacional robusto, open source e amplamente adotado em aplicações transacionais. O domínio da oficina mecânica possui relacionamentos fortes entre clientes, veículos, ordens de serviço, serviços, peças, movimentações de estoque, notificações e pedidos de compra. Por isso, o modelo relacional atende bem à necessidade de integridade, consistência e rastreabilidade das operações.
+
+A escolha também favorece o controle transacional exigido pelo fluxo da ordem de serviço. Operações como liberar uma OS para execução, validar estoque, registrar movimentações e gerar pedidos de compra precisam manter os dados consistentes mesmo quando envolvem múltiplas tabelas. O PostgreSQL oferece suporte maduro a transações ACID, chaves estrangeiras, índices, constraints e consultas relacionais, recursos importantes para esse tipo de regra de negócio.
+
+Outro ponto considerado foi a integração com a stack do projeto. O PostgreSQL possui excelente suporte no Entity Framework Core por meio do provider Npgsql, funciona bem em ambientes Docker e permite que o projeto seja executado localmente com baixo custo de infraestrutura. Assim, a escolha equilibra confiabilidade, facilidade de desenvolvimento, portabilidade e aderência ao cenário de uma API de gestão operacional.
+
 Banco para testes:
 
 - EF Core InMemory quando `Environment=Testing` ou connection string `UseInMemory`
@@ -183,14 +193,16 @@ Autenticação:
 
 Estado atual da autorização:
 
-- protegidos: `Clientes`, `Veiculos`, `Pecas`, `OrdensDeServico`, `PedidosCompra`
-- públicos: `Servicos`, `Auth`
+- protegidos: `Clientes`, `Veiculos`, `Servicos`, `Pecas`, `OrdensDeServico`, `PedidosCompra`
+- públicos: `Auth` e acompanhamento público de OS em `AcompanhamentoOS`
 
 ## Observabilidade
 
 Health checks expostos:
 
 - `/health`
+- `/health/live`
+- `/health/ready`
 
 Logging:
 
