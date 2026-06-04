@@ -47,7 +47,7 @@ Endpoints padrão:
 
 ```bash
 dotnet restore
-dotnet run --project Fiap.TechChallenge.OficinaMecanica.Api.csproj
+dotnet run --project src/API/Fiap.TechChallenge.OficinaMecanica.Api.csproj
 ```
 
 ## Autenticação
@@ -80,8 +80,9 @@ src/
   Infrastructure/
   Shared/
 
-Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/
-Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/
+tests/
+  Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/
+  Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/
 docs/
 ```
 

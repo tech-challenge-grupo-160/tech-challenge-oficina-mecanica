@@ -1,5 +1,8 @@
 <Solution>
-  <Project Path="Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.csproj" Id="285425d9-d07d-4704-b00f-5ad9c4de5cef" />
-  <Project Path="Fiap.TechChallenge.OficinaMecanica.Api.csproj" />
-  <Project Path="Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.csproj" />
+  <Project Path="src/API/Fiap.TechChallenge.OficinaMecanica.Api.csproj" />
+  <Project Path="src/Application/Fiap.TechChallenge.OficinaMecanica.Application.csproj" />
+  <Project Path="src/Domain/Fiap.TechChallenge.OficinaMecanica.Domain.csproj" />
+  <Project Path="src/Infrastructure/Fiap.TechChallenge.OficinaMecanica.Infrastructure.csproj" />
+  <Project Path="tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.csproj" Id="285425d9-d07d-4704-b00f-5ad9c4de5cef" />
+  <Project Path="tests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.csproj" />
 </Solution>
