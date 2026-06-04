@@ -1,9 +1,9 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
+using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
-using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using Microsoft.Extensions.Logging;
 
@@ -27,6 +27,7 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
     private readonly IOrdemServicoHistoricoRepository _historicoRepository;
     private readonly IUsuarioAutenticadoService _usuarioAutenticadoService;
     private readonly ITransactionManager _transactionManager;
+    private readonly IClock _clock;
     private readonly ILogger _logger;
 
     public PedidoCompraApplicationService(
@@ -37,6 +38,7 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
         IOrdemServicoHistoricoRepository historicoRepository,
         IUsuarioAutenticadoService usuarioAutenticadoService,
         ITransactionManager transactionManager,
+        IClock clock,
         ILoggerFactory loggerFactory)
     {
         _pedidoCompraRepository = pedidoCompraRepository;
@@ -46,6 +48,7 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
         _historicoRepository = historicoRepository;
         _usuarioAutenticadoService = usuarioAutenticadoService;
         _transactionManager = transactionManager;
+        _clock = clock;
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
@@ -78,21 +81,17 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
                     }
 
                     var pedido = await _pedidoCompraRepository.CriarAsync(
-                        new PedidoCompra
-                        {
-                            OrdemDeServicoId = dto.OrdemDeServicoId,
-                            PecaId = dto.PecaId,
-                            QuantidadeSolicitada = dto.QuantidadeSolicitada,
-                            QuantidadeRecebida = 0,
-                            Status = StatusPedidoCompra.Pendente,
-                            DataSolicitacao = DateTimeHelper.UTCBrazilNow(),
-                            Observacao = string.IsNullOrWhiteSpace(dto.Observacao)
+                        PedidoCompra.Criar(
+                            dto.OrdemDeServicoId,
+                            dto.PecaId,
+                            dto.QuantidadeSolicitada,
+                            _clock.Now,
+                            string.IsNullOrWhiteSpace(dto.Observacao)
                                 ? $"Pedido criado manualmente para a ordem {ordem.Numero}."
-                                : dto.Observacao.Trim()
-                        },
+                                : dto.Observacao),
                         token);
 
-                    pedido.Peca = peca;
+                    pedido.VincularPeca(peca);
 
                     await RegistrarHistoricoAsync(
                         ordem.Id,
@@ -184,24 +183,23 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
                     }
 
                     var estoqueAnterior = peca.QuantidadeEstoque;
-                    pedido.RegistrarRecebimento(dto.QuantidadeRecebida);
+                    var agora = _clock.Now;
+                    pedido.RegistrarRecebimento(dto.QuantidadeRecebida, agora);
                     peca.ReporEstoque(dto.QuantidadeRecebida);
 
                     await _pedidoCompraRepository.AtualizarAsync(pedido, token);
                     await _pecaRepository.AtualizarAsync(peca, token);
                     await _movimentacaoEstoqueRepository.CriarAsync(
-                        new MovimentacaoEstoque
-                        {
-                            PecaId = peca.Id,
-                            OrdemDeServicoId = pedido.OrdemDeServicoId,
-                            PedidoCompraId = pedido.Id,
-                            TipoMovimentacao = TipoMovimentacaoEstoque.EntradaPorPedidoCompra,
-                            Quantidade = dto.QuantidadeRecebida,
-                            QuantidadeAnterior = estoqueAnterior,
-                            QuantidadePosterior = peca.QuantidadeEstoque,
-                            Descricao = $"Entrada de estoque por recebimento do pedido de compra {pedido.Id}.",
-                            DataMovimentacao = DateTimeHelper.UTCBrazilNow()
-                        },
+                        MovimentacaoEstoque.Registrar(
+                            peca.Id,
+                            pedido.OrdemDeServicoId,
+                            pedido.Id,
+                            TipoMovimentacaoEstoque.EntradaPorPedidoCompra,
+                            dto.QuantidadeRecebida,
+                            estoqueAnterior,
+                            peca.QuantidadeEstoque,
+                            $"Entrada de estoque por recebimento do pedido de compra {pedido.Id}.",
+                            agora),
                         token);
 
                     await RegistrarHistoricoAsync(
@@ -242,17 +240,15 @@ public class PedidoCompraApplicationService : IPedidoCompraApplicationService
         var usuarioAtual = _usuarioAutenticadoService.ObterUsuarioAtual();
 
         await _historicoRepository.CriarAsync(
-            new OrdemServicoHistorico
-            {
-                OrdemDeServicoId = ordemDeServicoId,
-                UsuarioId = usuarioAtual.UsuarioId,
-                UsuarioNome = usuarioAtual.UsuarioNome,
-                StatusAnterior = statusAnterior,
-                StatusNovo = statusNovo,
-                TipoEvento = tipoEvento,
-                Descricao = descricao,
-                DataEvento = DateTimeHelper.UTCBrazilNow()
-            },
+            OrdemServicoHistorico.Registrar(
+                ordemDeServicoId,
+                usuarioAtual.UsuarioId,
+                usuarioAtual.UsuarioNome,
+                statusAnterior,
+                statusNovo,
+                tipoEvento,
+                descricao,
+                _clock.Now),
             cancellationToken);
     }
 

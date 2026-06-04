@@ -1,5 +1,6 @@
 ﻿using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
@@ -24,17 +25,20 @@ public class ClienteApplicationService : IClienteApplicationService
     private readonly IClienteRepository _clienteRepository;
     private readonly IVeiculoRepository _veiculoRepository;
     private readonly IOrdemDeServicoRepository _ordemDeServicoRepository;
+    private readonly IClock _clock;
     private readonly ILogger _logger;
 
     public ClienteApplicationService(
         IClienteRepository clienteRepository,
         IVeiculoRepository veiculoRepository,
         IOrdemDeServicoRepository ordemDeServicoRepository,
+        IClock clock,
         ILoggerFactory loggerFactory)
     {
         _clienteRepository = clienteRepository;
         _veiculoRepository = veiculoRepository;
         _ordemDeServicoRepository = ordemDeServicoRepository;
+        _clock = clock;
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
@@ -55,7 +59,7 @@ public class ClienteApplicationService : IClienteApplicationService
                 throw new ServiceValidationException("Cliente com este CPF/CNPJ ja existe.");
             }
 
-            var cliente = Cliente.Criar(dto.Nome, documento, telefone, dto.Email);
+            var cliente = Cliente.Criar(dto.Nome, documento, telefone, dto.Email, _clock.Now);
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarClienteAsync), "Persistindo novo cliente");
             var clienteCriado = await _clienteRepository.CriarAsync(cliente, cancellationToken);

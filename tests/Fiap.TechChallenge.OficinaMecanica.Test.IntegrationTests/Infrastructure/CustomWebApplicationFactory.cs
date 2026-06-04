@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 using Microsoft.AspNetCore.Authentication;
@@ -89,68 +90,54 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         context.Clientes.RemoveRange(context.Clientes);
         context.SaveChanges();
 
-        context.Clientes.AddRange(
-            new Cliente
-            {
-                Id = PessoaFisicaClienteId,
-                Nome = "Vanessa Luna Duarte",
-                CpfCnpj = DocumentoHelper.NormalizarCpf("476.548.668-01"),
-                Telefone = TelefoneHelper.Normalizar("15984608796"),
-                Email = "vanessa_luna_duarte@maissaude.adm.br",
-                DataCadastro = DateTimeHelper.UTCBrazilNow()
-            },
-            new Cliente
-            {
-                Id = PessoaJuridicaClienteId,
-                Nome = "Betina e Fernanda Contabil Ltda",
-                CpfCnpj = DocumentoHelper.NormalizarCnpj("60.617.051/0001-99"),
-                Telefone = TelefoneHelper.Normalizar("16985344781"),
-                Email = "ouvidoria@betinaefernandacontabilltda.com.br",
-                DataCadastro = DateTimeHelper.UTCBrazilNow()
-            });
+        AddWithId(
+            context,
+            Cliente.Criar(
+                "Vanessa Luna Duarte",
+                Documento.Parse("476.548.668-01"),
+                Telefone.Parse("15984608796"),
+                "vanessa_luna_duarte@maissaude.adm.br",
+                DateTimeHelper.UTCBrazilNow()),
+            PessoaFisicaClienteId);
 
-        context.Veiculos.AddRange(
-            new Veiculo
-            {
-                Id = VeiculoExistenteId,
-                Placa = "BRA2E19",
-                Marca = "Volkswagen",
-                Modelo = "Gol",
-                Ano = 2020,
-                ClienteId = PessoaFisicaClienteId
-            },
-            new Veiculo
-            {
-                Id = SegundoVeiculoExistenteId,
-                Placa = "XYZ9A88",
-                Marca = "Fiat",
-                Modelo = "Argo",
-                Ano = 2022,
-                ClienteId = PessoaJuridicaClienteId
-            });
+        AddWithId(
+            context,
+            Cliente.Criar(
+                "Betina e Fernanda Contabil Ltda",
+                Documento.Parse("60.617.051/0001-99"),
+                Telefone.Parse("16985344781"),
+                "ouvidoria@betinaefernandacontabilltda.com.br",
+                DateTimeHelper.UTCBrazilNow()),
+            PessoaJuridicaClienteId);
 
-        context.Servicos.Add(
-            new Servico
-            {
-                Id = ServicoExistenteId,
-                Nome = "Alinhamento",
-                Descricao = "Servico de alinhamento",
-                Preco = 150m,
-                TempoEstimado = 30
-            });
+        AddWithId(
+            context,
+            Veiculo.Criar(PlacaVeiculo.Parse("BRA2E19"), "Volkswagen", "Gol", 2020, PessoaFisicaClienteId),
+            VeiculoExistenteId);
 
-        context.Pecas.Add(
-            new Peca
-            {
-                Id = PecaExistenteId,
-                Nome = "Pastilha de Freio",
-                Marca = "Cobreq",
-                Modelo = "N-1234",
-                Preco = 45m,
-                QuantidadeEstoque = 100
-            });
+        AddWithId(
+            context,
+            Veiculo.Criar(PlacaVeiculo.Parse("XYZ9A88"), "Fiat", "Argo", 2022, PessoaJuridicaClienteId),
+            SegundoVeiculoExistenteId);
+
+        AddWithId(
+            context,
+            Servico.Criar("Alinhamento", "Servico de alinhamento", 150m, 30),
+            ServicoExistenteId);
+
+        AddWithId(
+            context,
+            Peca.Criar("Pastilha de Freio", "Cobreq", "N-1234", 45m, 100),
+            PecaExistenteId);
 
         context.SaveChanges();
+    }
+
+    private static void AddWithId<TEntity>(OficinaDbContext context, TEntity entity, int id)
+        where TEntity : class
+    {
+        context.Add(entity);
+        context.Entry(entity).Property("Id").CurrentValue = id;
     }
 }
 

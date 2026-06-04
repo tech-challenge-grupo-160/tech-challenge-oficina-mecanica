@@ -1,4 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
@@ -26,6 +27,7 @@ public class OrdemDeServicoApplicationServiceTests
     private readonly Mock<INotificacaoClienteRepository> _notificacaoClienteRepositoryMock;
     private readonly Mock<IUsuarioAutenticadoService> _usuarioAutenticadoServiceMock;
     private readonly Mock<ITransactionManager> _transactionManagerMock;
+    private readonly Mock<IClock> _clockMock;
     private readonly OrdemDeServicoApplicationService _service;
 
     public OrdemDeServicoApplicationServiceTests()
@@ -41,6 +43,8 @@ public class OrdemDeServicoApplicationServiceTests
         _notificacaoClienteRepositoryMock = new Mock<INotificacaoClienteRepository>(MockBehavior.Strict);
         _usuarioAutenticadoServiceMock = new Mock<IUsuarioAutenticadoService>(MockBehavior.Strict);
         _transactionManagerMock = new Mock<ITransactionManager>(MockBehavior.Strict);
+        _clockMock = new Mock<IClock>(MockBehavior.Strict);
+        _clockMock.Setup(x => x.Now).Returns(new DateTime(2026, 6, 4, 10, 0, 0));
 
         _usuarioAutenticadoServiceMock
             .Setup(x => x.ObterUsuarioAtual())
@@ -74,6 +78,7 @@ public class OrdemDeServicoApplicationServiceTests
             _notificacaoClienteRepositoryMock.Object,
             _usuarioAutenticadoServiceMock.Object,
             _transactionManagerMock.Object,
+            _clockMock.Object,
             NullLoggerFactory.Instance);
     }
 
@@ -97,8 +102,7 @@ public class OrdemDeServicoApplicationServiceTests
             .Setup(x => x.CriarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico ordem, CancellationToken _) =>
             {
-                ordem.Id = 3002;
-                return ordem;
+                return ordem.WithId(3002);
             });
         _ordemRepositoryMock
             .Setup(x => x.AtualizarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()))
@@ -164,13 +168,7 @@ public class OrdemDeServicoApplicationServiceTests
     public async Task FinalizarDiagnosticoAsync_DeveLancarQuandoOrcamentoForZero()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.EmDiagnostico);
-        ordem.Servicos.Add(new OrdemDeServicoServico
-        {
-            OrdemDeServicoId = ordem.Id,
-            ServicoId = 1000,
-            Preco = 0,
-            TempoEstimado = 30
-        });
+        ordem.Servicos.Add(OrdemDeServicoServico.Criar(ordem.Id, 1000, 0, 30));
 
         _ordemRepositoryMock
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
@@ -256,7 +254,7 @@ public class OrdemDeServicoApplicationServiceTests
     public async Task EntregarAsync_DeveLancarQuandoPagamentoNaoTiverSidoRegistrado()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Finalizada);
-        ordem.DataFinalizacao = DateTime.UtcNow;
+        ordem.SetPrivateProperty(nameof(OrdemDeServico.DataFinalizacao), DateTime.UtcNow);
 
         _ordemRepositoryMock
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
@@ -274,8 +272,8 @@ public class OrdemDeServicoApplicationServiceTests
         var dataAbertura = new DateTime(2026, 4, 20, 8, 0, 0);
         var dataFinalizacao = dataAbertura.AddHours(5).AddMinutes(30);
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Finalizada);
-        ordem.DataAbertura = dataAbertura;
-        ordem.DataFinalizacao = dataFinalizacao;
+        ordem.SetPrivateProperty(nameof(OrdemDeServico.DataAbertura), dataAbertura);
+        ordem.SetPrivateProperty(nameof(OrdemDeServico.DataFinalizacao), dataFinalizacao);
 
         _ordemRepositoryMock
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
@@ -294,16 +292,16 @@ public class OrdemDeServicoApplicationServiceTests
     public async Task ObterResumoMonitoramentoAsync_DeveCalcularMediaDeFinalizacao()
     {
         var ordemFinalizadaRapida = OrdemDeServicoMock.Criar(id: 1, status: StatusOrdemDeServico.Finalizada, numero: "OS-1");
-        ordemFinalizadaRapida.DataAbertura = new DateTime(2026, 4, 20, 8, 0, 0);
-        ordemFinalizadaRapida.DataFinalizacao = ordemFinalizadaRapida.DataAbertura.AddHours(2);
+        ordemFinalizadaRapida.SetPrivateProperty(nameof(OrdemDeServico.DataAbertura), new DateTime(2026, 4, 20, 8, 0, 0));
+        ordemFinalizadaRapida.SetPrivateProperty(nameof(OrdemDeServico.DataFinalizacao), ordemFinalizadaRapida.DataAbertura.AddHours(2));
 
         var ordemFinalizadaLenta = OrdemDeServicoMock.Criar(id: 2, status: StatusOrdemDeServico.Finalizada, numero: "OS-2");
-        ordemFinalizadaLenta.DataAbertura = new DateTime(2026, 4, 20, 9, 0, 0);
-        ordemFinalizadaLenta.DataFinalizacao = ordemFinalizadaLenta.DataAbertura.AddHours(4);
+        ordemFinalizadaLenta.SetPrivateProperty(nameof(OrdemDeServico.DataAbertura), new DateTime(2026, 4, 20, 9, 0, 0));
+        ordemFinalizadaLenta.SetPrivateProperty(nameof(OrdemDeServico.DataFinalizacao), ordemFinalizadaLenta.DataAbertura.AddHours(4));
 
         var ordemAberta = OrdemDeServicoMock.Criar(id: 3, status: StatusOrdemDeServico.EmExecucao, numero: "OS-3");
-        ordemAberta.DataAbertura = new DateTime(2026, 4, 20, 10, 0, 0);
-        ordemAberta.DataFinalizacao = null;
+        ordemAberta.SetPrivateProperty(nameof(OrdemDeServico.DataAbertura), new DateTime(2026, 4, 20, 10, 0, 0));
+        ordemAberta.SetPrivateProperty(nameof(OrdemDeServico.DataFinalizacao), null);
 
         _ordemRepositoryMock
             .Setup(x => x.ObterTodasAsync(It.IsAny<CancellationToken>()))
@@ -328,20 +326,8 @@ public class OrdemDeServicoApplicationServiceTests
     public async Task ObterEstimativaTempoAsync_DeveSomarTempoEstimadoDosServicosDaOs()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.EmDiagnostico, clienteId: 1, veiculoId: 10);
-        ordem.Servicos.Add(new OrdemDeServicoServico
-        {
-            OrdemDeServicoId = ordem.Id,
-            ServicoId = 1000,
-            Preco = 150m,
-            TempoEstimado = 30
-        });
-        ordem.Servicos.Add(new OrdemDeServicoServico
-        {
-            OrdemDeServicoId = ordem.Id,
-            ServicoId = 1001,
-            Preco = 300m,
-            TempoEstimado = 90
-        });
+        ordem.Servicos.Add(OrdemDeServicoServico.Criar(ordem.Id, 1000, 150m, 30));
+        ordem.Servicos.Add(OrdemDeServicoServico.Criar(ordem.Id, 1001, 300m, 90));
 
         _ordemRepositoryMock
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
@@ -361,13 +347,7 @@ public class OrdemDeServicoApplicationServiceTests
     public async Task AprovarAsync_DeveBloquearExecucaoEGerarPedidoCompraQuandoFaltarEstoque()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoAprovacao, clienteId: 1, veiculoId: 10);
-        ordem.Pecas.Add(new OrdemDeServicoPeca
-        {
-            OrdemDeServicoId = ordem.Id,
-            PecaId = 1000,
-            Quantidade = 3,
-            Preco = 45m
-        });
+        ordem.Pecas.Add(OrdemDeServicoPeca.Criar(ordem.Id, 1000, 3, 45m));
 
         var peca = PecaMock.Criar(id: 1000, quantidadeEstoque: 1);
 
@@ -387,8 +367,7 @@ public class OrdemDeServicoApplicationServiceTests
             .Setup(x => x.CriarAsync(It.IsAny<PedidoCompra>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((PedidoCompra pedido, CancellationToken _) =>
             {
-                pedido.Id = 50;
-                return pedido;
+                return pedido.WithId(50);
             });
 
         var resultado = await _service.AprovarAsync(ordem.Id, CancellationToken.None);
@@ -419,13 +398,7 @@ public class OrdemDeServicoApplicationServiceTests
     public async Task LiberarExecucaoAsync_DeveBaixarEstoqueEMudarParaEmExecucaoQuandoHouverDisponibilidade()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoEstoque, clienteId: 1, veiculoId: 10);
-        ordem.Pecas.Add(new OrdemDeServicoPeca
-        {
-            OrdemDeServicoId = ordem.Id,
-            PecaId = 1000,
-            Quantidade = 3,
-            Preco = 45m
-        });
+        ordem.Pecas.Add(OrdemDeServicoPeca.Criar(ordem.Id, 1000, 3, 45m));
 
         var peca = PecaMock.Criar(id: 1000, quantidadeEstoque: 3);
 
@@ -461,13 +434,7 @@ public class OrdemDeServicoApplicationServiceTests
     public async Task LiberarExecucaoAsync_DeveLancarQuandoEstoqueContinuarIndisponivel()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoEstoque, clienteId: 1, veiculoId: 10);
-        ordem.Pecas.Add(new OrdemDeServicoPeca
-        {
-            OrdemDeServicoId = ordem.Id,
-            PecaId = 1000,
-            Quantidade = 3,
-            Preco = 45m
-        });
+        ordem.Pecas.Add(OrdemDeServicoPeca.Criar(ordem.Id, 1000, 3, 45m));
 
         var peca = PecaMock.Criar(id: 1000, quantidadeEstoque: 1);
 
@@ -509,14 +476,8 @@ public class OrdemDeServicoApplicationServiceTests
     public async Task RemoverServicoAsync_DeveRemoverServicoQuandoOsEstiverEmDiagnostico()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.EmDiagnostico, clienteId: 1, veiculoId: 10);
-        ordem.Servicos.Add(new OrdemDeServicoServico
-        {
-            OrdemDeServicoId = ordem.Id,
-            ServicoId = 1000,
-            Preco = 150m,
-            TempoEstimado = 30
-        });
-        ordem.ValorTotal = 150m;
+        ordem.Servicos.Add(OrdemDeServicoServico.Criar(ordem.Id, 1000, 150m, 30));
+        ordem.SetPrivateProperty(nameof(OrdemDeServico.ValorTotal), 150m);
         var servico = ServicoMock.Criar(id: 1000, preco: 150m);
 
         _ordemRepositoryMock
@@ -539,13 +500,7 @@ public class OrdemDeServicoApplicationServiceTests
     public async Task RemoverPecaAsync_DeveLancarQuandoOsNaoEstiverEmDiagnostico()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoAprovacao, clienteId: 1, veiculoId: 10);
-        ordem.Pecas.Add(new OrdemDeServicoPeca
-        {
-            OrdemDeServicoId = ordem.Id,
-            PecaId = 1000,
-            Quantidade = 1,
-            Preco = 45m
-        });
+        ordem.Pecas.Add(OrdemDeServicoPeca.Criar(ordem.Id, 1000, 1, 45m));
 
         _ordemRepositoryMock
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
@@ -565,13 +520,7 @@ public class OrdemDeServicoApplicationServiceTests
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.EmDiagnostico, clienteId: 1, veiculoId: 10);
         var servico = ServicoMock.Criar(id: 1000, preco: 150m);
-        ordem.Servicos.Add(new OrdemDeServicoServico
-        {
-            OrdemDeServicoId = ordem.Id,
-            ServicoId = servico.Id,
-            Preco = servico.Preco,
-            TempoEstimado = servico.TempoEstimado
-        });
+        ordem.Servicos.Add(OrdemDeServicoServico.Criar(ordem.Id, servico.Id, servico.Preco, servico.TempoEstimado));
 
         _ordemRepositoryMock
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))

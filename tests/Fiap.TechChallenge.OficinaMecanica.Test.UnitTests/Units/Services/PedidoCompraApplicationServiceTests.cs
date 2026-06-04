@@ -1,9 +1,11 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -19,6 +21,7 @@ public class PedidoCompraApplicationServiceTests
     private readonly Mock<IOrdemServicoHistoricoRepository> _historicoRepositoryMock;
     private readonly Mock<IUsuarioAutenticadoService> _usuarioAutenticadoServiceMock;
     private readonly Mock<ITransactionManager> _transactionManagerMock;
+    private readonly Mock<IClock> _clockMock;
     private readonly PedidoCompraApplicationService _service;
 
     public PedidoCompraApplicationServiceTests()
@@ -30,6 +33,8 @@ public class PedidoCompraApplicationServiceTests
         _historicoRepositoryMock = new Mock<IOrdemServicoHistoricoRepository>(MockBehavior.Strict);
         _usuarioAutenticadoServiceMock = new Mock<IUsuarioAutenticadoService>(MockBehavior.Strict);
         _transactionManagerMock = new Mock<ITransactionManager>(MockBehavior.Strict);
+        _clockMock = new Mock<IClock>(MockBehavior.Strict);
+        _clockMock.Setup(x => x.Now).Returns(new DateTime(2026, 6, 4, 10, 0, 0));
 
         _service = new PedidoCompraApplicationService(
             _pedidoCompraRepositoryMock.Object,
@@ -39,25 +44,18 @@ public class PedidoCompraApplicationServiceTests
             _historicoRepositoryMock.Object,
             _usuarioAutenticadoServiceMock.Object,
             _transactionManagerMock.Object,
+            _clockMock.Object,
             NullLoggerFactory.Instance);
     }
 
     [Fact]
     public async Task CriarAsync_DeveCriarPedidoCompraManual()
     {
-        var ordem = new OrdemDeServico
-        {
-            Id = 3001,
-            Numero = "OS-20260423-3001",
-            Status = StatusOrdemDeServico.AguardandoEstoque
-        };
-        var peca = new Peca
-        {
-            Id = 1000,
-            Nome = "Pastilha de Freio",
-            Marca = "Cobreq",
-            Modelo = "N-1234"
-        };
+        var ordem = OrdemDeServicoMock.Criar(
+            id: 3001,
+            status: StatusOrdemDeServico.AguardandoEstoque,
+            numero: "OS-20260423-3001");
+        var peca = PecaMock.Criar(id: 1000);
 
         _transactionManagerMock
             .Setup(x => x.ExecuteAsync(It.IsAny<Func<CancellationToken, Task<PedidoCompraDto>>>(), It.IsAny<CancellationToken>()))
@@ -72,8 +70,7 @@ public class PedidoCompraApplicationServiceTests
             .Setup(x => x.CriarAsync(It.IsAny<PedidoCompra>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((PedidoCompra pedido, CancellationToken _) =>
             {
-                pedido.Id = 50;
-                return pedido;
+                return pedido.WithId(50);
             });
         _usuarioAutenticadoServiceMock
             .Setup(x => x.ObterUsuarioAtual())
@@ -109,19 +106,10 @@ public class PedidoCompraApplicationServiceTests
     {
         var pedidos = new[]
         {
-            new PedidoCompra
-            {
-                Id = 1,
-                OrdemDeServicoId = 3001,
-                PecaId = 1000,
-                QuantidadeSolicitada = 2,
-                QuantidadeRecebida = 0,
-                Status = StatusPedidoCompra.Pendente,
-                DataSolicitacao = new DateTime(2026, 4, 23, 10, 0, 0),
-                Observacao = "Pedido 1",
-                Peca = new Peca { Id = 1000, Nome = "Pastilha de Freio", Marca = "Cobreq", Modelo = "N-1234" }
-            }
+            PedidoCompra.Criar(3001, 1000, 2, new DateTime(2026, 4, 23, 10, 0, 0), "Pedido 1")
+                .WithId(1)
         };
+        pedidos[0].VincularPeca(PecaMock.Criar(id: 1000));
 
         _pedidoCompraRepositoryMock
             .Setup(x => x.ContarAsync(It.IsAny<CancellationToken>()))

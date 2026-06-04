@@ -1,4 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.API.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Options;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
@@ -9,6 +10,7 @@ using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Extensions;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.HealthChecks;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Logging;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Time;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -154,6 +156,7 @@ builder.Services.AddScoped<IAuthApplicationService, AuthApplicationService>();
 builder.Services.AddScoped<IPedidoCompraApplicationService, PedidoCompraApplicationService>();
 builder.Services.AddScoped<IAcompanhamentoOSApplicationService, AcompanhamentoOSApplicationService>();
 builder.Services.AddScoped<IUsuarioAutenticadoService, UsuarioAutenticadoService>();
+builder.Services.AddSingleton<IClock, BrazilClock>();
 
 // CORS
 builder.Services.AddCors(options =>

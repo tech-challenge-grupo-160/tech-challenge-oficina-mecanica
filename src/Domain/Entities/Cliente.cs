@@ -1,21 +1,24 @@
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
-using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
 public class Cliente
 {
-    public int Id { get; set; }
-    public string Nome { get; set; } = null!;
-    public string CpfCnpj { get; set; } = null!;
-    public string Telefone { get; set; } = null!;
-    public string Email { get; set; } = null!;
-    public DateTime DataCadastro { get; set; }
+    private Cliente()
+    {
+    }
 
-    public ICollection<Veiculo> Veiculos { get; set; } = new List<Veiculo>();
-    public ICollection<OrdemDeServico> OrdensDeServico { get; set; } = new List<OrdemDeServico>();
+    public int Id { get; private set; }
+    public string Nome { get; private set; } = null!;
+    public string CpfCnpj { get; private set; } = null!;
+    public string Telefone { get; private set; } = null!;
+    public string Email { get; private set; } = null!;
+    public DateTime DataCadastro { get; private set; }
 
-    public static Cliente Criar(string nome, Documento documento, Telefone telefone, string email)
+    public ICollection<Veiculo> Veiculos { get; private set; } = new List<Veiculo>();
+    public ICollection<OrdemDeServico> OrdensDeServico { get; private set; } = new List<OrdemDeServico>();
+
+    public static Cliente Criar(string nome, Documento documento, Telefone telefone, string email, DateTime dataCadastro)
     {
         if (string.IsNullOrWhiteSpace(nome))
         {
@@ -33,7 +36,7 @@ public class Cliente
             CpfCnpj = documento.Valor,
             Telefone = telefone.Valor,
             Email = email.Trim(),
-            DataCadastro = DateTimeHelper.UTCBrazilNow()
+            DataCadastro = dataCadastro
         };
     }
 

@@ -11,13 +11,7 @@ public static class ServicoMock
         decimal preco = 150m,
         int tempoEstimado = 30)
     {
-        return new Servico
-        {
-            Id = id,
-            Nome = nome,
-            Descricao = descricao,
-            Preco = preco,
-            TempoEstimado = tempoEstimado
-        };
+        return Servico.Criar(nome, descricao, preco, tempoEstimado)
+            .WithId(id);
     }
 }
