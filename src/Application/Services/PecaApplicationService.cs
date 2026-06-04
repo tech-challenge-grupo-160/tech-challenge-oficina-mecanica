@@ -34,14 +34,7 @@ public class PecaApplicationService : IPecaApplicationService
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarPecaAsync), "Persistindo nova peca");
-            var peca = new Peca
-            {
-                Nome = dto.Nome,
-                Marca = dto.Marca,
-                Modelo = dto.Modelo,
-                Preco = dto.Preco,
-                QuantidadeEstoque = dto.QuantidadeEstoque
-            };
+            var peca = Peca.Criar(dto.Nome, dto.Marca, dto.Modelo, dto.Preco, dto.QuantidadeEstoque);
 
             var pecaCriada = await _pecaRepository.CriarAsync(peca, cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, "Peca criada com sucesso.");
@@ -108,11 +101,7 @@ public class PecaApplicationService : IPecaApplicationService
                 throw new ServiceNotFoundException($"Peca com ID {id} nao encontrada.");
             }
 
-            peca.Nome = dto.Nome;
-            peca.Marca = dto.Marca;
-            peca.Modelo = dto.Modelo;
-            peca.Preco = dto.Preco;
-            peca.QuantidadeEstoque = dto.QuantidadeEstoque;
+            peca.AtualizarDados(dto.Nome, dto.Marca, dto.Modelo, dto.Preco, dto.QuantidadeEstoque);
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AtualizarPecaAsync), "Persistindo atualizacao da peca");
             var pecaAtualizada = await _pecaRepository.AtualizarAsync(peca, cancellationToken);

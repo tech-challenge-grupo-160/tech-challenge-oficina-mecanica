@@ -12,14 +12,7 @@ public static class PecaMock
         decimal preco = 45m,
         int quantidadeEstoque = 10)
     {
-        return new Peca
-        {
-            Id = id,
-            Nome = nome,
-            Marca = marca,
-            Modelo = modelo,
-            Preco = preco,
-            QuantidadeEstoque = quantidadeEstoque
-        };
+        return Peca.Criar(nome, marca, modelo, preco, quantidadeEstoque)
+            .WithId(id);
     }
 }

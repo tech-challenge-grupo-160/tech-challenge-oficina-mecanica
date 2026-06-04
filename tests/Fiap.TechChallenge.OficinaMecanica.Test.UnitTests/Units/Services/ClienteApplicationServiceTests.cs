@@ -1,4 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
@@ -16,6 +17,7 @@ public class ClienteApplicationServiceTests
     private readonly Mock<IClienteRepository> _clienteRepositoryMock;
     private readonly Mock<IVeiculoRepository> _veiculoRepositoryMock;
     private readonly Mock<IOrdemDeServicoRepository> _ordemDeServicoRepositoryMock;
+    private readonly Mock<IClock> _clockMock;
     private readonly ClienteApplicationService _service;
 
     public ClienteApplicationServiceTests()
@@ -23,10 +25,13 @@ public class ClienteApplicationServiceTests
         _clienteRepositoryMock = ClienteRepositoryMockFactory.CreateStrict();
         _veiculoRepositoryMock = new Mock<IVeiculoRepository>(MockBehavior.Strict);
         _ordemDeServicoRepositoryMock = new Mock<IOrdemDeServicoRepository>(MockBehavior.Strict);
+        _clockMock = new Mock<IClock>(MockBehavior.Strict);
+        _clockMock.Setup(x => x.Now).Returns(new DateTime(2026, 6, 4, 10, 0, 0));
         _service = new ClienteApplicationService(
             _clienteRepositoryMock.Object,
             _veiculoRepositoryMock.Object,
             _ordemDeServicoRepositoryMock.Object,
+            _clockMock.Object,
             NullLoggerFactory.Instance);
     }
 

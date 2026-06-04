@@ -1,4 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 
@@ -12,14 +13,7 @@ public static class VeiculoMock
         int ano = 2015,
         int clienteId = 1)
     {
-        return new Veiculo
-        {
-            Id = id,
-            Placa = placa,
-            Marca = marca,
-            Modelo = modelo,
-            Ano = ano,
-            ClienteId = clienteId
-        };
+        return Veiculo.Criar(PlacaVeiculo.Parse(placa), marca, modelo, ano, clienteId)
+            .WithId(id);
     }
 }

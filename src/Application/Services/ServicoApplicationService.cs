@@ -34,13 +34,7 @@ public class ServicoApplicationService : IServicoApplicationService
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarServicoAsync), "Persistindo novo servico");
-            var servico = new Servico
-            {
-                Nome = dto.Nome,
-                Descricao = dto.Descricao,
-                Preco = dto.Preco,
-                TempoEstimado = dto.TempoEstimado
-            };
+            var servico = Servico.Criar(dto.Nome, dto.Descricao, dto.Preco, dto.TempoEstimado);
 
             var servicoCriado = await _servicoRepository.CriarAsync(servico, cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, "Servico criado com sucesso.");
@@ -107,10 +101,7 @@ public class ServicoApplicationService : IServicoApplicationService
                 throw new ServiceNotFoundException($"Servico com ID {id} nao encontrado.");
             }
 
-            servico.Nome = dto.Nome;
-            servico.Descricao = dto.Descricao;
-            servico.Preco = dto.Preco;
-            servico.TempoEstimado = dto.TempoEstimado;
+            servico.AtualizarDados(dto.Nome, dto.Descricao, dto.Preco, dto.TempoEstimado);
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AtualizarServicoAsync), "Persistindo atualizacao do servico");
             var servicoAtualizado = await _servicoRepository.AtualizarAsync(servico, cancellationToken);

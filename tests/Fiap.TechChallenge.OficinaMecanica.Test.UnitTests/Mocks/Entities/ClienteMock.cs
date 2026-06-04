@@ -1,4 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 
@@ -11,14 +12,7 @@ public static class ClienteMock
         string telefone = "11988887777",
         string email = "cliente@teste.com")
     {
-        return new Cliente
-        {
-            Id = id,
-            Nome = nome,
-            CpfCnpj = cpfCnpj,
-            Telefone = telefone,
-            Email = email,
-            DataCadastro = DateTime.UtcNow
-        };
+        return Cliente.Criar(nome, Documento.Parse(cpfCnpj), Telefone.Parse(telefone), email, DateTime.UtcNow)
+            .WithId(id);
     }
 }
