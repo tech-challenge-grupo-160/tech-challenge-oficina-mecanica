@@ -13,4 +13,6 @@ node_modules/
 #launchSettings.json
 .env
 artifacts/
+.sonarqube/
+TestResults/
 .codex

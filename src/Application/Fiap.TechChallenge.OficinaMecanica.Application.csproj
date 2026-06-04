@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Fiap.TechChallenge.OficinaMecanica.Application</RootNamespace>
+    <AssemblyName>Fiap.TechChallenge.OficinaMecanica.Application</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\Fiap.TechChallenge.OficinaMecanica.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="FluentValidation" Version="11.11.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.16.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\Logging\*.cs" Link="Shared\Logging\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>
