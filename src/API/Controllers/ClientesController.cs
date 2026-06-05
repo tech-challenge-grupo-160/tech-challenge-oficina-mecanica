@@ -5,7 +5,7 @@ using Fiap.TechChallenge.OficinaMecanica.API.Requests.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
-using Fiap.TechChallenge.OficinaMecanica.Application.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 

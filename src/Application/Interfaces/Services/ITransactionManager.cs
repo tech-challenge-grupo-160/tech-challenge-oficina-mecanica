@@ -1,4 +1,4 @@
-namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
+namespace Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 
 public interface ITransactionManager
 {

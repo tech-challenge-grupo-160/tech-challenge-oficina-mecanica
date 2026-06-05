@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
-using Fiap.TechChallenge.OficinaMecanica.Application.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 

@@ -1,20 +1,12 @@
-﻿using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
-
-public interface IPecaApplicationService
-{
-    Task<PecaDto> CriarPecaAsync(CriarPecaDto dto, CancellationToken cancellationToken);
-    Task<PecaDto> ObterPecaAsync(int id, CancellationToken cancellationToken);
-    Task<IEnumerable<PecaDto>> ListarPecasAsync(CancellationToken cancellationToken);
-    Task<PecaDto> AtualizarPecaAsync(int id, AtualizarPecaDto dto, CancellationToken cancellationToken);
-    Task DeletarPecaAsync(int id, CancellationToken cancellationToken);
-}
 
 public class PecaApplicationService : IPecaApplicationService
 {

@@ -1,5 +1,6 @@
-﻿using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
@@ -7,19 +8,6 @@ using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
-
-public interface IVeiculoApplicationService
-{
-    Task<VeiculoDto> CriarVeiculoAsync(CriarVeiculoDto dto, CancellationToken cancellationToken);
-    Task<VeiculoDto> CriarVeiculoParaClienteAsync(string cpfCnpj, CriarVeiculoParaClienteDto dto, CancellationToken cancellationToken);
-    Task<VeiculoDto> ObterVeiculoAsync(int id, CancellationToken cancellationToken);
-    Task<VeiculoDto> ObterVeiculoPorPlacaAsync(string placa, CancellationToken cancellationToken);
-    Task<IEnumerable<VeiculoDto>> ListarVeiculosAsync(CancellationToken cancellationToken);
-    Task<IEnumerable<VeiculoDto>> ListarVeiculosPorClienteAsync(int clienteId, CancellationToken cancellationToken);
-    Task<IEnumerable<VeiculoDto>> ListarVeiculosPorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken);
-    Task<VeiculoDto> AtualizarVeiculoAsync(int id, AtualizarVeiculoDto dto, CancellationToken cancellationToken);
-    Task DeletarVeiculoAsync(int id, CancellationToken cancellationToken);
-}
 
 public class VeiculoApplicationService : IVeiculoApplicationService
 {
