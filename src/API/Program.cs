@@ -1,9 +1,10 @@
 using Fiap.TechChallenge.OficinaMecanica.API.Services;
+using Fiap.TechChallenge.OficinaMecanica.API.Validators.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Options;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
-using Fiap.TechChallenge.OficinaMecanica.Application.Validators.Clientes;
+using Fiap.TechChallenge.OficinaMecanica.Application.Validators.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Extensions;
@@ -43,7 +44,8 @@ builder.Services.AddControllers(options =>
 });
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
-builder.Services.AddValidatorsFromAssemblyContaining<CriarClienteDtoValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<CriarClienteRequestValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<CriarOrdemDeServicoDtoValidator>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {

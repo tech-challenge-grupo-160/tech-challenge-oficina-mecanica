@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Infrastructure;
 using FluentAssertions;
@@ -22,7 +24,7 @@ public class ClientesControllerTests : IClassFixture<CustomWebApplicationFactory
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var cliente = await response.Content.ReadFromJsonAsync<ClienteDto>();
+        var cliente = await response.Content.ReadFromJsonAsync<ClienteResponse>();
         cliente.Should().NotBeNull();
         cliente!.Nome.Should().Be("Vanessa Luna Duarte");
         cliente.CpfCnpj.Should().Be("47654866801");
@@ -35,7 +37,7 @@ public class ClientesControllerTests : IClassFixture<CustomWebApplicationFactory
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var cliente = await response.Content.ReadFromJsonAsync<ClienteDto>();
+        var cliente = await response.Content.ReadFromJsonAsync<ClienteResponse>();
         cliente.Should().NotBeNull();
         cliente!.Nome.Should().Be("Betina e Fernanda Contabil Ltda");
         cliente.CpfCnpj.Should().Be("60617051000199");
@@ -56,7 +58,7 @@ public class ClientesControllerTests : IClassFixture<CustomWebApplicationFactory
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var cliente = await response.Content.ReadFromJsonAsync<ClienteDto>();
+        var cliente = await response.Content.ReadFromJsonAsync<ClienteResponse>();
         cliente.Should().NotBeNull();
         cliente!.Nome.Should().Be("Cliente Integracao");
         cliente.CpfCnpj.Should().Be("52998224725");
@@ -83,7 +85,7 @@ public class ClientesControllerTests : IClassFixture<CustomWebApplicationFactory
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var resultado = await response.Content.ReadFromJsonAsync<PagedResultDto<ClienteDto>>();
+        var resultado = await response.Content.ReadFromJsonAsync<PagedResponse<ClienteResponse>>();
         resultado.Should().NotBeNull();
         resultado!.Items.Count.Should().BeGreaterThanOrEqualTo(2);
         resultado.Page.Should().Be(1);
@@ -97,7 +99,7 @@ public class ClientesControllerTests : IClassFixture<CustomWebApplicationFactory
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var resultado = await response.Content.ReadFromJsonAsync<PagedResultDto<ClienteDto>>();
+        var resultado = await response.Content.ReadFromJsonAsync<PagedResponse<ClienteResponse>>();
         resultado.Should().NotBeNull();
         resultado!.Items.Should().ContainSingle();
         resultado.Items.Single().Nome.Should().Be("Vanessa Luna Duarte");
@@ -110,7 +112,7 @@ public class ClientesControllerTests : IClassFixture<CustomWebApplicationFactory
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var resultado = await response.Content.ReadFromJsonAsync<PagedResultDto<ClienteDto>>();
+        var resultado = await response.Content.ReadFromJsonAsync<PagedResponse<ClienteResponse>>();
         resultado.Should().NotBeNull();
         resultado!.Items.Should().ContainSingle();
         resultado.Items.Single().CpfCnpj.Should().Be("60617051000199");
@@ -142,7 +144,7 @@ public class ClientesControllerTests : IClassFixture<CustomWebApplicationFactory
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var cliente = await response.Content.ReadFromJsonAsync<ClienteDto>();
+        var cliente = await response.Content.ReadFromJsonAsync<ClienteResponse>();
         cliente.Should().NotBeNull();
         cliente!.Nome.Should().Be("Cliente Atualizado");
         cliente.Telefone.Should().Be("11976543210");
