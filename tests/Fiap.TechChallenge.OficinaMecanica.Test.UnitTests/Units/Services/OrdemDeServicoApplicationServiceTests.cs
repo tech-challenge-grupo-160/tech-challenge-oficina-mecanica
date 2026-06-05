@@ -1,6 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;

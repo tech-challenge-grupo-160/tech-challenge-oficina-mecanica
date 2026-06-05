@@ -1,20 +1,12 @@
-﻿using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
-
-public interface IServicoApplicationService
-{
-    Task<ServicoDto> CriarServicoAsync(CriarServicoDto dto, CancellationToken cancellationToken);
-    Task<ServicoDto> ObterServicoAsync(int id, CancellationToken cancellationToken);
-    Task<IEnumerable<ServicoDto>> ListarServicosAsync(CancellationToken cancellationToken);
-    Task<ServicoDto> AtualizarServicoAsync(int id, AtualizarServicoDto dto, CancellationToken cancellationToken);
-    Task DeletarServicoAsync(int id, CancellationToken cancellationToken);
-}
 
 public class ServicoApplicationService : IServicoApplicationService
 {

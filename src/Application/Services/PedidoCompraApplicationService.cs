@@ -1,6 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
+using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
@@ -8,14 +9,6 @@ using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
-
-public interface IPedidoCompraApplicationService
-{
-    Task<PedidoCompraDto> CriarAsync(CriarPedidoCompraDto dto, CancellationToken cancellationToken);
-    Task<PagedResultDto<PedidoCompraDto>> ListarAsync(int page, int pageSize, CancellationToken cancellationToken);
-    Task<IEnumerable<PedidoCompraDto>> ListarPorOrdemDeServicoAsync(int ordemDeServicoId, CancellationToken cancellationToken);
-    Task<PedidoCompraDto> RegistrarRecebimentoAsync(int pedidoCompraId, ReceberPedidoCompraDto dto, CancellationToken cancellationToken);
-}
 
 public class PedidoCompraApplicationService : IPedidoCompraApplicationService
 {

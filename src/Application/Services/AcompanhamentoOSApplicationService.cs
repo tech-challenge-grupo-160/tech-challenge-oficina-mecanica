@@ -1,5 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
@@ -7,11 +8,6 @@ using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
-
-public interface IAcompanhamentoOSApplicationService
-{
-    Task<AcompanhamentoOrdemDeServicoDto> ObterStatusAsync(string codigo, string token, CancellationToken cancellationToken);
-}
 
 public sealed class AcompanhamentoOSApplicationService : IAcompanhamentoOSApplicationService
 {

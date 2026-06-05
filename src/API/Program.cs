@@ -1,6 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.API.Services;
 using Fiap.TechChallenge.OficinaMecanica.API.Validators.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
+using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Options;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;

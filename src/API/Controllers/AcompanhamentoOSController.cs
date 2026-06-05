@@ -1,5 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
-using Fiap.TechChallenge.OficinaMecanica.Application.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
