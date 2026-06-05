@@ -1,5 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Fiap.TechChallenge.OficinaMecanica.API.Mappers;
+using Fiap.TechChallenge.OficinaMecanica.API.Requests.Clientes;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
@@ -20,14 +24,15 @@ public class ClientesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<ClienteDto>> Criar([FromBody] CriarClienteDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<ClienteResponse>> Criar([FromBody] CriarClienteRequest request, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteService.CriarClienteAsync(dto, cancellationToken);
-        return CreatedAtAction(nameof(ObterPorDocumento), new { cpfCnpj = cliente.CpfCnpj }, cliente);
+        var cliente = await _clienteService.CriarClienteAsync(request.ToCommand(), cancellationToken);
+        var response = cliente.ToResponse();
+        return CreatedAtAction(nameof(ObterPorDocumento), new { cpfCnpj = response.CpfCnpj }, response);
     }
 
     [HttpGet]
-    public async Task<ActionResult<PagedResultDto<ClienteDto>>> Listar(
+    public async Task<ActionResult<PagedResponse<ClienteResponse>>> Listar(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? nome = null,
@@ -38,14 +43,14 @@ public class ClientesController : ControllerBase
         pageSize = pageSize < 1 ? 10 : Math.Min(pageSize, 100);
 
         var clientes = await _clienteService.ListarClientesAsync(page, pageSize, nome, cpfCnpj, cancellationToken);
-        return Ok(clientes);
+        return Ok(clientes.ToResponse());
     }
 
     [HttpGet("documento/{cpfCnpj}")]
-    public async Task<ActionResult<ClienteDto>> ObterPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
+    public async Task<ActionResult<ClienteResponse>> ObterPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
     {
         var cliente = await _clienteService.ObterClientePorCpfCnpjAsync(cpfCnpj, cancellationToken);
-        return Ok(cliente);
+        return Ok(cliente.ToResponse());
     }
 
     [HttpGet("{cpfCnpj}/veiculos")]
@@ -63,10 +68,10 @@ public class ClientesController : ControllerBase
     }
 
     [HttpPut("documento/{cpfCnpj}")]
-    public async Task<ActionResult<ClienteDto>> AtualizarPorDocumento(string cpfCnpj, [FromBody] AtualizarClienteDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<ClienteResponse>> AtualizarPorDocumento(string cpfCnpj, [FromBody] AtualizarClienteRequest request, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteService.AtualizarClientePorCpfCnpjAsync(cpfCnpj, dto, cancellationToken);
-        return Ok(cliente);
+        var cliente = await _clienteService.AtualizarClientePorCpfCnpjAsync(cpfCnpj, request.ToCommand(), cancellationToken);
+        return Ok(cliente.ToResponse());
     }
 
     [HttpDelete("documento/{cpfCnpj}")]

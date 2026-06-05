@@ -1,9 +1,9 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
-using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Commands;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Repositories;
 using FluentAssertions;
@@ -79,7 +79,7 @@ public class ClienteApplicationServiceTests
     [Fact]
     public async Task CriarCliente_DevePersistirQuandoDocumentoNaoExiste()
     {
-        var dto = CriarClienteDtoMock.Criar(
+        var command = CriarClienteCommandMock.Criar(
             nome: "Novo Cliente",
             cpfCnpj: "529.982.247-25",
             email: "novo@cliente.com",
@@ -93,16 +93,16 @@ public class ClienteApplicationServiceTests
             .Setup(x => x.CriarAsync(It.IsAny<Cliente>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Cliente cliente, CancellationToken _) => cliente);
 
-        var resultado = await _service.CriarClienteAsync(dto, CancellationToken.None);
+        var resultado = await _service.CriarClienteAsync(command, CancellationToken.None);
 
-        resultado.Nome.Should().Be(dto.Nome);
+        resultado.Nome.Should().Be(command.Nome);
         resultado.CpfCnpj.Should().Be("52998224725");
     }
 
     [Fact]
     public async Task CriarCliente_DeveLancarQuandoDocumentoJaExistir()
     {
-        var dto = CriarClienteDtoMock.Criar(
+        var command = CriarClienteCommandMock.Criar(
             nome: "Cliente Existente",
             cpfCnpj: "476.548.668-01",
             email: "cliente@teste.com",
@@ -112,7 +112,7 @@ public class ClienteApplicationServiceTests
             .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
             .ReturnsAsync(ClienteMock.Criar(1, "47654866801", "Cliente Existente"));
 
-        var acao = () => _service.CriarClienteAsync(dto, CancellationToken.None);
+        var acao = () => _service.CriarClienteAsync(command, CancellationToken.None);
 
         await acao.Should().ThrowAsync<InvalidOperationException>();
     }
@@ -121,7 +121,7 @@ public class ClienteApplicationServiceTests
     public async Task AtualizarClientePorCpfCnpj_DeveAtualizarQuandoClienteExistir()
     {
         var cliente = ClienteMock.Criar(1, "47654866801", "Vanessa");
-        var dto = new AtualizarClienteDto
+        var command = new AtualizarClienteCommand
         {
             Nome = "Vanessa Atualizada",
             Email = "vanessa@teste.com",
@@ -135,7 +135,7 @@ public class ClienteApplicationServiceTests
             .Setup(x => x.AtualizarAsync(It.IsAny<Cliente>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Cliente c, CancellationToken _) => c);
 
-        var resultado = await _service.AtualizarClientePorCpfCnpjAsync("476.548.668-01", dto, CancellationToken.None);
+        var resultado = await _service.AtualizarClientePorCpfCnpjAsync("476.548.668-01", command, CancellationToken.None);
 
         resultado.Nome.Should().Be("Vanessa Atualizada");
         resultado.Telefone.Should().Be("11987654321");

@@ -1,12 +1,12 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.API.Requests.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 using FluentValidation;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Application.Validators.Clientes;
+namespace Fiap.TechChallenge.OficinaMecanica.API.Validators.Clientes;
 
-public class AtualizarClienteDtoValidator : AbstractValidator<AtualizarClienteDto>
+public sealed class AtualizarClienteRequestValidator : AbstractValidator<AtualizarClienteRequest>
 {
-    public AtualizarClienteDtoValidator()
+    public AtualizarClienteRequestValidator()
     {
         RuleFor(x => x.Nome)
             .NotEmpty().WithMessage("Nome e obrigatorio.")

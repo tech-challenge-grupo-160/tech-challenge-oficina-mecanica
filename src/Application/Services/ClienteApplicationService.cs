@@ -1,6 +1,9 @@
-﻿using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
-using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
+using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
@@ -11,11 +14,11 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
 
 public interface IClienteApplicationService
 {
-    Task<ClienteDto> CriarClienteAsync(CriarClienteDto dto, CancellationToken cancellationToken);
-    Task<ClienteDto> ObterClienteAsync(int id, CancellationToken cancellationToken);
-    Task<ClienteDto> ObterClientePorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken);
-    Task<PagedResultDto<ClienteDto>> ListarClientesAsync(int page, int pageSize, string? nome, string? cpfCnpj, CancellationToken cancellationToken);
-    Task<ClienteDto> AtualizarClientePorCpfCnpjAsync(string cpfCnpj, AtualizarClienteDto dto, CancellationToken cancellationToken);
+    Task<ClienteResult> CriarClienteAsync(CriarClienteCommand command, CancellationToken cancellationToken);
+    Task<ClienteResult> ObterClienteAsync(int id, CancellationToken cancellationToken);
+    Task<ClienteResult> ObterClientePorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken);
+    Task<PagedResultDto<ClienteResult>> ListarClientesAsync(int page, int pageSize, string? nome, string? cpfCnpj, CancellationToken cancellationToken);
+    Task<ClienteResult> AtualizarClientePorCpfCnpjAsync(string cpfCnpj, AtualizarClienteCommand command, CancellationToken cancellationToken);
     Task DeletarClientePorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken);
 }
 
@@ -42,14 +45,14 @@ public class ClienteApplicationService : IClienteApplicationService
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public async Task<ClienteDto> CriarClienteAsync(CriarClienteDto dto, CancellationToken cancellationToken)
+    public async Task<ClienteResult> CriarClienteAsync(CriarClienteCommand command, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarClienteAsync), "Validando documento e telefone do cliente");
-            var documento = Documento.Parse(dto.CpfCnpj);
-            var telefone = Telefone.Parse(dto.Telefone);
+            var documento = Documento.Parse(command.CpfCnpj);
+            var telefone = Telefone.Parse(command.Telefone);
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarClienteAsync), "Verificando duplicidade de cliente por documento");
             var clienteExistente = await _clienteRepository.ObterPorCpfCnpjAsync(documento.Valor, cancellationToken);
@@ -59,12 +62,12 @@ public class ClienteApplicationService : IClienteApplicationService
                 throw new ServiceValidationException("Cliente com este CPF/CNPJ ja existe.");
             }
 
-            var cliente = Cliente.Criar(dto.Nome, documento, telefone, dto.Email, _clock.Now);
+            var cliente = Cliente.Criar(command.Nome, documento, telefone, command.Email, _clock.Now);
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarClienteAsync), "Persistindo novo cliente");
             var clienteCriado = await _clienteRepository.CriarAsync(cliente, cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, "Cliente criado com sucesso.");
-            return MapToDto(clienteCriado);
+            return clienteCriado.ToResult();
         }
         catch (Exception ex)
         {
@@ -73,7 +76,7 @@ public class ClienteApplicationService : IClienteApplicationService
         }
     }
 
-    public async Task<ClienteDto> ObterClienteAsync(int id, CancellationToken cancellationToken)
+    public async Task<ClienteResult> ObterClienteAsync(int id, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.ObterPorIdAsync(id, cancellationToken);
         if (cliente == null)
@@ -81,10 +84,10 @@ public class ClienteApplicationService : IClienteApplicationService
             throw new ServiceNotFoundException($"Cliente com ID {id} nao encontrado.");
         }
 
-        return MapToDto(cliente);
+        return cliente.ToResult();
     }
 
-    public async Task<ClienteDto> ObterClientePorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken)
+    public async Task<ClienteResult> ObterClientePorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -101,7 +104,7 @@ public class ClienteApplicationService : IClienteApplicationService
             }
 
             _logger.LogInformation(LogTemplate.End, LoggerName, "Cliente obtido com sucesso.");
-            return MapToDto(cliente);
+            return cliente.ToResult();
         }
         catch (Exception ex)
         {
@@ -110,7 +113,7 @@ public class ClienteApplicationService : IClienteApplicationService
         }
     }
 
-    public async Task<PagedResultDto<ClienteDto>> ListarClientesAsync(int page, int pageSize, string? nome, string? cpfCnpj, CancellationToken cancellationToken)
+    public async Task<PagedResultDto<ClienteResult>> ListarClientesAsync(int page, int pageSize, string? nome, string? cpfCnpj, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -127,9 +130,9 @@ public class ClienteApplicationService : IClienteApplicationService
             var clientes = await _clienteRepository.ObterPaginadoAsync(page, pageSize, nomeFiltro, documentoFiltro, cancellationToken);
 
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Consulta paginada concluida. Total de registros: {totalItems}");
-            return new PagedResultDto<ClienteDto>
+            return new PagedResultDto<ClienteResult>
             {
-                Items = clientes.Select(MapToDto).ToArray(),
+                Items = clientes.Select(cliente => cliente.ToResult()).ToArray(),
                 Page = page,
                 PageSize = pageSize,
                 TotalItems = totalItems,
@@ -143,7 +146,7 @@ public class ClienteApplicationService : IClienteApplicationService
         }
     }
 
-    public async Task<ClienteDto> AtualizarClientePorCpfCnpjAsync(string cpfCnpj, AtualizarClienteDto dto, CancellationToken cancellationToken)
+    public async Task<ClienteResult> AtualizarClientePorCpfCnpjAsync(string cpfCnpj, AtualizarClienteCommand command, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -157,12 +160,12 @@ public class ClienteApplicationService : IClienteApplicationService
                 throw new ServiceNotFoundException($"Cliente com CPF/CNPJ {cpfCnpj} nao encontrado.");
             }
 
-            cliente.AtualizarContato(dto.Nome, Telefone.Parse(dto.Telefone), dto.Email);
+            cliente.AtualizarContato(command.Nome, Telefone.Parse(command.Telefone), command.Email);
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AtualizarClientePorCpfCnpjAsync), "Persistindo atualizacao do cliente");
             var clienteAtualizado = await _clienteRepository.AtualizarAsync(cliente, cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, "Cliente atualizado com sucesso.");
-            return MapToDto(clienteAtualizado);
+            return clienteAtualizado.ToResult();
         }
         catch (Exception ex)
         {
@@ -209,19 +212,6 @@ public class ClienteApplicationService : IClienteApplicationService
         }
     }
 
-    private static ClienteDto MapToDto(Cliente cliente)
-    {
-        return new ClienteDto
-        {
-            Id = cliente.Id,
-            Nome = cliente.Nome,
-            CpfCnpj = cliente.CpfCnpj,
-            Telefone = cliente.Telefone,
-            Email = cliente.Email,
-            DataCadastro = cliente.DataCadastro
-        };
-    }
-
     private static string? NormalizarDocumentoParaBusca(string? cpfCnpj)
     {
         if (string.IsNullOrWhiteSpace(cpfCnpj))
@@ -238,8 +228,3 @@ public class ClienteApplicationService : IClienteApplicationService
         return string.IsNullOrWhiteSpace(normalizado) ? null : normalizado;
     }
 }
-
-
-
-
-
