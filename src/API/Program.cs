@@ -1,18 +1,13 @@
 using Fiap.TechChallenge.OficinaMecanica.API.Services;
 using Fiap.TechChallenge.OficinaMecanica.API.Validators.Clientes;
+using Fiap.TechChallenge.OficinaMecanica.Application;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Options;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
-using Fiap.TechChallenge.OficinaMecanica.Application.Services;
-using Fiap.TechChallenge.OficinaMecanica.Application.Validators.OrdensDeServico;
-using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
-using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Extensions;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.HealthChecks;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Logging;
-using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
-using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Time;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -46,7 +41,6 @@ builder.Services.AddControllers(options =>
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
 builder.Services.AddValidatorsFromAssemblyContaining<CriarClienteRequestValidator>();
-builder.Services.AddValidatorsFromAssemblyContaining<CriarOrdemDeServicoDtoValidator>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -116,50 +110,9 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 
-// Database
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Host=postgres;Database=oficina_mecanica;Username=postgres;Password=postgres";
-var usingInMemoryDatabase = builder.Environment.IsEnvironment("Testing") ||
-    string.Equals(connectionString, "UseInMemory", StringComparison.OrdinalIgnoreCase);
-
-if (usingInMemoryDatabase)
-{
-    builder.Services.AddDbContext<OficinaDbContext>(options =>
-        options.UseInMemoryDatabase("OficinaInMemory"));
-}
-else
-{
-    builder.Services.AddDbContext<OficinaDbContext>(options =>
-        options.UseNpgsql(connectionString));
-}
-
-// Health Checks
-builder.AddHealthChecks();
-
-// Repositories
-builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
-builder.Services.AddScoped<IVeiculoRepository, VeiculoRepository>();
-builder.Services.AddScoped<IServicoRepository, ServicoRepository>();
-builder.Services.AddScoped<IPecaRepository, PecaRepository>();
-builder.Services.AddScoped<IOrdemDeServicoRepository, OrdemDeServicoRepository>();
-builder.Services.AddScoped<IOrdemServicoHistoricoRepository, OrdemServicoHistoricoRepository>();
-builder.Services.AddScoped<INotificacaoClienteRepository, NotificacaoClienteRepository>();
-builder.Services.AddScoped<IPedidoCompraRepository, PedidoCompraRepository>();
-builder.Services.AddScoped<IMovimentacaoEstoqueRepository, MovimentacaoEstoqueRepository>();
-builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
-builder.Services.AddScoped<ITransactionManager, EfTransactionManager>();
-
-// Application Services
-builder.Services.AddScoped<IClienteApplicationService, ClienteApplicationService>();
-builder.Services.AddScoped<IVeiculoApplicationService, VeiculoApplicationService>();
-builder.Services.AddScoped<IServicoApplicationService, ServicoApplicationService>();
-builder.Services.AddScoped<IPecaApplicationService, PecaApplicationService>();
-builder.Services.AddScoped<IOrdemDeServicoApplicationService, OrdemDeServicoApplicationService>();
-builder.Services.AddScoped<IAuthApplicationService, AuthApplicationService>();
-builder.Services.AddScoped<IPedidoCompraApplicationService, PedidoCompraApplicationService>();
-builder.Services.AddScoped<IAcompanhamentoOSApplicationService, AcompanhamentoOSApplicationService>();
 builder.Services.AddScoped<IUsuarioAutenticadoService, UsuarioAutenticadoService>();
-builder.Services.AddSingleton<IClock, BrazilClock>();
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
 // CORS
 builder.Services.AddCors(options =>
@@ -204,6 +157,11 @@ app.MapControllers();
 app.UseHealthChecks();
 
 // Database migrations and seeding with retry
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=postgres;Database=oficina_mecanica;Username=postgres;Password=postgres";
+var usingInMemoryDatabase = builder.Environment.IsEnvironment("Testing") ||
+    string.Equals(connectionString, "UseInMemory", StringComparison.OrdinalIgnoreCase);
+
 if (!usingInMemoryDatabase)
 {
     await app.MigrateAndSeedAsync(app.Environment.IsDevelopment());
