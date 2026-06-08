@@ -1,11 +1,10 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
-using Fiap.TechChallenge.OficinaMecanica.Application.Validators.Veiculos;
-using Fiap.TechChallenge.OficinaMecanica.Application.Validators.OrdensDeServico;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application;
 
@@ -15,12 +14,8 @@ public static class DependencyInjection
     {
         services.AddMediatR(config =>
             config.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
-
-        services.AddScoped<IValidator<CriarOrdemDeServicoDto>, CriarOrdemDeServicoDtoValidator>();
-        services.AddScoped<IValidator<CancelarOrdemDeServicoDto>, CancelarOrdemDeServicoDtoValidator>();
-        services.AddScoped<IValidator<CriarVeiculoDto>, CriarVeiculoDtoValidator>();
-        services.AddScoped<IValidator<CriarVeiculoParaClienteDto>, CriarVeiculoParaClienteDtoValidator>();
-        services.AddScoped<IValidator<AtualizarVeiculoDto>, AtualizarVeiculoDtoValidator>();
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        RegisterValidatorsFromAssembly(services, typeof(DependencyInjection).Assembly);
 
         services.AddScoped<IClienteApplicationService, ClienteApplicationService>();
         services.AddScoped<IVeiculoApplicationService, VeiculoApplicationService>();
@@ -32,5 +27,28 @@ public static class DependencyInjection
         services.AddScoped<IAcompanhamentoOSApplicationService, AcompanhamentoOSApplicationService>();
 
         return services;
+    }
+
+    private static void RegisterValidatorsFromAssembly(IServiceCollection services, Assembly assembly)
+    {
+        var validatorTypes = assembly.GetTypes()
+            .Where(type => type is { IsAbstract: false, IsInterface: false })
+            .Select(type => new
+            {
+                ImplementationType = type,
+                ServiceTypes = type.GetInterfaces()
+                    .Where(@interface => @interface.IsGenericType &&
+                                         @interface.GetGenericTypeDefinition() == typeof(IValidator<>))
+                    .ToArray()
+            })
+            .Where(x => x.ServiceTypes.Length > 0);
+
+        foreach (var validator in validatorTypes)
+        {
+            foreach (var serviceType in validator.ServiceTypes)
+            {
+                services.AddScoped(serviceType, validator.ImplementationType);
+            }
+        }
     }
 }
