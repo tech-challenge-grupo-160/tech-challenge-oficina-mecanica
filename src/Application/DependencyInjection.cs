@@ -4,6 +4,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Validators.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Application.Validators.OrdensDeServico;
 using FluentValidation;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application;
@@ -12,6 +13,9 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        services.AddMediatR(config =>
+            config.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
+
         services.AddScoped<IValidator<CriarOrdemDeServicoDto>, CriarOrdemDeServicoDtoValidator>();
         services.AddScoped<IValidator<CancelarOrdemDeServicoDto>, CancelarOrdemDeServicoDtoValidator>();
         services.AddScoped<IValidator<CriarVeiculoDto>, CriarVeiculoDtoValidator>();
