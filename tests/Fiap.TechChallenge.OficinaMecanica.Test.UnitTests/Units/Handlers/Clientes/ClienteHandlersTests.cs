@@ -1,6 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Clientes;
+using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Commands;
@@ -10,33 +11,26 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units.Services;
+namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units.Handlers.Clientes;
 
-public class ClienteApplicationServiceTests
+public class ClienteHandlersTests
 {
     private readonly Mock<IClienteRepository> _clienteRepositoryMock;
     private readonly Mock<IVeiculoRepository> _veiculoRepositoryMock;
     private readonly Mock<IOrdemDeServicoRepository> _ordemDeServicoRepositoryMock;
     private readonly Mock<IClock> _clockMock;
-    private readonly ClienteApplicationService _service;
 
-    public ClienteApplicationServiceTests()
+    public ClienteHandlersTests()
     {
         _clienteRepositoryMock = ClienteRepositoryMockFactory.CreateStrict();
         _veiculoRepositoryMock = new Mock<IVeiculoRepository>(MockBehavior.Strict);
         _ordemDeServicoRepositoryMock = new Mock<IOrdemDeServicoRepository>(MockBehavior.Strict);
         _clockMock = new Mock<IClock>(MockBehavior.Strict);
         _clockMock.Setup(x => x.Now).Returns(new DateTime(2026, 6, 4, 10, 0, 0));
-        _service = new ClienteApplicationService(
-            _clienteRepositoryMock.Object,
-            _veiculoRepositoryMock.Object,
-            _ordemDeServicoRepositoryMock.Object,
-            _clockMock.Object,
-            NullLoggerFactory.Instance);
     }
 
     [Fact]
-    public async Task ObterClientePorCpfCnpj_DeveRetornarDtoQuandoClienteExistir()
+    public async Task ObterClientePorDocumento_DeveRetornarResultQuandoClienteExistir()
     {
         var cliente = ClienteMock.Criar(id: 1, cpfCnpj: "47654866801", nome: "Cliente Teste");
 
@@ -44,14 +38,20 @@ public class ClienteApplicationServiceTests
             .Setup(x => x.ObterPorCpfCnpjAsync(cliente.CpfCnpj, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cliente);
 
-        var resultado = await _service.ObterClientePorCpfCnpjAsync("476.548.668-01", CancellationToken.None);
+        var handler = new ObterClientePorDocumentoQueryHandler(
+            _clienteRepositoryMock.Object,
+            NullLoggerFactory.Instance);
+
+        var resultado = await handler.Handle(
+            new ObterClientePorDocumentoQuery { CpfCnpj = "476.548.668-01" },
+            CancellationToken.None);
 
         resultado.Nome.Should().Be(cliente.Nome);
         resultado.CpfCnpj.Should().Be(cliente.CpfCnpj);
     }
 
     [Fact]
-    public async Task ObterClientePorCpfCnpj_DeveAceitarCnpj()
+    public async Task ObterClientePorDocumento_DeveAceitarCnpj()
     {
         var cliente = ClienteMock.Criar(id: 2, cpfCnpj: "60617051000199", nome: "Empresa Teste");
 
@@ -59,19 +59,31 @@ public class ClienteApplicationServiceTests
             .Setup(x => x.ObterPorCpfCnpjAsync(cliente.CpfCnpj, It.IsAny<CancellationToken>()))
             .ReturnsAsync(cliente);
 
-        var resultado = await _service.ObterClientePorCpfCnpjAsync("60.617.051/0001-99", CancellationToken.None);
+        var handler = new ObterClientePorDocumentoQueryHandler(
+            _clienteRepositoryMock.Object,
+            NullLoggerFactory.Instance);
+
+        var resultado = await handler.Handle(
+            new ObterClientePorDocumentoQuery { CpfCnpj = "60.617.051/0001-99" },
+            CancellationToken.None);
 
         resultado.CpfCnpj.Should().Be(cliente.CpfCnpj);
     }
 
     [Fact]
-    public async Task ObterClientePorCpfCnpj_DeveLancarExcecaoQuandoNaoExistir()
+    public async Task ObterClientePorDocumento_DeveLancarExcecaoQuandoNaoExistir()
     {
         _clienteRepositoryMock
             .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
             .ReturnsAsync((Cliente?)null);
 
-        var acao = () => _service.ObterClientePorCpfCnpjAsync("476.548.668-01", CancellationToken.None);
+        var handler = new ObterClientePorDocumentoQueryHandler(
+            _clienteRepositoryMock.Object,
+            NullLoggerFactory.Instance);
+
+        var acao = () => handler.Handle(
+            new ObterClientePorDocumentoQuery { CpfCnpj = "476.548.668-01" },
+            CancellationToken.None);
 
         await acao.Should().ThrowAsync<KeyNotFoundException>();
     }
@@ -93,7 +105,12 @@ public class ClienteApplicationServiceTests
             .Setup(x => x.CriarAsync(It.IsAny<Cliente>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Cliente cliente, CancellationToken _) => cliente);
 
-        var resultado = await _service.CriarClienteAsync(command, CancellationToken.None);
+        var handler = new CriarClienteCommandHandler(
+            _clienteRepositoryMock.Object,
+            _clockMock.Object,
+            NullLoggerFactory.Instance);
+
+        var resultado = await handler.Handle(command, CancellationToken.None);
 
         resultado.Nome.Should().Be(command.Nome);
         resultado.CpfCnpj.Should().Be("52998224725");
@@ -112,17 +129,23 @@ public class ClienteApplicationServiceTests
             .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
             .ReturnsAsync(ClienteMock.Criar(1, "47654866801", "Cliente Existente"));
 
-        var acao = () => _service.CriarClienteAsync(command, CancellationToken.None);
+        var handler = new CriarClienteCommandHandler(
+            _clienteRepositoryMock.Object,
+            _clockMock.Object,
+            NullLoggerFactory.Instance);
+
+        var acao = () => handler.Handle(command, CancellationToken.None);
 
         await acao.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]
-    public async Task AtualizarClientePorCpfCnpj_DeveAtualizarQuandoClienteExistir()
+    public async Task AtualizarCliente_DeveAtualizarQuandoClienteExistir()
     {
         var cliente = ClienteMock.Criar(1, "47654866801", "Vanessa");
         var command = new AtualizarClienteCommand
         {
+            CpfCnpj = "476.548.668-01",
             Nome = "Vanessa Atualizada",
             Email = "vanessa@teste.com",
             Telefone = "11987654321"
@@ -135,7 +158,11 @@ public class ClienteApplicationServiceTests
             .Setup(x => x.AtualizarAsync(It.IsAny<Cliente>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Cliente c, CancellationToken _) => c);
 
-        var resultado = await _service.AtualizarClientePorCpfCnpjAsync("476.548.668-01", command, CancellationToken.None);
+        var handler = new AtualizarClienteCommandHandler(
+            _clienteRepositoryMock.Object,
+            NullLoggerFactory.Instance);
+
+        var resultado = await handler.Handle(command, CancellationToken.None);
 
         resultado.Nome.Should().Be("Vanessa Atualizada");
         resultado.Telefone.Should().Be("11987654321");
@@ -143,7 +170,7 @@ public class ClienteApplicationServiceTests
     }
 
     [Fact]
-    public async Task DeletarClientePorCpfCnpj_DeveLancarQuandoExistiremVeiculosVinculados()
+    public async Task DeletarCliente_DeveLancarQuandoExistiremVeiculosVinculados()
     {
         var cliente = ClienteMock.Criar(1, "47654866801", "Vanessa");
 
@@ -154,14 +181,22 @@ public class ClienteApplicationServiceTests
             .Setup(x => x.ExistePorClienteAsync(cliente.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var acao = () => _service.DeletarClientePorCpfCnpjAsync("476.548.668-01", CancellationToken.None);
+        var handler = new DeletarClienteCommandHandler(
+            _clienteRepositoryMock.Object,
+            _veiculoRepositoryMock.Object,
+            _ordemDeServicoRepositoryMock.Object,
+            NullLoggerFactory.Instance);
+
+        var acao = () => handler.Handle(
+            new DeletarClienteCommand { CpfCnpj = "476.548.668-01" },
+            CancellationToken.None);
 
         await acao.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*veiculos vinculados*");
     }
 
     [Fact]
-    public async Task DeletarClientePorCpfCnpj_DeveLancarQuandoExistiremOrdensDeServicoVinculadas()
+    public async Task DeletarCliente_DeveLancarQuandoExistiremOrdensDeServicoVinculadas()
     {
         var cliente = ClienteMock.Criar(1, "47654866801", "Vanessa");
 
@@ -175,14 +210,22 @@ public class ClienteApplicationServiceTests
             .Setup(x => x.ExistePorClienteAsync(cliente.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var acao = () => _service.DeletarClientePorCpfCnpjAsync("476.548.668-01", CancellationToken.None);
+        var handler = new DeletarClienteCommandHandler(
+            _clienteRepositoryMock.Object,
+            _veiculoRepositoryMock.Object,
+            _ordemDeServicoRepositoryMock.Object,
+            NullLoggerFactory.Instance);
+
+        var acao = () => handler.Handle(
+            new DeletarClienteCommand { CpfCnpj = "476.548.668-01" },
+            CancellationToken.None);
 
         await acao.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*ordens de servico vinculadas*");
     }
 
     [Fact]
-    public async Task DeletarClientePorCpfCnpj_DeveExcluirQuandoNaoExistiremDependencias()
+    public async Task DeletarCliente_DeveExcluirQuandoNaoExistiremDependencias()
     {
         var cliente = ClienteMock.Criar(1, "47654866801", "Vanessa");
 
@@ -199,13 +242,19 @@ public class ClienteApplicationServiceTests
             .Setup(x => x.DeletarAsync(cliente.Id, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        await _service.DeletarClientePorCpfCnpjAsync("476.548.668-01", CancellationToken.None);
+        var handler = new DeletarClienteCommandHandler(
+            _clienteRepositoryMock.Object,
+            _veiculoRepositoryMock.Object,
+            _ordemDeServicoRepositoryMock.Object,
+            NullLoggerFactory.Instance);
+
+        await handler.Handle(new DeletarClienteCommand { CpfCnpj = "476.548.668-01" }, CancellationToken.None);
 
         _clienteRepositoryMock.Verify(x => x.DeletarAsync(cliente.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task ListarClientesAsync_DeveRetornarPaginadoComFiltroPorNomeEDocumento()
+    public async Task ListarClientes_DeveRetornarPaginadoComFiltroPorNomeEDocumento()
     {
         var clientes = new[]
         {
@@ -219,7 +268,19 @@ public class ClienteApplicationServiceTests
             .Setup(x => x.ObterPaginadoAsync(1, 10, "Vanessa", "476", It.IsAny<CancellationToken>()))
             .ReturnsAsync(clientes);
 
-        var resultado = await _service.ListarClientesAsync(1, 10, " Vanessa ", "476", CancellationToken.None);
+        var handler = new ListarClientesQueryHandler(
+            _clienteRepositoryMock.Object,
+            NullLoggerFactory.Instance);
+
+        var resultado = await handler.Handle(
+            new ListarClientesQuery
+            {
+                Page = 1,
+                PageSize = 10,
+                Nome = " Vanessa ",
+                CpfCnpj = "476"
+            },
+            CancellationToken.None);
 
         resultado.Items.Should().HaveCount(1);
         resultado.Page.Should().Be(1);
