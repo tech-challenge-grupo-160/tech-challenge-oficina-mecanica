@@ -1,14 +1,14 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Veiculos;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 using MediatR;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Veiculos;
 
-public sealed class ListarVeiculosPorDocumentoClienteQueryHandler : IRequestHandler<ListarVeiculosPorDocumentoClienteQuery, IEnumerable<VeiculoDto>>
+public sealed class ListarVeiculosPorDocumentoClienteQueryHandler : IRequestHandler<ListarVeiculosPorDocumentoClienteQuery, IEnumerable<VeiculoResult>>
 {
     private readonly IVeiculoRepository _veiculoRepository;
     private readonly IClienteRepository _clienteRepository;
@@ -21,7 +21,7 @@ public sealed class ListarVeiculosPorDocumentoClienteQueryHandler : IRequestHand
         _clienteRepository = clienteRepository;
     }
 
-    public async Task<IEnumerable<VeiculoDto>> Handle(ListarVeiculosPorDocumentoClienteQuery query, CancellationToken cancellationToken)
+    public async Task<IEnumerable<VeiculoResult>> Handle(ListarVeiculosPorDocumentoClienteQuery query, CancellationToken cancellationToken)
     {
         var documento = Documento.Parse(query.CpfCnpj).Valor;
         var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
@@ -31,6 +31,6 @@ public sealed class ListarVeiculosPorDocumentoClienteQueryHandler : IRequestHand
         }
 
         var veiculos = await _veiculoRepository.ObterPorClienteAsync(cliente.Id, cancellationToken);
-        return veiculos.Select(veiculo => veiculo.ToDto());
+        return veiculos.Select(veiculo => veiculo.ToResult());
     }
 }

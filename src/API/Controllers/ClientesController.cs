@@ -2,9 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Fiap.TechChallenge.OficinaMecanica.API.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.API.Requests.Clientes;
+using Fiap.TechChallenge.OficinaMecanica.API.Requests.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.Clientes;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Veiculos;
 using MediatR;
@@ -60,20 +61,21 @@ public class ClientesController : ControllerBase
     }
 
     [HttpGet("{cpfCnpj}/veiculos")]
-    public async Task<ActionResult<IEnumerable<VeiculoDto>>> ListarVeiculosPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
+    public async Task<ActionResult<IEnumerable<VeiculoResponse>>> ListarVeiculosPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
     {
         var veiculos = await _mediator.Send(new ListarVeiculosPorDocumentoClienteQuery
         {
             CpfCnpj = cpfCnpj
         }, cancellationToken);
-        return Ok(veiculos);
+        return Ok(veiculos.ToResponse());
     }
 
     [HttpPost("{cpfCnpj}/veiculos")]
-    public async Task<ActionResult<VeiculoDto>> CriarVeiculo(string cpfCnpj, [FromBody] CriarVeiculoParaClienteDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<VeiculoResponse>> CriarVeiculo(string cpfCnpj, [FromBody] CriarVeiculoParaClienteRequest request, CancellationToken cancellationToken)
     {
-        var veiculo = await _mediator.Send(dto.ToCommand(cpfCnpj), cancellationToken);
-        return CreatedAtAction("ObterPorPlaca", "Veiculos", new { placa = veiculo.Placa }, veiculo);
+        var veiculo = await _mediator.Send(request.ToCommand(cpfCnpj), cancellationToken);
+        var response = veiculo.ToResponse();
+        return CreatedAtAction("ObterPorPlaca", "Veiculos", new { placa = response.Placa }, response);
     }
 
     [HttpPut("documento/{cpfCnpj}")]

@@ -1,43 +1,45 @@
+using Fiap.TechChallenge.OficinaMecanica.API.Requests.Veiculos;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Veiculos;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Veiculos;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.Veiculos;
 
 namespace Fiap.TechChallenge.OficinaMecanica.API.Mappers;
 
 public static class VeiculoApiMapper
 {
-    public static CriarVeiculoCommand ToCommand(this CriarVeiculoDto dto)
+    public static CriarVeiculoCommand ToCommand(this CriarVeiculoRequest request)
     {
         return new CriarVeiculoCommand
         {
-            Placa = dto.Placa,
-            Marca = dto.Marca,
-            Modelo = dto.Modelo,
-            Ano = dto.Ano,
-            CpfCnpj = dto.CpfCnpj
+            Placa = request.Placa,
+            Marca = request.Marca,
+            Modelo = request.Modelo,
+            Ano = request.Ano,
+            CpfCnpj = request.CpfCnpj
         };
     }
 
-    public static CriarVeiculoParaClienteCommand ToCommand(this CriarVeiculoParaClienteDto dto, string cpfCnpj)
+    public static CriarVeiculoParaClienteCommand ToCommand(this CriarVeiculoParaClienteRequest request, string cpfCnpj)
     {
         return new CriarVeiculoParaClienteCommand
         {
             CpfCnpj = cpfCnpj,
-            Placa = dto.Placa,
-            Marca = dto.Marca,
-            Modelo = dto.Modelo,
-            Ano = dto.Ano
+            Placa = request.Placa,
+            Marca = request.Marca,
+            Modelo = request.Modelo,
+            Ano = request.Ano
         };
     }
 
-    public static AtualizarVeiculoCommand ToCommand(this AtualizarVeiculoDto dto, int id)
+    public static AtualizarVeiculoCommand ToCommand(this AtualizarVeiculoRequest request, int id)
     {
         return new AtualizarVeiculoCommand
         {
             Id = id,
-            Marca = dto.Marca,
-            Modelo = dto.Modelo,
-            Ano = dto.Ano
+            Marca = request.Marca,
+            Modelo = request.Modelo,
+            Ano = request.Ano
         };
     }
 
@@ -63,5 +65,23 @@ public static class VeiculoApiMapper
         {
             Id = id
         };
+    }
+
+    public static VeiculoResponse ToResponse(this VeiculoResult result)
+    {
+        return new VeiculoResponse
+        {
+            Id = result.Id,
+            Placa = result.Placa,
+            Marca = result.Marca,
+            Modelo = result.Modelo,
+            Ano = result.Ano,
+            ClienteId = result.ClienteId
+        };
+    }
+
+    public static IEnumerable<VeiculoResponse> ToResponse(this IEnumerable<VeiculoResult> results)
+    {
+        return results.Select(veiculo => veiculo.ToResponse()).ToArray();
     }
 }

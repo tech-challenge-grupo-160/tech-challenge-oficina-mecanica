@@ -1,7 +1,7 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Veiculos;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Veiculos;
 
-public sealed class ObterVeiculoPorPlacaQueryHandler : IRequestHandler<ObterVeiculoPorPlacaQuery, VeiculoDto>
+public sealed class ObterVeiculoPorPlacaQueryHandler : IRequestHandler<ObterVeiculoPorPlacaQuery, VeiculoResult>
 {
     private const string LoggerName = nameof(ObterVeiculoPorPlacaQueryHandler);
     private readonly IVeiculoRepository _veiculoRepository;
@@ -24,7 +24,7 @@ public sealed class ObterVeiculoPorPlacaQueryHandler : IRequestHandler<ObterVeic
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public async Task<VeiculoDto> Handle(ObterVeiculoPorPlacaQuery query, CancellationToken cancellationToken)
+    public async Task<VeiculoResult> Handle(ObterVeiculoPorPlacaQuery query, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -39,7 +39,7 @@ public sealed class ObterVeiculoPorPlacaQueryHandler : IRequestHandler<ObterVeic
             }
 
             _logger.LogInformation(LogTemplate.End, LoggerName, "Veiculo obtido com sucesso.");
-            return veiculo.ToDto();
+            return veiculo.ToResult();
         }
         catch (Exception ex)
         {

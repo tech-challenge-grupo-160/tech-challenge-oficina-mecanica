@@ -1,7 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Veiculos;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Veiculos;
 
-public sealed class CriarVeiculoParaClienteCommandHandler : IRequestHandler<CriarVeiculoParaClienteCommand, VeiculoDto>
+public sealed class CriarVeiculoParaClienteCommandHandler : IRequestHandler<CriarVeiculoParaClienteCommand, VeiculoResult>
 {
     private const string LoggerName = nameof(CriarVeiculoParaClienteCommandHandler);
     private readonly IVeiculoRepository _veiculoRepository;
@@ -28,7 +28,7 @@ public sealed class CriarVeiculoParaClienteCommandHandler : IRequestHandler<Cria
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public async Task<VeiculoDto> Handle(CriarVeiculoParaClienteCommand command, CancellationToken cancellationToken)
+    public async Task<VeiculoResult> Handle(CriarVeiculoParaClienteCommand command, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -37,7 +37,7 @@ public sealed class CriarVeiculoParaClienteCommandHandler : IRequestHandler<Cria
             var cliente = await ObterClientePorDocumentoAsync(command.CpfCnpj, cancellationToken);
             var veiculoCriado = await CriarVeiculoInternoAsync(command.Placa, command.Marca, command.Modelo, command.Ano, cliente.Id, cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, "Veiculo criado para o cliente com sucesso.");
-            return veiculoCriado.ToDto();
+            return veiculoCriado.ToResult();
         }
         catch (Exception ex)
         {

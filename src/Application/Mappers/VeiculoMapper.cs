@@ -1,13 +1,13 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 
 public static class VeiculoMapper
 {
-    public static VeiculoDto ToDto(this Veiculo veiculo)
+    public static VeiculoResult ToResult(this Veiculo veiculo)
     {
-        return new VeiculoDto
+        return new VeiculoResult
         {
             Id = veiculo.Id,
             Placa = veiculo.Placa,

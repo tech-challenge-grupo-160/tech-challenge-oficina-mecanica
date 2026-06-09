@@ -1,13 +1,13 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Veiculos;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using MediatR;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Veiculos;
 
-public sealed class ListarVeiculosPorClienteQueryHandler : IRequestHandler<ListarVeiculosPorClienteQuery, IEnumerable<VeiculoDto>>
+public sealed class ListarVeiculosPorClienteQueryHandler : IRequestHandler<ListarVeiculosPorClienteQuery, IEnumerable<VeiculoResult>>
 {
     private readonly IVeiculoRepository _veiculoRepository;
     private readonly IClienteRepository _clienteRepository;
@@ -20,7 +20,7 @@ public sealed class ListarVeiculosPorClienteQueryHandler : IRequestHandler<Lista
         _clienteRepository = clienteRepository;
     }
 
-    public async Task<IEnumerable<VeiculoDto>> Handle(ListarVeiculosPorClienteQuery query, CancellationToken cancellationToken)
+    public async Task<IEnumerable<VeiculoResult>> Handle(ListarVeiculosPorClienteQuery query, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.ObterPorIdAsync(query.ClienteId, cancellationToken);
         if (cliente == null)
@@ -29,6 +29,6 @@ public sealed class ListarVeiculosPorClienteQueryHandler : IRequestHandler<Lista
         }
 
         var veiculos = await _veiculoRepository.ObterPorClienteAsync(query.ClienteId, cancellationToken);
-        return veiculos.Select(veiculo => veiculo.ToDto());
+        return veiculos.Select(veiculo => veiculo.ToResult());
     }
 }

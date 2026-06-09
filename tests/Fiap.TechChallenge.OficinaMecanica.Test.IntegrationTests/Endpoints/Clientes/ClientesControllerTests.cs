@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.Clientes;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Infrastructure;
 using FluentAssertions;
 
@@ -168,7 +168,7 @@ public class ClientesControllerTests : IClassFixture<CustomWebApplicationFactory
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var veiculos = await response.Content.ReadFromJsonAsync<List<VeiculoDto>>();
+        var veiculos = await response.Content.ReadFromJsonAsync<List<VeiculoResponse>>();
         veiculos.Should().NotBeNull();
         veiculos!.Should().ContainSingle();
         veiculos.Single().Placa.Should().Be("BRA2E19");
@@ -189,7 +189,7 @@ public class ClientesControllerTests : IClassFixture<CustomWebApplicationFactory
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var veiculo = await response.Content.ReadFromJsonAsync<VeiculoDto>();
+        var veiculo = await response.Content.ReadFromJsonAsync<VeiculoResponse>();
         veiculo.Should().NotBeNull();
         veiculo!.Placa.Should().Be("ABC1D23");
         veiculo.ClienteId.Should().Be(CustomWebApplicationFactory.PessoaJuridicaClienteId);
