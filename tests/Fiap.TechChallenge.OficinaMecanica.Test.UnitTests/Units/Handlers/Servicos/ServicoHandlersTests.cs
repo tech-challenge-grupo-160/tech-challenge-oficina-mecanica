@@ -1,21 +1,20 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Servicos;
+using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Servicos;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units.Services;
+namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units.Handlers.Servicos;
 
-public class ServicoApplicationServiceTests
+public class ServicoHandlersTests
 {
     private readonly Mock<IServicoRepository> _servicoRepositoryMock;
-    private readonly ServicoApplicationService _service;
 
-    public ServicoApplicationServiceTests()
+    public ServicoHandlersTests()
     {
         _servicoRepositoryMock = new Mock<IServicoRepository>(MockBehavior.Strict);
-        _service = new ServicoApplicationService(_servicoRepositoryMock.Object, NullLoggerFactory.Instance);
     }
 
     [Fact]
@@ -30,7 +29,11 @@ public class ServicoApplicationServiceTests
             .Setup(x => x.ExisteEmOrdemDeServicoAtivaAsync(servico.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var acao = () => _service.DeletarServicoAsync(servico.Id, CancellationToken.None);
+        var handler = new DeletarServicoCommandHandler(
+            _servicoRepositoryMock.Object,
+            NullLoggerFactory.Instance);
+
+        var acao = () => handler.Handle(new DeletarServicoCommand { Id = servico.Id }, CancellationToken.None);
 
         await acao.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*ordens de servico ativas vinculadas*");
@@ -51,7 +54,11 @@ public class ServicoApplicationServiceTests
             .Setup(x => x.DeletarAsync(servico.Id, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        await _service.DeletarServicoAsync(servico.Id, CancellationToken.None);
+        var handler = new DeletarServicoCommandHandler(
+            _servicoRepositoryMock.Object,
+            NullLoggerFactory.Instance);
+
+        await handler.Handle(new DeletarServicoCommand { Id = servico.Id }, CancellationToken.None);
 
         _servicoRepositoryMock.Verify(x => x.DeletarAsync(servico.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
