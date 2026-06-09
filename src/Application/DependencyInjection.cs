@@ -17,7 +17,6 @@ public static class DependencyInjection
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         RegisterValidatorsFromAssembly(services, typeof(DependencyInjection).Assembly);
 
-        services.AddScoped<IServicoApplicationService, ServicoApplicationService>();
         services.AddScoped<IOrdemDeServicoApplicationService, OrdemDeServicoApplicationService>();
         services.AddScoped<IAuthApplicationService, AuthApplicationService>();
         services.AddScoped<IPedidoCompraApplicationService, PedidoCompraApplicationService>();
