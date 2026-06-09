@@ -6,6 +6,8 @@ using Fiap.TechChallenge.OficinaMecanica.API.Responses;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Clientes;
+using MediatR;
 
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
@@ -14,19 +16,19 @@ namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 [Route("api/v1/[controller]")]
 public class ClientesController : ControllerBase
 {
-    private readonly IClienteApplicationService _clienteService;
+    private readonly IMediator _mediator;
     private readonly IVeiculoApplicationService _veiculoService;
 
-    public ClientesController(IClienteApplicationService clienteService, IVeiculoApplicationService veiculoService)
+    public ClientesController(IMediator mediator, IVeiculoApplicationService veiculoService)
     {
-        _clienteService = clienteService;
+        _mediator = mediator;
         _veiculoService = veiculoService;
     }
 
     [HttpPost]
     public async Task<ActionResult<ClienteResponse>> Criar([FromBody] CriarClienteRequest request, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteService.CriarClienteAsync(request.ToCommand(), cancellationToken);
+        var cliente = await _mediator.Send(request.ToCommand(), cancellationToken);
         var response = cliente.ToResponse();
         return CreatedAtAction(nameof(ObterPorDocumento), new { cpfCnpj = response.CpfCnpj }, response);
     }
@@ -42,14 +44,20 @@ public class ClientesController : ControllerBase
         page = page < 1 ? 1 : page;
         pageSize = pageSize < 1 ? 10 : Math.Min(pageSize, 100);
 
-        var clientes = await _clienteService.ListarClientesAsync(page, pageSize, nome, cpfCnpj, cancellationToken);
+        var clientes = await _mediator.Send(new ListarClientesQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Nome = nome,
+            CpfCnpj = cpfCnpj
+        }, cancellationToken);
         return Ok(clientes.ToResponse());
     }
 
     [HttpGet("documento/{cpfCnpj}")]
     public async Task<ActionResult<ClienteResponse>> ObterPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteService.ObterClientePorCpfCnpjAsync(cpfCnpj, cancellationToken);
+        var cliente = await _mediator.Send(cpfCnpj.ToQueryByDocumento(), cancellationToken);
         return Ok(cliente.ToResponse());
     }
 
@@ -70,14 +78,14 @@ public class ClientesController : ControllerBase
     [HttpPut("documento/{cpfCnpj}")]
     public async Task<ActionResult<ClienteResponse>> AtualizarPorDocumento(string cpfCnpj, [FromBody] AtualizarClienteRequest request, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteService.AtualizarClientePorCpfCnpjAsync(cpfCnpj, request.ToCommand(), cancellationToken);
+        var cliente = await _mediator.Send(request.ToCommand(cpfCnpj), cancellationToken);
         return Ok(cliente.ToResponse());
     }
 
     [HttpDelete("documento/{cpfCnpj}")]
     public async Task<IActionResult> DeletarPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
     {
-        await _clienteService.DeletarClientePorCpfCnpjAsync(cpfCnpj, cancellationToken);
+        await _mediator.Send(cpfCnpj.ToDeleteCommand(), cancellationToken);
         return NoContent();
     }
 }

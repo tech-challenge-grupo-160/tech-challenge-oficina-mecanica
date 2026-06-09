@@ -8,6 +8,10 @@ public sealed class AtualizarClienteCommandValidator : AbstractValidator<Atualiz
 {
     public AtualizarClienteCommandValidator()
     {
+        RuleFor(x => x.CpfCnpj)
+            .NotEmpty().WithMessage("CPF/CNPJ e obrigatorio.")
+            .Must(Documento.IsValid).WithMessage("CPF/CNPJ invalido.");
+
         RuleFor(x => x.Nome)
             .NotEmpty().WithMessage("Nome e obrigatorio.")
             .MaximumLength(255);
