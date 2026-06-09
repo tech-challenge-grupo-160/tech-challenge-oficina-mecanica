@@ -1,13 +1,13 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Veiculos;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using MediatR;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Veiculos;
 
-public sealed class ObterVeiculoPorIdQueryHandler : IRequestHandler<ObterVeiculoPorIdQuery, VeiculoDto>
+public sealed class ObterVeiculoPorIdQueryHandler : IRequestHandler<ObterVeiculoPorIdQuery, VeiculoResult>
 {
     private readonly IVeiculoRepository _veiculoRepository;
 
@@ -16,7 +16,7 @@ public sealed class ObterVeiculoPorIdQueryHandler : IRequestHandler<ObterVeiculo
         _veiculoRepository = veiculoRepository;
     }
 
-    public async Task<VeiculoDto> Handle(ObterVeiculoPorIdQuery query, CancellationToken cancellationToken)
+    public async Task<VeiculoResult> Handle(ObterVeiculoPorIdQuery query, CancellationToken cancellationToken)
     {
         var veiculo = await _veiculoRepository.ObterPorIdAsync(query.Id, cancellationToken);
         if (veiculo == null)
@@ -24,6 +24,6 @@ public sealed class ObterVeiculoPorIdQueryHandler : IRequestHandler<ObterVeiculo
             throw new ServiceNotFoundException($"Veiculo com ID {query.Id} nao encontrado.");
         }
 
-        return veiculo.ToDto();
+        return veiculo.ToResult();
     }
 }

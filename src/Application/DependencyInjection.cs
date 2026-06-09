@@ -18,7 +18,6 @@ public static class DependencyInjection
         RegisterValidatorsFromAssembly(services, typeof(DependencyInjection).Assembly);
 
         services.AddScoped<IServicoApplicationService, ServicoApplicationService>();
-        services.AddScoped<IPecaApplicationService, PecaApplicationService>();
         services.AddScoped<IOrdemDeServicoApplicationService, OrdemDeServicoApplicationService>();
         services.AddScoped<IAuthApplicationService, AuthApplicationService>();
         services.AddScoped<IPedidoCompraApplicationService, PedidoCompraApplicationService>();

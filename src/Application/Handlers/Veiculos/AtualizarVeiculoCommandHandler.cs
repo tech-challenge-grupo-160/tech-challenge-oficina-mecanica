@@ -1,13 +1,13 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Veiculos;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using MediatR;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Veiculos;
 
-public sealed class AtualizarVeiculoCommandHandler : IRequestHandler<AtualizarVeiculoCommand, VeiculoDto>
+public sealed class AtualizarVeiculoCommandHandler : IRequestHandler<AtualizarVeiculoCommand, VeiculoResult>
 {
     private readonly IVeiculoRepository _veiculoRepository;
 
@@ -16,7 +16,7 @@ public sealed class AtualizarVeiculoCommandHandler : IRequestHandler<AtualizarVe
         _veiculoRepository = veiculoRepository;
     }
 
-    public async Task<VeiculoDto> Handle(AtualizarVeiculoCommand command, CancellationToken cancellationToken)
+    public async Task<VeiculoResult> Handle(AtualizarVeiculoCommand command, CancellationToken cancellationToken)
     {
         var veiculo = await _veiculoRepository.ObterPorIdAsync(command.Id, cancellationToken);
         if (veiculo == null)
@@ -26,6 +26,6 @@ public sealed class AtualizarVeiculoCommandHandler : IRequestHandler<AtualizarVe
 
         veiculo.AtualizarDados(command.Marca, command.Modelo, command.Ano);
         var veiculoAtualizado = await _veiculoRepository.AtualizarAsync(veiculo, cancellationToken);
-        return veiculoAtualizado.ToDto();
+        return veiculoAtualizado.ToResult();
     }
 }

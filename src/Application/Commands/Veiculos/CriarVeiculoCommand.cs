@@ -1,9 +1,9 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.Veiculos;
 using MediatR;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Commands.Veiculos;
 
-public sealed class CriarVeiculoCommand : IRequest<VeiculoDto>
+public sealed class CriarVeiculoCommand : IRequest<VeiculoResult>
 {
     public string Placa { get; init; } = null!;
     public string Marca { get; init; } = null!;

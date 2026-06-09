@@ -3,7 +3,6 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
-using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Repositories;
 using FluentAssertions;
@@ -27,12 +26,14 @@ public class VeiculoHandlersTests
     public async Task CriarVeiculo_DevePersistirQuandoClienteExistirEPlacaForValida()
     {
         const int clienteId = 1;
-        var dto = CriarVeiculoDtoMock.Criar(
-            placa: "abc-1234",
-            marca: "Fiat",
-            modelo: "Uno",
-            ano: 2015,
-            cpfCnpj: "47654866801");
+        var command = new CriarVeiculoCommand
+        {
+            Placa = "abc-1234",
+            Marca = "Fiat",
+            Modelo = "Uno",
+            Ano = 2015,
+            CpfCnpj = "47654866801"
+        };
 
         _clienteRepositoryMock
             .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
@@ -51,14 +52,7 @@ public class VeiculoHandlersTests
             _clienteRepositoryMock.Object,
             NullLoggerFactory.Instance);
 
-        var resultado = await handler.Handle(new CriarVeiculoCommand
-        {
-            Placa = dto.Placa,
-            Marca = dto.Marca,
-            Modelo = dto.Modelo,
-            Ano = dto.Ano,
-            CpfCnpj = dto.CpfCnpj
-        }, CancellationToken.None);
+        var resultado = await handler.Handle(command, CancellationToken.None);
 
         resultado.Placa.Should().Be("ABC1234");
         resultado.ClienteId.Should().Be(clienteId);
