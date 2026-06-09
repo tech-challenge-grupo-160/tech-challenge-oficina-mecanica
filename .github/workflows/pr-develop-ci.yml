@@ -1,0 +1,44 @@
+name: PR Develop CI
+
+on:
+  pull_request:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '10.0.300'
+  SOLUTION_FILE: 'Fiap.TechChallenge.OficinaMecanica.slnx'
+  UNIT_TEST_PROJECT: 'tests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.csproj'
+  INTEGRATION_TEST_PROJECT: 'tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.csproj'
+
+jobs:
+  build-and-test:
+    name: Build and Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Show .NET info
+        run: dotnet --info
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration Release --no-restore -p:SonarQubeTargetsImported=true -m:1
+
+      - name: Unit tests
+        run: dotnet test ${{ env.UNIT_TEST_PROJECT }} --configuration Release --no-build --verbosity normal
+
+      - name: Integration tests
+        run: dotnet test ${{ env.INTEGRATION_TEST_PROJECT }} --configuration Release --no-build --verbosity normal
