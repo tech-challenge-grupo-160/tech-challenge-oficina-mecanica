@@ -5,8 +5,8 @@ using Fiap.TechChallenge.OficinaMecanica.API.Requests.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
-using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Clientes;
+using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Veiculos;
 using MediatR;
 
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
@@ -17,12 +17,10 @@ namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 public class ClientesController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly IVeiculoApplicationService _veiculoService;
 
-    public ClientesController(IMediator mediator, IVeiculoApplicationService veiculoService)
+    public ClientesController(IMediator mediator)
     {
         _mediator = mediator;
-        _veiculoService = veiculoService;
     }
 
     [HttpPost]
@@ -64,14 +62,17 @@ public class ClientesController : ControllerBase
     [HttpGet("{cpfCnpj}/veiculos")]
     public async Task<ActionResult<IEnumerable<VeiculoDto>>> ListarVeiculosPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
     {
-        var veiculos = await _veiculoService.ListarVeiculosPorCpfCnpjAsync(cpfCnpj, cancellationToken);
+        var veiculos = await _mediator.Send(new ListarVeiculosPorDocumentoClienteQuery
+        {
+            CpfCnpj = cpfCnpj
+        }, cancellationToken);
         return Ok(veiculos);
     }
 
     [HttpPost("{cpfCnpj}/veiculos")]
     public async Task<ActionResult<VeiculoDto>> CriarVeiculo(string cpfCnpj, [FromBody] CriarVeiculoParaClienteDto dto, CancellationToken cancellationToken)
     {
-        var veiculo = await _veiculoService.CriarVeiculoParaClienteAsync(cpfCnpj, dto, cancellationToken);
+        var veiculo = await _mediator.Send(dto.ToCommand(cpfCnpj), cancellationToken);
         return CreatedAtAction("ObterPorPlaca", "Veiculos", new { placa = veiculo.Placa }, veiculo);
     }
 

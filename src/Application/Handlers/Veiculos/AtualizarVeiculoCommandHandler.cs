@@ -1,0 +1,31 @@
+using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Veiculos;
+using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+using MediatR;
+
+namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Veiculos;
+
+public sealed class AtualizarVeiculoCommandHandler : IRequestHandler<AtualizarVeiculoCommand, VeiculoDto>
+{
+    private readonly IVeiculoRepository _veiculoRepository;
+
+    public AtualizarVeiculoCommandHandler(IVeiculoRepository veiculoRepository)
+    {
+        _veiculoRepository = veiculoRepository;
+    }
+
+    public async Task<VeiculoDto> Handle(AtualizarVeiculoCommand command, CancellationToken cancellationToken)
+    {
+        var veiculo = await _veiculoRepository.ObterPorIdAsync(command.Id, cancellationToken);
+        if (veiculo == null)
+        {
+            throw new ServiceNotFoundException($"Veiculo com ID {command.Id} nao encontrado.");
+        }
+
+        veiculo.AtualizarDados(command.Marca, command.Modelo, command.Ano);
+        var veiculoAtualizado = await _veiculoRepository.AtualizarAsync(veiculo, cancellationToken);
+        return veiculoAtualizado.ToDto();
+    }
+}
