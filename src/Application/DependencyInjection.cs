@@ -19,7 +19,6 @@ public static class DependencyInjection
 
         services.AddScoped<IOrdemDeServicoApplicationService, OrdemDeServicoApplicationService>();
         services.AddScoped<IAuthApplicationService, AuthApplicationService>();
-        services.AddScoped<IPedidoCompraApplicationService, PedidoCompraApplicationService>();
         services.AddScoped<IAcompanhamentoOSApplicationService, AcompanhamentoOSApplicationService>();
 
         return services;
