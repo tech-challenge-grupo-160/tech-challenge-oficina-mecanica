@@ -1,9 +1,10 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
-using Fiap.TechChallenge.OficinaMecanica.Application.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Services.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
@@ -13,9 +14,9 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units.Services;
+namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units.Handlers.OrdensDeServico;
 
-public class OrdemDeServicoApplicationServiceTests
+public class OrdemDeServicoHandlersTests
 {
     private readonly Mock<IOrdemDeServicoRepository> _ordemRepositoryMock;
     private readonly Mock<IClienteRepository> _clienteRepositoryMock;
@@ -29,9 +30,9 @@ public class OrdemDeServicoApplicationServiceTests
     private readonly Mock<IUsuarioAutenticadoService> _usuarioAutenticadoServiceMock;
     private readonly Mock<ITransactionManager> _transactionManagerMock;
     private readonly Mock<IClock> _clockMock;
-    private readonly OrdemDeServicoApplicationService _service;
+    private readonly TestableOrdemDeServicoHandler _service;
 
-    public OrdemDeServicoApplicationServiceTests()
+    public OrdemDeServicoHandlersTests()
     {
         _ordemRepositoryMock = new Mock<IOrdemDeServicoRepository>(MockBehavior.Strict);
         _clienteRepositoryMock = new Mock<IClienteRepository>(MockBehavior.Strict);
@@ -66,8 +67,22 @@ public class OrdemDeServicoApplicationServiceTests
         _ordemRepositoryMock
             .Setup(x => x.ObterPorCodigoAcompanhamentoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico?)null);
+        var historicoService = new OrdemDeServicoHistoricoService(
+            _historicoRepositoryMock.Object,
+            _usuarioAutenticadoServiceMock.Object,
+            _clockMock.Object);
+        var notificacaoService = new OrdemDeServicoNotificacaoService(
+            _notificacaoClienteRepositoryMock.Object,
+            _clockMock.Object);
+        var acompanhamentoService = new OrdemDeServicoAcompanhamentoService(_ordemRepositoryMock.Object);
+        var estoqueService = new OrdemDeServicoEstoqueService(
+            _pecaRepositoryMock.Object,
+            _pedidoCompraRepositoryMock.Object,
+            _movimentacaoEstoqueRepositoryMock.Object,
+            historicoService,
+            _clockMock.Object);
 
-        _service = new OrdemDeServicoApplicationService(
+        _service = new TestableOrdemDeServicoHandler(new OrdemDeServicoHandlerDependencies(
             _ordemRepositoryMock.Object,
             _clienteRepositoryMock.Object,
             _veiculoRepositoryMock.Object,
@@ -77,10 +92,13 @@ public class OrdemDeServicoApplicationServiceTests
             _movimentacaoEstoqueRepositoryMock.Object,
             _historicoRepositoryMock.Object,
             _notificacaoClienteRepositoryMock.Object,
-            _usuarioAutenticadoServiceMock.Object,
             _transactionManagerMock.Object,
             _clockMock.Object,
-            NullLoggerFactory.Instance);
+            NullLoggerFactory.Instance,
+            acompanhamentoService,
+            historicoService,
+            notificacaoService,
+            estoqueService));
     }
 
     [Fact]
@@ -536,5 +554,93 @@ public class OrdemDeServicoApplicationServiceTests
 
         await acao.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*ja foi adicionado*");
+    }
+
+    private sealed class TestableOrdemDeServicoHandler : OrdemDeServicoHandlerBase
+    {
+        public TestableOrdemDeServicoHandler(OrdemDeServicoHandlerDependencies dependencies)
+            : base(dependencies)
+        {
+        }
+
+        public new Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
+        {
+            return base.CriarOrdemDeServicoAsync(dto, cancellationToken);
+        }
+
+        public new Task<OrdemDeServicoDto> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken)
+        {
+            return base.FinalizarDiagnosticoAsync(id, cancellationToken);
+        }
+
+        public new Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
+        {
+            return base.IniciarDiagnosticoAsync(id, cancellationToken);
+        }
+
+        public new Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
+        {
+            return base.AdicionarServicoAsync(id, dto, cancellationToken);
+        }
+
+        public new Task<OrdemDeServicoDto> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
+        {
+            return base.AdicionarPecaAsync(id, dto, cancellationToken);
+        }
+
+        public new Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken)
+        {
+            return base.AprovarAsync(id, cancellationToken);
+        }
+
+        public new Task<OrdemDeServicoDto> LiberarExecucaoAsync(int id, CancellationToken cancellationToken)
+        {
+            return base.LiberarExecucaoAsync(id, cancellationToken);
+        }
+
+        public new Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken cancellationToken)
+        {
+            return base.FinalizarAsync(id, cancellationToken);
+        }
+
+        public new Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
+        {
+            return base.RegistrarPagamentoAsync(id, cancellationToken);
+        }
+
+        public new Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken)
+        {
+            return base.EntregarAsync(id, cancellationToken);
+        }
+
+        public new Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
+        {
+            return base.ObterMonitoramentoAsync(id, cancellationToken);
+        }
+
+        public new Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
+        {
+            return base.ObterResumoMonitoramentoAsync(page, pageSize, cancellationToken);
+        }
+
+        public new Task<EstimativaTempoOrdemDeServicoDto> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
+        {
+            return base.ObterEstimativaTempoAsync(id, cancellationToken);
+        }
+
+        public new Task<OrdemDeServicoDto> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
+        {
+            return base.AtualizarStatusAsync(id, dto, cancellationToken);
+        }
+
+        public new Task<OrdemDeServicoDto> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken)
+        {
+            return base.RemoverServicoAsync(id, servicoId, cancellationToken);
+        }
+
+        public new Task<OrdemDeServicoDto> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
+        {
+            return base.RemoverPecaAsync(id, pecaId, cancellationToken);
+        }
     }
 }
