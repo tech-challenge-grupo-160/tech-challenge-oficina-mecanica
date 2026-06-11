@@ -1,10 +1,13 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services.OrdensDeServico;
+using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
@@ -556,91 +559,138 @@ public class OrdemDeServicoHandlersTests
             .WithMessage("*ja foi adicionado*");
     }
 
-    private sealed class TestableOrdemDeServicoHandler : OrdemDeServicoHandlerBase
+    private sealed class TestableOrdemDeServicoHandler
     {
+        private readonly OrdemDeServicoHandlerDependencies _dependencies;
+
         public TestableOrdemDeServicoHandler(OrdemDeServicoHandlerDependencies dependencies)
-            : base(dependencies)
         {
+            _dependencies = dependencies;
         }
 
-        public new Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
         {
-            return base.CriarOrdemDeServicoAsync(dto, cancellationToken);
+            return new CriarOrdemDeServicoCommandHandler(_dependencies).Handle(new CriarOrdemDeServicoCommand
+            {
+                ClienteId = dto.ClienteId,
+                VeiculoId = dto.VeiculoId,
+                DescricaoSolicitacao = dto.DescricaoSolicitacao,
+                ObservacoesRecepcao = dto.ObservacoesRecepcao
+            }, cancellationToken);
         }
 
-        public new Task<OrdemDeServicoDto> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoDto> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken)
         {
-            return base.FinalizarDiagnosticoAsync(id, cancellationToken);
+            return new FinalizarDiagnosticoCommandHandler(_dependencies).Handle(new FinalizarDiagnosticoCommand { Id = id }, cancellationToken);
         }
 
-        public new Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
         {
-            return base.IniciarDiagnosticoAsync(id, cancellationToken);
+            return new IniciarDiagnosticoCommandHandler(_dependencies).Handle(new IniciarDiagnosticoCommand { Id = id }, cancellationToken);
         }
 
-        public new Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
         {
-            return base.AdicionarServicoAsync(id, dto, cancellationToken);
+            return new AdicionarServicoAOrdemCommandHandler(_dependencies).Handle(new AdicionarServicoAOrdemCommand
+            {
+                OrdemDeServicoId = id,
+                ServicoId = dto.ServicoId
+            }, cancellationToken);
         }
 
-        public new Task<OrdemDeServicoDto> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoDto> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
         {
-            return base.AdicionarPecaAsync(id, dto, cancellationToken);
+            return new AdicionarPecaAOrdemCommandHandler(_dependencies).Handle(new AdicionarPecaAOrdemCommand
+            {
+                OrdemDeServicoId = id,
+                PecaId = dto.PecaId,
+                Quantidade = dto.Quantidade
+            }, cancellationToken);
         }
 
-        public new Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken)
         {
-            return base.AprovarAsync(id, cancellationToken);
+            return new AprovarOrdemDeServicoCommandHandler(_dependencies).Handle(new AprovarOrdemDeServicoCommand { Id = id }, cancellationToken);
         }
 
-        public new Task<OrdemDeServicoDto> LiberarExecucaoAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoDto> LiberarExecucaoAsync(int id, CancellationToken cancellationToken)
         {
-            return base.LiberarExecucaoAsync(id, cancellationToken);
+            return new LiberarExecucaoCommandHandler(_dependencies).Handle(new LiberarExecucaoCommand { Id = id }, cancellationToken);
         }
 
-        public new Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken cancellationToken)
         {
-            return base.FinalizarAsync(id, cancellationToken);
+            return new FinalizarOrdemDeServicoCommandHandler(_dependencies).Handle(new FinalizarOrdemDeServicoCommand { Id = id }, cancellationToken);
         }
 
-        public new Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
         {
-            return base.RegistrarPagamentoAsync(id, cancellationToken);
+            return new RegistrarPagamentoCommandHandler(_dependencies).Handle(new RegistrarPagamentoCommand { Id = id }, cancellationToken);
         }
 
-        public new Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken)
         {
-            return base.EntregarAsync(id, cancellationToken);
+            return new EntregarOrdemDeServicoCommandHandler(_dependencies).Handle(new EntregarOrdemDeServicoCommand { Id = id }, cancellationToken);
         }
 
-        public new Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
+        public Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
         {
-            return base.ObterMonitoramentoAsync(id, cancellationToken);
+            return new ObterMonitoramentoOrdemDeServicoQueryHandler(_dependencies).Handle(new ObterMonitoramentoOrdemDeServicoQuery { Id = id }, cancellationToken);
         }
 
-        public new Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
+        public Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
         {
-            return base.ObterResumoMonitoramentoAsync(page, pageSize, cancellationToken);
+            return new ObterResumoMonitoramentoOrdensDeServicoQueryHandler(_dependencies).Handle(new ObterResumoMonitoramentoOrdensDeServicoQuery
+            {
+                Page = page,
+                PageSize = pageSize
+            }, cancellationToken);
         }
 
-        public new Task<EstimativaTempoOrdemDeServicoDto> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
+        public Task<EstimativaTempoOrdemDeServicoDto> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
         {
-            return base.ObterEstimativaTempoAsync(id, cancellationToken);
+            return new ObterEstimativaTempoOrdemDeServicoQueryHandler(_dependencies).Handle(new ObterEstimativaTempoOrdemDeServicoQuery { Id = id }, cancellationToken);
         }
 
-        public new Task<OrdemDeServicoDto> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
+        public async Task<OrdemDeServicoDto> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
         {
-            return base.AtualizarStatusAsync(id, dto, cancellationToken);
+            var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            if (!Enum.TryParse<StatusOrdemDeServico>(dto.NovoStatus, out var novoStatus))
+            {
+                throw new ServiceValidationException($"Status invalido: {dto.NovoStatus}");
+            }
+
+            if (novoStatus == StatusOrdemDeServico.EmExecucao)
+            {
+                throw new InvalidOperationException("Nao e permitido alterar uma ordem de servico diretamente para EmExecucao. Use as rotas de aprovacao ou liberacao de execucao para garantir a validacao e baixa de estoque.");
+            }
+
+            ordem.AlterarStatus(novoStatus, novoStatus == StatusOrdemDeServico.Entregue ? _dependencies.Clock.Now : null);
+            var ordemAtualizada = await _dependencies.OrdemRepository.AtualizarAsync(ordem, cancellationToken);
+            return ordemAtualizada.ToDto();
         }
 
-        public new Task<OrdemDeServicoDto> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoDto> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken)
         {
-            return base.RemoverServicoAsync(id, servicoId, cancellationToken);
+            return new RemoverServicoDaOrdemCommandHandler(_dependencies).Handle(new RemoverServicoDaOrdemCommand
+            {
+                OrdemDeServicoId = id,
+                ServicoId = servicoId
+            }, cancellationToken);
         }
 
-        public new Task<OrdemDeServicoDto> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoDto> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
         {
-            return base.RemoverPecaAsync(id, pecaId, cancellationToken);
+            return new RemoverPecaDaOrdemCommandHandler(_dependencies).Handle(new RemoverPecaDaOrdemCommand
+            {
+                OrdemDeServicoId = id,
+                PecaId = pecaId
+            }, cancellationToken);
         }
     }
 }
