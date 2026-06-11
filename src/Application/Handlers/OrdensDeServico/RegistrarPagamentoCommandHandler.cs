@@ -17,13 +17,21 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class RegistrarPagamentoCommandHandler : IRequestHandler<RegistrarPagamentoCommand, OrdemDeServicoDto>
 {
     private const string LoggerName = nameof(RegistrarPagamentoCommandHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly IClock _clock;
+    private readonly OrdemDeServicoHistoricoService _historicoService;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly ILogger _logger;
 
-    public RegistrarPagamentoCommandHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public RegistrarPagamentoCommandHandler(
+        IClock clock,
+        OrdemDeServicoHistoricoService historicoService,
+        IOrdemDeServicoRepository ordemRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _clock = clock;
+        _historicoService = historicoService;
+        _ordemRepository = ordemRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<OrdemDeServicoDto> Handle(RegistrarPagamentoCommand command, CancellationToken cancellationToken)
@@ -31,13 +39,13 @@ public sealed class RegistrarPagamentoCommandHandler : IRequestHandler<Registrar
         return RegistrarPagamentoAsync(command.Id, cancellationToken);
     }
 
-private async Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(RegistrarPagamentoAsync), "Consultando ordem de servico para registro de pagamento");
-            var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(RegistrarPagamentoAsync), "Ordem de servico nao encontrada para registro de pagamento");
@@ -45,9 +53,9 @@ private async Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, Cancellati
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(RegistrarPagamentoAsync), "Registrando pagamento da ordem de servico");
-            var eventoPagamento = ordem.RegistrarPagamentoComEvento(_dependencies.Clock.Now);
-            var ordemAtualizada = await _dependencies.OrdemRepository.AtualizarAsync(ordem, cancellationToken);
-            await _dependencies.HistoricoService.RegistrarAsync(
+            var eventoPagamento = ordem.RegistrarPagamentoComEvento(_clock.Now);
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoPagamento.TipoEvento,
                 eventoPagamento.StatusAnterior,
@@ -64,3 +72,5 @@ private async Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, Cancellati
         }
     }
 }
+
+

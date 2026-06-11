@@ -17,13 +17,24 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class FinalizarOrdemDeServicoCommandHandler : IRequestHandler<FinalizarOrdemDeServicoCommand, OrdemDeServicoDto>
 {
     private const string LoggerName = nameof(FinalizarOrdemDeServicoCommandHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly IClock _clock;
+    private readonly OrdemDeServicoHistoricoService _historicoService;
+    private readonly OrdemDeServicoNotificacaoService _notificacaoService;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly ILogger _logger;
 
-    public FinalizarOrdemDeServicoCommandHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public FinalizarOrdemDeServicoCommandHandler(
+        IClock clock,
+        OrdemDeServicoHistoricoService historicoService,
+        OrdemDeServicoNotificacaoService notificacaoService,
+        IOrdemDeServicoRepository ordemRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _clock = clock;
+        _historicoService = historicoService;
+        _notificacaoService = notificacaoService;
+        _ordemRepository = ordemRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<OrdemDeServicoDto> Handle(FinalizarOrdemDeServicoCommand command, CancellationToken cancellationToken)
@@ -31,13 +42,13 @@ public sealed class FinalizarOrdemDeServicoCommandHandler : IRequestHandler<Fina
         return FinalizarAsync(command.Id, cancellationToken);
     }
 
-private async Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarAsync), "Consultando ordem de servico para finalizacao");
-            var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(FinalizarAsync), "Ordem de servico nao encontrada para finalizacao");
@@ -45,16 +56,16 @@ private async Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken c
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarAsync), "Finalizando servico e alterando status para Finalizada");
-            var eventoFinalizacao = ordem.FinalizarServicoComEvento(_dependencies.Clock.Now);
-            var ordemAtualizada = await _dependencies.OrdemRepository.AtualizarAsync(ordem, cancellationToken);
-            await _dependencies.HistoricoService.RegistrarAsync(
+            var eventoFinalizacao = ordem.FinalizarServicoComEvento(_clock.Now);
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoFinalizacao.TipoEvento,
                 eventoFinalizacao.StatusAnterior,
                 eventoFinalizacao.StatusNovo,
                 eventoFinalizacao.Descricao,
                 cancellationToken);
-            await _dependencies.NotificacaoService.RegistrarAsync(
+            await _notificacaoService.RegistrarAsync(
                 ordemAtualizada.Id,
                 TipoNotificacaoCliente.ServicoFinalizado,
                 CanalNotificacaoCliente.WhatsApp,
@@ -70,3 +81,5 @@ private async Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken c
         }
     }
 }
+
+

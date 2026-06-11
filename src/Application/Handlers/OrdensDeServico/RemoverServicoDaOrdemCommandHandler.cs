@@ -17,13 +17,21 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class RemoverServicoDaOrdemCommandHandler : IRequestHandler<RemoverServicoDaOrdemCommand, OrdemDeServicoDto>
 {
     private const string LoggerName = nameof(RemoverServicoDaOrdemCommandHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly OrdemDeServicoHistoricoService _historicoService;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
+    private readonly IServicoRepository _servicoRepository;
     private readonly ILogger _logger;
 
-    public RemoverServicoDaOrdemCommandHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public RemoverServicoDaOrdemCommandHandler(
+        OrdemDeServicoHistoricoService historicoService,
+        IOrdemDeServicoRepository ordemRepository,
+        IServicoRepository servicoRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _historicoService = historicoService;
+        _ordemRepository = ordemRepository;
+        _servicoRepository = servicoRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<OrdemDeServicoDto> Handle(RemoverServicoDaOrdemCommand command, CancellationToken cancellationToken)
@@ -31,13 +39,13 @@ public sealed class RemoverServicoDaOrdemCommandHandler : IRequestHandler<Remove
         return RemoverServicoAsync(command.OrdemDeServicoId, command.ServicoId, cancellationToken);
     }
 
-private async Task<OrdemDeServicoDto> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoDto> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(RemoverServicoAsync), "Consultando ordem de servico para remover servico");
-            var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(RemoverServicoAsync), "Ordem de servico nao encontrada para remover servico");
@@ -45,11 +53,11 @@ private async Task<OrdemDeServicoDto> RemoverServicoAsync(int id, int servicoId,
             }
 
             var servico = ordem.Servicos.FirstOrDefault(x => x.ServicoId == servicoId)?.Servico
-                ?? await _dependencies.ServicoRepository.ObterPorIdAsync(servicoId, cancellationToken);
+                ?? await _servicoRepository.ObterPorIdAsync(servicoId, cancellationToken);
 
             var eventoServicoRemovido = ordem.RemoverServicoComEvento(servicoId, servico?.Nome ?? servicoId.ToString());
-            var ordemAtualizada = await _dependencies.OrdemRepository.AtualizarAsync(ordem, cancellationToken);
-            await _dependencies.HistoricoService.RegistrarAsync(
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoServicoRemovido.TipoEvento,
                 eventoServicoRemovido.StatusAnterior,
@@ -66,3 +74,5 @@ private async Task<OrdemDeServicoDto> RemoverServicoAsync(int id, int servicoId,
         }
     }
 }
+
+

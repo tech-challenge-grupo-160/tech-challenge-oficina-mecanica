@@ -17,13 +17,33 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrdemDeServicoCommand, OrdemDeServicoDto>
 {
     private const string LoggerName = nameof(CriarOrdemDeServicoCommandHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly OrdemDeServicoAcompanhamentoService _acompanhamentoService;
+    private readonly IClienteRepository _clienteRepository;
+    private readonly IClock _clock;
+    private readonly OrdemDeServicoHistoricoService _historicoService;
+    private readonly OrdemDeServicoNotificacaoService _notificacaoService;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
+    private readonly IVeiculoRepository _veiculoRepository;
     private readonly ILogger _logger;
 
-    public CriarOrdemDeServicoCommandHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public CriarOrdemDeServicoCommandHandler(
+        OrdemDeServicoAcompanhamentoService acompanhamentoService,
+        IClienteRepository clienteRepository,
+        IClock clock,
+        OrdemDeServicoHistoricoService historicoService,
+        OrdemDeServicoNotificacaoService notificacaoService,
+        IOrdemDeServicoRepository ordemRepository,
+        IVeiculoRepository veiculoRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _acompanhamentoService = acompanhamentoService;
+        _clienteRepository = clienteRepository;
+        _clock = clock;
+        _historicoService = historicoService;
+        _notificacaoService = notificacaoService;
+        _ordemRepository = ordemRepository;
+        _veiculoRepository = veiculoRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<OrdemDeServicoDto> Handle(CriarOrdemDeServicoCommand command, CancellationToken cancellationToken)
@@ -31,20 +51,20 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
         return CriarOrdemDeServicoAsync(new CriarOrdemDeServicoDto { ClienteId = command.ClienteId, VeiculoId = command.VeiculoId, DescricaoSolicitacao = command.DescricaoSolicitacao, ObservacoesRecepcao = command.ObservacoesRecepcao }, cancellationToken);
     }
 
-private async Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarOrdemDeServicoAsync), "Consultando cliente e veiculo informados");
-            var cliente = await _dependencies.ClienteRepository.ObterPorIdAsync(dto.ClienteId, cancellationToken);
+            var cliente = await _clienteRepository.ObterPorIdAsync(dto.ClienteId, cancellationToken);
             if (cliente == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarOrdemDeServicoAsync), "Cliente nao encontrado para abertura da OS");
                 throw new ServiceNotFoundException($"Cliente com ID {dto.ClienteId} nao encontrado.");
             }
 
-            var veiculo = await _dependencies.VeiculoRepository.ObterPorIdAsync(dto.VeiculoId, cancellationToken);
+            var veiculo = await _veiculoRepository.ObterPorIdAsync(dto.VeiculoId, cancellationToken);
             if (veiculo == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarOrdemDeServicoAsync), "Veiculo nao encontrado para abertura da OS");
@@ -57,7 +77,7 @@ private async Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServi
                 throw new ServiceValidationException("O veiculo informado nao pertence ao cliente informado.");
             }
 
-            var existeOrdemAtiva = await _dependencies.OrdemRepository.ExisteOrdemAtivaPorClienteEVeiculoAsync(dto.ClienteId, dto.VeiculoId, cancellationToken);
+            var existeOrdemAtiva = await _ordemRepository.ExisteOrdemAtivaPorClienteEVeiculoAsync(dto.ClienteId, dto.VeiculoId, cancellationToken);
             if (existeOrdemAtiva)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarOrdemDeServicoAsync), "Ja existe ordem de servico ativa para o cliente e veiculo informados");
@@ -66,7 +86,7 @@ private async Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServi
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarOrdemDeServicoAsync), "Persistindo ordem de servico em status Recebida");
             var (codigoAcompanhamento, tokenAcompanhamento, tokenAcompanhamentoHash) =
-                await _dependencies.AcompanhamentoService.GerarCredenciaisAsync(cancellationToken);
+                await _acompanhamentoService.GerarCredenciaisAsync(cancellationToken);
 
             var ordem = OrdemDeServico.Criar(
                 OrdemDeServicoAcompanhamentoService.GerarNumeroTemporario(),
@@ -76,21 +96,21 @@ private async Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServi
                 dto.VeiculoId,
                 dto.DescricaoSolicitacao,
                 dto.ObservacoesRecepcao,
-                _dependencies.Clock.Now);
+                _clock.Now);
 
-            var ordemCriada = await _dependencies.OrdemRepository.CriarAsync(ordem, cancellationToken);
+            var ordemCriada = await _ordemRepository.CriarAsync(ordem, cancellationToken);
             ordemCriada.DefinirNumero(OrdemDeServicoAcompanhamentoService.GerarNumeroOrdem(ordemCriada.Id, ordemCriada.DataAbertura));
 
-            var ordemAtualizada = await _dependencies.OrdemRepository.AtualizarAsync(ordemCriada, cancellationToken);
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordemCriada, cancellationToken);
             var eventoCriacao = ordemAtualizada.CriarEventoOrdemCriada();
-            await _dependencies.HistoricoService.RegistrarAsync(
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoCriacao.TipoEvento,
                 eventoCriacao.StatusAnterior,
                 eventoCriacao.StatusNovo,
                 eventoCriacao.Descricao,
                 cancellationToken);
-            await _dependencies.NotificacaoService.RegistrarAsync(
+            await _notificacaoService.RegistrarAsync(
                 ordemAtualizada.Id,
                 TipoNotificacaoCliente.LinkAcompanhamentoEnviado,
                 CanalNotificacaoCliente.Email,
@@ -108,3 +128,5 @@ private async Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServi
         }
     }
 }
+
+

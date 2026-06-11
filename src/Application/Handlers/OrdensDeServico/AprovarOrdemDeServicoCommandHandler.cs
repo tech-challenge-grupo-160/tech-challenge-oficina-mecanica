@@ -17,13 +17,24 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class AprovarOrdemDeServicoCommandHandler : IRequestHandler<AprovarOrdemDeServicoCommand, OrdemDeServicoDto>
 {
     private const string LoggerName = nameof(AprovarOrdemDeServicoCommandHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly OrdemDeServicoEstoqueService _estoqueService;
+    private readonly OrdemDeServicoHistoricoService _historicoService;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
+    private readonly ITransactionManager _transactionManager;
     private readonly ILogger _logger;
 
-    public AprovarOrdemDeServicoCommandHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public AprovarOrdemDeServicoCommandHandler(
+        OrdemDeServicoEstoqueService estoqueService,
+        OrdemDeServicoHistoricoService historicoService,
+        IOrdemDeServicoRepository ordemRepository,
+        ITransactionManager transactionManager,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _estoqueService = estoqueService;
+        _historicoService = historicoService;
+        _ordemRepository = ordemRepository;
+        _transactionManager = transactionManager;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<OrdemDeServicoDto> Handle(AprovarOrdemDeServicoCommand command, CancellationToken cancellationToken)
@@ -31,16 +42,16 @@ public sealed class AprovarOrdemDeServicoCommandHandler : IRequestHandler<Aprova
         return AprovarAsync(command.Id, cancellationToken);
     }
 
-private async Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
-            var ordemAtualizada = await _dependencies.TransactionManager.ExecuteAsync(
+            var ordemAtualizada = await _transactionManager.ExecuteAsync(
                 async token =>
                 {
                     _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AprovarAsync), "Consultando ordem de servico para aprovacao do orcamento");
-                    var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, token);
+                    var ordem = await _ordemRepository.ObterPorIdAsync(id, token);
                     if (ordem == null)
                     {
                         _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AprovarAsync), "Ordem de servico nao encontrada para aprovacao do orcamento");
@@ -57,13 +68,13 @@ private async Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken can
                         throw new InvalidOperationException($"A ordem de servico nao pode ser aprovada no status atual: {ordem.Status}");
                     }
 
-                    var faltasEstoque = await _dependencies.EstoqueService.ObterFaltasAsync(ordem, token);
+                    var faltasEstoque = await _estoqueService.ObterFaltasAsync(ordem, token);
                     if (faltasEstoque.Count > 0)
                     {
                         _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AprovarAsync), "Bloqueando aprovacao por falta de estoque e gerando pedidos de compra");
                         var eventoBloqueio = ordem.BloquearPorFaltaEstoqueComEvento(OrdemDeServicoEstoqueService.FormatarFaltas(faltasEstoque));
-                        var ordemBloqueada = await _dependencies.OrdemRepository.AtualizarAsync(ordem, token);
-                        await _dependencies.HistoricoService.RegistrarAsync(
+                        var ordemBloqueada = await _ordemRepository.AtualizarAsync(ordem, token);
+                        await _historicoService.RegistrarAsync(
                             ordemBloqueada,
                             eventoBloqueio.TipoEvento,
                             eventoBloqueio.StatusAnterior,
@@ -73,17 +84,17 @@ private async Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken can
 
                         foreach (var falta in faltasEstoque)
                         {
-                            await _dependencies.EstoqueService.CriarOuAtualizarPedidoCompraAsync(ordemBloqueada, falta.Peca, falta.QuantidadeFaltante, token);
+                            await _estoqueService.CriarOuAtualizarPedidoCompraAsync(ordemBloqueada, falta.Peca, falta.QuantidadeFaltante, token);
                         }
 
                         return ordemBloqueada;
                     }
 
                     _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AprovarAsync), "Baixando estoque das pecas e liberando ordem para execucao");
-                    await _dependencies.EstoqueService.BaixarEstoqueDaOrdemAsync(ordem, token);
+                    await _estoqueService.BaixarEstoqueDaOrdemAsync(ordem, token);
                     var eventoAprovacao = ordem.LiberarExecucaoComEvento();
-                    var ordemExecutando = await _dependencies.OrdemRepository.AtualizarAsync(ordem, token);
-                    await _dependencies.HistoricoService.RegistrarAsync(
+                    var ordemExecutando = await _ordemRepository.AtualizarAsync(ordem, token);
+                    await _historicoService.RegistrarAsync(
                         ordemExecutando,
                         eventoAprovacao.TipoEvento,
                         eventoAprovacao.StatusAnterior,
@@ -104,3 +115,5 @@ private async Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken can
         }
     }
 }
+
+

@@ -1,5 +1,4 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
-using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services.OrdensDeServico;
@@ -23,7 +22,6 @@ public static class DependencyInjection
         services.AddScoped<OrdemDeServicoHistoricoService>();
         services.AddScoped<OrdemDeServicoNotificacaoService>();
         services.AddScoped<OrdemDeServicoEstoqueService>();
-        services.AddScoped<OrdemDeServicoHandlerDependencies>();
         services.AddScoped<IAuthApplicationService, AuthApplicationService>();
         services.AddScoped<IAcompanhamentoOSApplicationService, AcompanhamentoOSApplicationService>();
 

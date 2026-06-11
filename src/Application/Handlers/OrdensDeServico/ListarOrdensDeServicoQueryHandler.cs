@@ -17,13 +17,15 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class ListarOrdensDeServicoQueryHandler : IRequestHandler<ListarOrdensDeServicoQuery, PagedResultDto<OrdemDeServicoDto>>
 {
     private const string LoggerName = nameof(ListarOrdensDeServicoQueryHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly ILogger _logger;
 
-    public ListarOrdensDeServicoQueryHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public ListarOrdensDeServicoQueryHandler(
+        IOrdemDeServicoRepository ordemRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _ordemRepository = ordemRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<PagedResultDto<OrdemDeServicoDto>> Handle(ListarOrdensDeServicoQuery query, CancellationToken cancellationToken)
@@ -31,7 +33,7 @@ public sealed class ListarOrdensDeServicoQueryHandler : IRequestHandler<ListarOr
         return ListarOrdensDeServicoAsync(query.Page, query.PageSize, query.ClienteId, query.Status, query.Numero, query.DataAberturaInicio, query.DataAberturaFim, cancellationToken);
     }
 
-private async Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(
+    private async Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(
         int page,
         int pageSize,
         int? clienteId,
@@ -53,7 +55,7 @@ private async Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync
         }
 
         var numeroFiltro = string.IsNullOrWhiteSpace(numero) ? null : numero.Trim();
-        var totalItems = await _dependencies.OrdemRepository.ContarAsync(
+        var totalItems = await _ordemRepository.ContarAsync(
             clienteId,
             statusFiltro,
             numeroFiltro,
@@ -61,7 +63,7 @@ private async Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync
             dataAberturaFim,
             cancellationToken);
 
-        var ordens = await _dependencies.OrdemRepository.ObterPaginadoAsync(
+        var ordens = await _ordemRepository.ObterPaginadoAsync(
             page,
             pageSize,
             clienteId,
@@ -81,3 +83,5 @@ private async Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync
         };
     }
 }
+
+

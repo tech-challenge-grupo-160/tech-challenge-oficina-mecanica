@@ -17,13 +17,21 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class EntregarOrdemDeServicoCommandHandler : IRequestHandler<EntregarOrdemDeServicoCommand, OrdemDeServicoDto>
 {
     private const string LoggerName = nameof(EntregarOrdemDeServicoCommandHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly IClock _clock;
+    private readonly OrdemDeServicoHistoricoService _historicoService;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly ILogger _logger;
 
-    public EntregarOrdemDeServicoCommandHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public EntregarOrdemDeServicoCommandHandler(
+        IClock clock,
+        OrdemDeServicoHistoricoService historicoService,
+        IOrdemDeServicoRepository ordemRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _clock = clock;
+        _historicoService = historicoService;
+        _ordemRepository = ordemRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<OrdemDeServicoDto> Handle(EntregarOrdemDeServicoCommand command, CancellationToken cancellationToken)
@@ -31,13 +39,13 @@ public sealed class EntregarOrdemDeServicoCommandHandler : IRequestHandler<Entre
         return EntregarAsync(command.Id, cancellationToken);
     }
 
-private async Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(EntregarAsync), "Consultando ordem de servico para entrega");
-            var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(EntregarAsync), "Ordem de servico nao encontrada para entrega");
@@ -45,9 +53,9 @@ private async Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken ca
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(EntregarAsync), "Entregando veiculo e alterando status para Entregue");
-            var eventoEntrega = ordem.EntregarComEvento(_dependencies.Clock.Now);
-            var ordemAtualizada = await _dependencies.OrdemRepository.AtualizarAsync(ordem, cancellationToken);
-            await _dependencies.HistoricoService.RegistrarAsync(
+            var eventoEntrega = ordem.EntregarComEvento(_clock.Now);
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoEntrega.TipoEvento,
                 eventoEntrega.StatusAnterior,
@@ -64,3 +72,5 @@ private async Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken ca
         }
     }
 }
+
+

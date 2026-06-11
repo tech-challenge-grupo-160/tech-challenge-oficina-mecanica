@@ -17,13 +17,21 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class AdicionarServicoAOrdemCommandHandler : IRequestHandler<AdicionarServicoAOrdemCommand, OrdemDeServicoDto>
 {
     private const string LoggerName = nameof(AdicionarServicoAOrdemCommandHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly OrdemDeServicoHistoricoService _historicoService;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
+    private readonly IServicoRepository _servicoRepository;
     private readonly ILogger _logger;
 
-    public AdicionarServicoAOrdemCommandHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public AdicionarServicoAOrdemCommandHandler(
+        OrdemDeServicoHistoricoService historicoService,
+        IOrdemDeServicoRepository ordemRepository,
+        IServicoRepository servicoRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _historicoService = historicoService;
+        _ordemRepository = ordemRepository;
+        _servicoRepository = servicoRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<OrdemDeServicoDto> Handle(AdicionarServicoAOrdemCommand command, CancellationToken cancellationToken)
@@ -31,13 +39,13 @@ public sealed class AdicionarServicoAOrdemCommandHandler : IRequestHandler<Adici
         return AdicionarServicoAsync(command.OrdemDeServicoId, new AdicionarServicoAOrdemDto { ServicoId = command.ServicoId }, cancellationToken);
     }
 
-private async Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarServicoAsync), "Consultando ordem de servico e servico para composicao do orcamento");
-            var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarServicoAsync), "Ordem de servico nao encontrada para adicionar servico");
@@ -50,7 +58,7 @@ private async Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarSer
                 throw new ServiceValidationException("O servico informado ja foi adicionado a ordem de servico.");
             }
 
-            var servico = await _dependencies.ServicoRepository.ObterPorIdAsync(dto.ServicoId, cancellationToken);
+            var servico = await _servicoRepository.ObterPorIdAsync(dto.ServicoId, cancellationToken);
             if (servico == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarServicoAsync), "Servico nao encontrado para composicao do orcamento");
@@ -59,8 +67,8 @@ private async Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarSer
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarServicoAsync), "Adicionando servico a ordem");
             var eventoServicoAdicionado = ordem.AdicionarServicoComEvento(servico);
-            var ordemAtualizada = await _dependencies.OrdemRepository.AtualizarAsync(ordem, cancellationToken);
-            await _dependencies.HistoricoService.RegistrarAsync(
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoServicoAdicionado.TipoEvento,
                 eventoServicoAdicionado.StatusAnterior,
@@ -77,3 +85,5 @@ private async Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarSer
         }
     }
 }
+
+

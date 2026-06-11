@@ -17,13 +17,21 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class ObterMovimentacoesEstoqueOrdemDeServicoQueryHandler : IRequestHandler<ObterMovimentacoesEstoqueOrdemDeServicoQuery, IEnumerable<MovimentacoesEstoquePorPecaDto>>
 {
     private const string LoggerName = nameof(ObterMovimentacoesEstoqueOrdemDeServicoQueryHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly IMovimentacaoEstoqueRepository _movimentacaoEstoqueRepository;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
+    private readonly IPecaRepository _pecaRepository;
     private readonly ILogger _logger;
 
-    public ObterMovimentacoesEstoqueOrdemDeServicoQueryHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public ObterMovimentacoesEstoqueOrdemDeServicoQueryHandler(
+        IMovimentacaoEstoqueRepository movimentacaoEstoqueRepository,
+        IOrdemDeServicoRepository ordemRepository,
+        IPecaRepository pecaRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _movimentacaoEstoqueRepository = movimentacaoEstoqueRepository;
+        _ordemRepository = ordemRepository;
+        _pecaRepository = pecaRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<IEnumerable<MovimentacoesEstoquePorPecaDto>> Handle(ObterMovimentacoesEstoqueOrdemDeServicoQuery query, CancellationToken cancellationToken)
@@ -31,15 +39,15 @@ public sealed class ObterMovimentacoesEstoqueOrdemDeServicoQueryHandler : IReque
         return ObterMovimentacoesEstoqueAsync(query.Id, cancellationToken);
     }
 
-private async Task<IEnumerable<MovimentacoesEstoquePorPecaDto>> ObterMovimentacoesEstoqueAsync(int id, CancellationToken cancellationToken)
+    private async Task<IEnumerable<MovimentacoesEstoquePorPecaDto>> ObterMovimentacoesEstoqueAsync(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
             throw new KeyNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
-        var movimentacoes = (await _dependencies.MovimentacaoEstoqueRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken))
+        var movimentacoes = (await _movimentacaoEstoqueRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken))
             .Select(OrdemDeServicoMapper.ToDto)
             .GroupBy(x => x.PecaId)
             .ToDictionary(x => x.Key, x => x.ToList());
@@ -48,7 +56,7 @@ private async Task<IEnumerable<MovimentacoesEstoquePorPecaDto>> ObterMovimentaco
 
         foreach (var item in ordem.Pecas.OrderBy(x => x.PecaId))
         {
-            var peca = item.Peca ?? await _dependencies.PecaRepository.ObterPorIdAsync(item.PecaId, cancellationToken);
+            var peca = item.Peca ?? await _pecaRepository.ObterPorIdAsync(item.PecaId, cancellationToken);
             var movimentacoesDaPeca = movimentacoes.TryGetValue(item.PecaId, out var valores)
                 ? valores
                 : new List<MovimentacaoEstoqueDto>();
@@ -68,3 +76,5 @@ private async Task<IEnumerable<MovimentacoesEstoquePorPecaDto>> ObterMovimentaco
         return grupos;
     }
 }
+
+

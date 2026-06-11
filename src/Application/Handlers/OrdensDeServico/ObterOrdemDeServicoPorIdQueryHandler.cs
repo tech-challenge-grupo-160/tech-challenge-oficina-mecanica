@@ -17,13 +17,15 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class ObterOrdemDeServicoPorIdQueryHandler : IRequestHandler<ObterOrdemDeServicoPorIdQuery, OrdemDeServicoDto>
 {
     private const string LoggerName = nameof(ObterOrdemDeServicoPorIdQueryHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly ILogger _logger;
 
-    public ObterOrdemDeServicoPorIdQueryHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public ObterOrdemDeServicoPorIdQueryHandler(
+        IOrdemDeServicoRepository ordemRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _ordemRepository = ordemRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<OrdemDeServicoDto> Handle(ObterOrdemDeServicoPorIdQuery query, CancellationToken cancellationToken)
@@ -31,9 +33,9 @@ public sealed class ObterOrdemDeServicoPorIdQueryHandler : IRequestHandler<Obter
         return ObterOrdemDeServicoAsync(query.Id, cancellationToken);
     }
 
-private async Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
             throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
@@ -42,3 +44,5 @@ private async Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(int id, Cancellat
         return OrdemDeServicoMapper.ToDto(ordem);
     }
 }
+
+

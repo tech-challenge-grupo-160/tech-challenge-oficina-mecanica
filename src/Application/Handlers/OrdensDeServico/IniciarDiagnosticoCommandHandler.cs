@@ -17,13 +17,18 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class IniciarDiagnosticoCommandHandler : IRequestHandler<IniciarDiagnosticoCommand, OrdemDeServicoDto>
 {
     private const string LoggerName = nameof(IniciarDiagnosticoCommandHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly OrdemDeServicoHistoricoService _historicoService;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly ILogger _logger;
 
-    public IniciarDiagnosticoCommandHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public IniciarDiagnosticoCommandHandler(
+        OrdemDeServicoHistoricoService historicoService,
+        IOrdemDeServicoRepository ordemRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _historicoService = historicoService;
+        _ordemRepository = ordemRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<OrdemDeServicoDto> Handle(IniciarDiagnosticoCommand command, CancellationToken cancellationToken)
@@ -31,13 +36,13 @@ public sealed class IniciarDiagnosticoCommandHandler : IRequestHandler<IniciarDi
         return IniciarDiagnosticoAsync(command.Id, cancellationToken);
     }
 
-private async Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(IniciarDiagnosticoAsync), "Consultando ordem de servico para iniciar diagnostico");
-            var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(IniciarDiagnosticoAsync), "Ordem de servico nao encontrada para iniciar diagnostico");
@@ -46,8 +51,8 @@ private async Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, Cancellati
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(IniciarDiagnosticoAsync), "Alterando status da ordem para EmDiagnostico");
             var eventoDiagnosticoIniciado = ordem.IniciarDiagnostico();
-            var ordemAtualizada = await _dependencies.OrdemRepository.AtualizarAsync(ordem, cancellationToken);
-            await _dependencies.HistoricoService.RegistrarAsync(
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoDiagnosticoIniciado.TipoEvento,
                 eventoDiagnosticoIniciado.StatusAnterior,
@@ -64,3 +69,5 @@ private async Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, Cancellati
         }
     }
 }
+
+

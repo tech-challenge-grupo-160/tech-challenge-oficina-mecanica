@@ -17,13 +17,18 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class ObterNotificacoesOrdemDeServicoQueryHandler : IRequestHandler<ObterNotificacoesOrdemDeServicoQuery, IEnumerable<NotificacaoClienteDto>>
 {
     private const string LoggerName = nameof(ObterNotificacoesOrdemDeServicoQueryHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly INotificacaoClienteRepository _notificacaoClienteRepository;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly ILogger _logger;
 
-    public ObterNotificacoesOrdemDeServicoQueryHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public ObterNotificacoesOrdemDeServicoQueryHandler(
+        INotificacaoClienteRepository notificacaoClienteRepository,
+        IOrdemDeServicoRepository ordemRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _notificacaoClienteRepository = notificacaoClienteRepository;
+        _ordemRepository = ordemRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<IEnumerable<NotificacaoClienteDto>> Handle(ObterNotificacoesOrdemDeServicoQuery query, CancellationToken cancellationToken)
@@ -31,15 +36,17 @@ public sealed class ObterNotificacoesOrdemDeServicoQueryHandler : IRequestHandle
         return ObterNotificacoesAsync(query.Id, cancellationToken);
     }
 
-private async Task<IEnumerable<NotificacaoClienteDto>> ObterNotificacoesAsync(int id, CancellationToken cancellationToken)
+    private async Task<IEnumerable<NotificacaoClienteDto>> ObterNotificacoesAsync(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
             throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
-        var notificacoes = await _dependencies.NotificacaoClienteRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken);
+        var notificacoes = await _notificacaoClienteRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken);
         return notificacoes.Select(OrdemDeServicoMapper.ToDto);
     }
 }
+
+

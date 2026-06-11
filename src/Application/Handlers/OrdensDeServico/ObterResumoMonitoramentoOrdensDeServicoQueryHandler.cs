@@ -17,13 +17,18 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class ObterResumoMonitoramentoOrdensDeServicoQueryHandler : IRequestHandler<ObterResumoMonitoramentoOrdensDeServicoQuery, ResumoMonitoramentoOrdensDeServicoDto>
 {
     private const string LoggerName = nameof(ObterResumoMonitoramentoOrdensDeServicoQueryHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly IClock _clock;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly ILogger _logger;
 
-    public ObterResumoMonitoramentoOrdensDeServicoQueryHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public ObterResumoMonitoramentoOrdensDeServicoQueryHandler(
+        IClock clock,
+        IOrdemDeServicoRepository ordemRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _clock = clock;
+        _ordemRepository = ordemRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<ResumoMonitoramentoOrdensDeServicoDto> Handle(ObterResumoMonitoramentoOrdensDeServicoQuery query, CancellationToken cancellationToken)
@@ -31,10 +36,10 @@ public sealed class ObterResumoMonitoramentoOrdensDeServicoQueryHandler : IReque
         return ObterResumoMonitoramentoAsync(query.Page, query.PageSize, cancellationToken);
     }
 
-private async Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
+    private async Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
     {
-        var agora = _dependencies.Clock.Now;
-        var ordens = (await _dependencies.OrdemRepository.ObterTodasAsync(cancellationToken)).ToList();
+        var agora = _clock.Now;
+        var ordens = (await _ordemRepository.ObterTodasAsync(cancellationToken)).ToList();
         var ordensMonitoradas = ordens
             .Select(ordem => OrdemDeServicoMapper.ToMonitoramentoDto(ordem, agora))
             .ToList();
@@ -69,3 +74,5 @@ private async Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramen
         };
     }
 }
+
+

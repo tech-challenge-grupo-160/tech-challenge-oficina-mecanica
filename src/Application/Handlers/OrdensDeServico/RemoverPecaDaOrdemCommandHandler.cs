@@ -17,13 +17,21 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class RemoverPecaDaOrdemCommandHandler : IRequestHandler<RemoverPecaDaOrdemCommand, OrdemDeServicoDto>
 {
     private const string LoggerName = nameof(RemoverPecaDaOrdemCommandHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly OrdemDeServicoHistoricoService _historicoService;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
+    private readonly IPecaRepository _pecaRepository;
     private readonly ILogger _logger;
 
-    public RemoverPecaDaOrdemCommandHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public RemoverPecaDaOrdemCommandHandler(
+        OrdemDeServicoHistoricoService historicoService,
+        IOrdemDeServicoRepository ordemRepository,
+        IPecaRepository pecaRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _historicoService = historicoService;
+        _ordemRepository = ordemRepository;
+        _pecaRepository = pecaRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<OrdemDeServicoDto> Handle(RemoverPecaDaOrdemCommand command, CancellationToken cancellationToken)
@@ -31,13 +39,13 @@ public sealed class RemoverPecaDaOrdemCommandHandler : IRequestHandler<RemoverPe
         return RemoverPecaAsync(command.OrdemDeServicoId, command.PecaId, cancellationToken);
     }
 
-private async Task<OrdemDeServicoDto> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoDto> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(RemoverPecaAsync), "Consultando ordem de servico para remover peca");
-            var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(RemoverPecaAsync), "Ordem de servico nao encontrada para remover peca");
@@ -45,11 +53,11 @@ private async Task<OrdemDeServicoDto> RemoverPecaAsync(int id, int pecaId, Cance
             }
 
             var peca = ordem.Pecas.FirstOrDefault(x => x.PecaId == pecaId)?.Peca
-                ?? await _dependencies.PecaRepository.ObterPorIdAsync(pecaId, cancellationToken);
+                ?? await _pecaRepository.ObterPorIdAsync(pecaId, cancellationToken);
 
             var eventoPecaRemovida = ordem.RemoverPecaComEvento(pecaId, peca?.Nome ?? pecaId.ToString());
-            var ordemAtualizada = await _dependencies.OrdemRepository.AtualizarAsync(ordem, cancellationToken);
-            await _dependencies.HistoricoService.RegistrarAsync(
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoPecaRemovida.TipoEvento,
                 eventoPecaRemovida.StatusAnterior,
@@ -66,3 +74,5 @@ private async Task<OrdemDeServicoDto> RemoverPecaAsync(int id, int pecaId, Cance
         }
     }
 }
+
+

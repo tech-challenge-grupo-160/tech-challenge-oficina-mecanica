@@ -17,13 +17,18 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class ObterHistoricoOrdemDeServicoQueryHandler : IRequestHandler<ObterHistoricoOrdemDeServicoQuery, IEnumerable<OrdemServicoHistoricoDto>>
 {
     private const string LoggerName = nameof(ObterHistoricoOrdemDeServicoQueryHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly IOrdemServicoHistoricoRepository _historicoRepository;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly ILogger _logger;
 
-    public ObterHistoricoOrdemDeServicoQueryHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public ObterHistoricoOrdemDeServicoQueryHandler(
+        IOrdemServicoHistoricoRepository historicoRepository,
+        IOrdemDeServicoRepository ordemRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _historicoRepository = historicoRepository;
+        _ordemRepository = ordemRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<IEnumerable<OrdemServicoHistoricoDto>> Handle(ObterHistoricoOrdemDeServicoQuery query, CancellationToken cancellationToken)
@@ -31,15 +36,17 @@ public sealed class ObterHistoricoOrdemDeServicoQueryHandler : IRequestHandler<O
         return ObterHistoricoAsync(query.Id, cancellationToken);
     }
 
-private async Task<IEnumerable<OrdemServicoHistoricoDto>> ObterHistoricoAsync(int id, CancellationToken cancellationToken)
+    private async Task<IEnumerable<OrdemServicoHistoricoDto>> ObterHistoricoAsync(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
             throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
-        var historicos = await _dependencies.HistoricoRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken);
+        var historicos = await _historicoRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken);
         return historicos.Select(OrdemDeServicoMapper.ToDto);
     }
 }
+
+

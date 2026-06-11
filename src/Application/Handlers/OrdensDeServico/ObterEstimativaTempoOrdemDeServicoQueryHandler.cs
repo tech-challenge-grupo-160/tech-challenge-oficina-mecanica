@@ -17,13 +17,15 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class ObterEstimativaTempoOrdemDeServicoQueryHandler : IRequestHandler<ObterEstimativaTempoOrdemDeServicoQuery, EstimativaTempoOrdemDeServicoDto>
 {
     private const string LoggerName = nameof(ObterEstimativaTempoOrdemDeServicoQueryHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly ILogger _logger;
 
-    public ObterEstimativaTempoOrdemDeServicoQueryHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public ObterEstimativaTempoOrdemDeServicoQueryHandler(
+        IOrdemDeServicoRepository ordemRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _ordemRepository = ordemRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<EstimativaTempoOrdemDeServicoDto> Handle(ObterEstimativaTempoOrdemDeServicoQuery query, CancellationToken cancellationToken)
@@ -31,9 +33,9 @@ public sealed class ObterEstimativaTempoOrdemDeServicoQueryHandler : IRequestHan
         return ObterEstimativaTempoAsync(query.Id, cancellationToken);
     }
 
-private async Task<EstimativaTempoOrdemDeServicoDto> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
+    private async Task<EstimativaTempoOrdemDeServicoDto> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
             throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
@@ -42,3 +44,5 @@ private async Task<EstimativaTempoOrdemDeServicoDto> ObterEstimativaTempoAsync(i
         return OrdemDeServicoMapper.ToEstimativaTempoDto(ordem);
     }
 }
+
+

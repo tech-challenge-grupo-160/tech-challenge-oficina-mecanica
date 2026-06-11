@@ -17,13 +17,24 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class LiberarExecucaoCommandHandler : IRequestHandler<LiberarExecucaoCommand, OrdemDeServicoDto>
 {
     private const string LoggerName = nameof(LiberarExecucaoCommandHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly OrdemDeServicoEstoqueService _estoqueService;
+    private readonly OrdemDeServicoHistoricoService _historicoService;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
+    private readonly ITransactionManager _transactionManager;
     private readonly ILogger _logger;
 
-    public LiberarExecucaoCommandHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public LiberarExecucaoCommandHandler(
+        OrdemDeServicoEstoqueService estoqueService,
+        OrdemDeServicoHistoricoService historicoService,
+        IOrdemDeServicoRepository ordemRepository,
+        ITransactionManager transactionManager,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _estoqueService = estoqueService;
+        _historicoService = historicoService;
+        _ordemRepository = ordemRepository;
+        _transactionManager = transactionManager;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<OrdemDeServicoDto> Handle(LiberarExecucaoCommand command, CancellationToken cancellationToken)
@@ -31,16 +42,16 @@ public sealed class LiberarExecucaoCommandHandler : IRequestHandler<LiberarExecu
         return LiberarExecucaoAsync(command.Id, cancellationToken);
     }
 
-private async Task<OrdemDeServicoDto> LiberarExecucaoAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoDto> LiberarExecucaoAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
-            var ordemAtualizada = await _dependencies.TransactionManager.ExecuteAsync(
+            var ordemAtualizada = await _transactionManager.ExecuteAsync(
                 async token =>
                 {
                     _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(LiberarExecucaoAsync), "Consultando ordem de servico aguardando estoque para liberacao de execucao");
-                    var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, token);
+                    var ordem = await _ordemRepository.ObterPorIdAsync(id, token);
                     if (ordem == null)
                     {
                         _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(LiberarExecucaoAsync), "Ordem de servico nao encontrada para liberacao de execucao");
@@ -52,17 +63,17 @@ private async Task<OrdemDeServicoDto> LiberarExecucaoAsync(int id, CancellationT
                         throw new InvalidOperationException($"A ordem de servico so pode ser liberada para execucao quando estiver aguardando estoque. Status atual: {ordem.Status}");
                     }
 
-                    var faltasEstoque = await _dependencies.EstoqueService.ObterFaltasAsync(ordem, token);
+                    var faltasEstoque = await _estoqueService.ObterFaltasAsync(ordem, token);
                     if (faltasEstoque.Count > 0)
                     {
                         throw new InvalidOperationException($"Estoque indisponivel para liberar execucao da ordem de servico: {OrdemDeServicoEstoqueService.FormatarFaltas(faltasEstoque)}.");
                     }
 
                     _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(LiberarExecucaoAsync), "Baixando estoque das pecas e liberando ordem para execucao");
-                    await _dependencies.EstoqueService.BaixarEstoqueDaOrdemAsync(ordem, token);
+                    await _estoqueService.BaixarEstoqueDaOrdemAsync(ordem, token);
                     var eventoLiberacao = ordem.LiberarExecucaoComEvento();
-                    var ordemExecutando = await _dependencies.OrdemRepository.AtualizarAsync(ordem, token);
-                    await _dependencies.HistoricoService.RegistrarAsync(
+                    var ordemExecutando = await _ordemRepository.AtualizarAsync(ordem, token);
+                    await _historicoService.RegistrarAsync(
                         ordemExecutando,
                         eventoLiberacao.TipoEvento,
                         eventoLiberacao.StatusAnterior,
@@ -83,3 +94,5 @@ private async Task<OrdemDeServicoDto> LiberarExecucaoAsync(int id, CancellationT
         }
     }
 }
+
+

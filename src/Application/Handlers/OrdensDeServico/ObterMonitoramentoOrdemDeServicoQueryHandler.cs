@@ -17,13 +17,18 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class ObterMonitoramentoOrdemDeServicoQueryHandler : IRequestHandler<ObterMonitoramentoOrdemDeServicoQuery, MonitoramentoOrdemDeServicoDto>
 {
     private const string LoggerName = nameof(ObterMonitoramentoOrdemDeServicoQueryHandler);
-    private readonly OrdemDeServicoHandlerDependencies _dependencies;
+    private readonly IClock _clock;
+    private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly ILogger _logger;
 
-    public ObterMonitoramentoOrdemDeServicoQueryHandler(OrdemDeServicoHandlerDependencies dependencies)
+    public ObterMonitoramentoOrdemDeServicoQueryHandler(
+        IClock clock,
+        IOrdemDeServicoRepository ordemRepository,
+        ILoggerFactory loggerFactory)
     {
-        _dependencies = dependencies;
-        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _clock = clock;
+        _ordemRepository = ordemRepository;
+        _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
     public Task<MonitoramentoOrdemDeServicoDto> Handle(ObterMonitoramentoOrdemDeServicoQuery query, CancellationToken cancellationToken)
@@ -31,14 +36,16 @@ public sealed class ObterMonitoramentoOrdemDeServicoQueryHandler : IRequestHandl
         return ObterMonitoramentoAsync(query.Id, cancellationToken);
     }
 
-private async Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
+    private async Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _dependencies.OrdemRepository.ObterPorIdAsync(id, cancellationToken);
+        var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
         {
             throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
-        return OrdemDeServicoMapper.ToMonitoramentoDto(ordem, _dependencies.Clock.Now);
+        return OrdemDeServicoMapper.ToMonitoramentoDto(ordem, _clock.Now);
     }
 }
+
+
