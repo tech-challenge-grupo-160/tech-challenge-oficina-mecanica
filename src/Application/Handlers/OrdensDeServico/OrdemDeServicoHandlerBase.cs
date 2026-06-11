@@ -1,35 +1,20 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
-using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
+using Fiap.TechChallenge.OficinaMecanica.Application.Services.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
-using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using Microsoft.Extensions.Logging;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
+namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationService
+public sealed class OrdemDeServicoHandlerDependencies
 {
-    private const string LoggerName = nameof(OrdemDeServicoApplicationService);
-    private readonly IOrdemDeServicoRepository _ordemRepository;
-    private readonly IClienteRepository _clienteRepository;
-    private readonly IVeiculoRepository _veiculoRepository;
-    private readonly IServicoRepository _servicoRepository;
-    private readonly IPecaRepository _pecaRepository;
-    private readonly IPedidoCompraRepository _pedidoCompraRepository;
-    private readonly IMovimentacaoEstoqueRepository _movimentacaoEstoqueRepository;
-    private readonly IOrdemServicoHistoricoRepository _historicoRepository;
-    private readonly INotificacaoClienteRepository _notificacaoClienteRepository;
-    private readonly IUsuarioAutenticadoService _usuarioAutenticadoService;
-    private readonly ITransactionManager _transactionManager;
-    private readonly IClock _clock;
-    private readonly ILogger _logger;
-
-    public OrdemDeServicoApplicationService(
+    public OrdemDeServicoHandlerDependencies(
         IOrdemDeServicoRepository ordemRepository,
         IClienteRepository clienteRepository,
         IVeiculoRepository veiculoRepository,
@@ -39,27 +24,89 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         IMovimentacaoEstoqueRepository movimentacaoEstoqueRepository,
         IOrdemServicoHistoricoRepository historicoRepository,
         INotificacaoClienteRepository notificacaoClienteRepository,
-        IUsuarioAutenticadoService usuarioAutenticadoService,
         ITransactionManager transactionManager,
         IClock clock,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        OrdemDeServicoAcompanhamentoService acompanhamentoService,
+        OrdemDeServicoHistoricoService historicoService,
+        OrdemDeServicoNotificacaoService notificacaoService,
+        OrdemDeServicoEstoqueService estoqueService)
     {
-        _ordemRepository = ordemRepository;
-        _clienteRepository = clienteRepository;
-        _veiculoRepository = veiculoRepository;
-        _servicoRepository = servicoRepository;
-        _pecaRepository = pecaRepository;
-        _pedidoCompraRepository = pedidoCompraRepository;
-        _movimentacaoEstoqueRepository = movimentacaoEstoqueRepository;
-        _historicoRepository = historicoRepository;
-        _notificacaoClienteRepository = notificacaoClienteRepository;
-        _usuarioAutenticadoService = usuarioAutenticadoService;
-        _transactionManager = transactionManager;
-        _clock = clock;
-        _logger = loggerFactory.CreateLogger(LoggerName);
+        OrdemRepository = ordemRepository;
+        ClienteRepository = clienteRepository;
+        VeiculoRepository = veiculoRepository;
+        ServicoRepository = servicoRepository;
+        PecaRepository = pecaRepository;
+        PedidoCompraRepository = pedidoCompraRepository;
+        MovimentacaoEstoqueRepository = movimentacaoEstoqueRepository;
+        HistoricoRepository = historicoRepository;
+        NotificacaoClienteRepository = notificacaoClienteRepository;
+        TransactionManager = transactionManager;
+        Clock = clock;
+        LoggerFactory = loggerFactory;
+        AcompanhamentoService = acompanhamentoService;
+        HistoricoService = historicoService;
+        NotificacaoService = notificacaoService;
+        EstoqueService = estoqueService;
     }
 
-    public async Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
+    public IOrdemDeServicoRepository OrdemRepository { get; }
+    public IClienteRepository ClienteRepository { get; }
+    public IVeiculoRepository VeiculoRepository { get; }
+    public IServicoRepository ServicoRepository { get; }
+    public IPecaRepository PecaRepository { get; }
+    public IPedidoCompraRepository PedidoCompraRepository { get; }
+    public IMovimentacaoEstoqueRepository MovimentacaoEstoqueRepository { get; }
+    public IOrdemServicoHistoricoRepository HistoricoRepository { get; }
+    public INotificacaoClienteRepository NotificacaoClienteRepository { get; }
+    public ITransactionManager TransactionManager { get; }
+    public IClock Clock { get; }
+    public ILoggerFactory LoggerFactory { get; }
+    public OrdemDeServicoAcompanhamentoService AcompanhamentoService { get; }
+    public OrdemDeServicoHistoricoService HistoricoService { get; }
+    public OrdemDeServicoNotificacaoService NotificacaoService { get; }
+    public OrdemDeServicoEstoqueService EstoqueService { get; }
+}
+
+public abstract class OrdemDeServicoHandlerBase
+{
+    private const string LoggerName = nameof(OrdemDeServicoHandlerBase);
+    private readonly IOrdemDeServicoRepository _ordemRepository;
+    private readonly IClienteRepository _clienteRepository;
+    private readonly IVeiculoRepository _veiculoRepository;
+    private readonly IServicoRepository _servicoRepository;
+    private readonly IPecaRepository _pecaRepository;
+    private readonly IMovimentacaoEstoqueRepository _movimentacaoEstoqueRepository;
+    private readonly IOrdemServicoHistoricoRepository _historicoRepository;
+    private readonly INotificacaoClienteRepository _notificacaoClienteRepository;
+    private readonly ITransactionManager _transactionManager;
+    private readonly IClock _clock;
+    private readonly ILogger _logger;
+    private readonly OrdemDeServicoAcompanhamentoService _acompanhamentoService;
+    private readonly OrdemDeServicoHistoricoService _historicoService;
+    private readonly OrdemDeServicoNotificacaoService _notificacaoService;
+    private readonly OrdemDeServicoEstoqueService _estoqueService;
+
+    protected OrdemDeServicoHandlerBase(OrdemDeServicoHandlerDependencies dependencies)
+    {
+        _ordemRepository = dependencies.OrdemRepository;
+        _clienteRepository = dependencies.ClienteRepository;
+        _veiculoRepository = dependencies.VeiculoRepository;
+        _servicoRepository = dependencies.ServicoRepository;
+        _pecaRepository = dependencies.PecaRepository;
+        _movimentacaoEstoqueRepository = dependencies.MovimentacaoEstoqueRepository;
+        _historicoRepository = dependencies.HistoricoRepository;
+        _notificacaoClienteRepository = dependencies.NotificacaoClienteRepository;
+        _transactionManager = dependencies.TransactionManager;
+        _clock = dependencies.Clock;
+        _logger = dependencies.LoggerFactory.CreateLogger(LoggerName);
+        _acompanhamentoService = dependencies.AcompanhamentoService;
+        _historicoService = dependencies.HistoricoService;
+        _notificacaoService = dependencies.NotificacaoService;
+        _estoqueService = dependencies.EstoqueService;
+    }
+
+    protected async Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -94,10 +141,10 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarOrdemDeServicoAsync), "Persistindo ordem de servico em status Recebida");
             var (codigoAcompanhamento, tokenAcompanhamento, tokenAcompanhamentoHash) =
-                await GerarCredenciaisAcompanhamentoAsync(cancellationToken);
+                await _acompanhamentoService.GerarCredenciaisAsync(cancellationToken);
 
             var ordem = OrdemDeServico.Criar(
-                GerarNumeroTemporario(),
+                OrdemDeServicoAcompanhamentoService.GerarNumeroTemporario(),
                 codigoAcompanhamento,
                 tokenAcompanhamentoHash,
                 dto.ClienteId,
@@ -107,25 +154,25 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 _clock.Now);
 
             var ordemCriada = await _ordemRepository.CriarAsync(ordem, cancellationToken);
-            ordemCriada.DefinirNumero(GerarNumeroOrdem(ordemCriada.Id, ordemCriada.DataAbertura));
+            ordemCriada.DefinirNumero(OrdemDeServicoAcompanhamentoService.GerarNumeroOrdem(ordemCriada.Id, ordemCriada.DataAbertura));
 
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordemCriada, cancellationToken);
             var eventoCriacao = ordemAtualizada.CriarEventoOrdemCriada();
-            await RegistrarHistoricoAsync(
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoCriacao.TipoEvento,
                 eventoCriacao.StatusAnterior,
                 eventoCriacao.StatusNovo,
                 eventoCriacao.Descricao,
                 cancellationToken);
-            await RegistrarNotificacaoClienteAsync(
+            await _notificacaoService.RegistrarAsync(
                 ordemAtualizada.Id,
                 TipoNotificacaoCliente.LinkAcompanhamentoEnviado,
                 CanalNotificacaoCliente.Email,
-                $"Link de acompanhamento da ordem {ordemAtualizada.Numero} enviado para o e-mail {cliente.Email}. Endpoint: {MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
+                $"Link de acompanhamento da ordem {ordemAtualizada.Numero} enviado para o e-mail {cliente.Email}. Endpoint: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Ordem de servico aberta com sucesso. Numero: {ordemAtualizada.Numero}");
-            var resposta = MapToDto(ordemAtualizada);
+            var resposta = OrdemDeServicoMapper.ToDto(ordemAtualizada);
             resposta.TokenAcompanhamento = tokenAcompanhamento;
             return resposta;
         }
@@ -136,7 +183,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    public async Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(int id, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -144,10 +191,10 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
-        return MapToDto(ordem);
+        return OrdemDeServicoMapper.ToDto(ordem);
     }
 
-    public async Task<IEnumerable<OrdemServicoHistoricoDto>> ObterHistoricoAsync(int id, CancellationToken cancellationToken)
+    protected async Task<IEnumerable<OrdemServicoHistoricoDto>> ObterHistoricoAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -156,10 +203,10 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
 
         var historicos = await _historicoRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken);
-        return historicos.Select(MapToDto);
+        return historicos.Select(OrdemDeServicoMapper.ToDto);
     }
 
-    public async Task<IEnumerable<NotificacaoClienteDto>> ObterNotificacoesAsync(int id, CancellationToken cancellationToken)
+    protected async Task<IEnumerable<NotificacaoClienteDto>> ObterNotificacoesAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -168,10 +215,10 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
 
         var notificacoes = await _notificacaoClienteRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken);
-        return notificacoes.Select(MapToDto);
+        return notificacoes.Select(OrdemDeServicoMapper.ToDto);
     }
 
-    public async Task<IEnumerable<MovimentacoesEstoquePorPecaDto>> ObterMovimentacoesEstoqueAsync(int id, CancellationToken cancellationToken)
+    protected async Task<IEnumerable<MovimentacoesEstoquePorPecaDto>> ObterMovimentacoesEstoqueAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -180,7 +227,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
 
         var movimentacoes = (await _movimentacaoEstoqueRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken))
-            .Select(MapToDto)
+            .Select(OrdemDeServicoMapper.ToDto)
             .GroupBy(x => x.PecaId)
             .ToDictionary(x => x.Key, x => x.ToList());
 
@@ -208,7 +255,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         return grupos;
     }
 
-    public async Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
+    protected async Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -216,10 +263,10 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
-        return MapToMonitoramentoDto(ordem, _clock.Now);
+        return OrdemDeServicoMapper.ToMonitoramentoDto(ordem, _clock.Now);
     }
 
-    public async Task<EstimativaTempoOrdemDeServicoDto> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
+    protected async Task<EstimativaTempoOrdemDeServicoDto> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -227,15 +274,15 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
-        return MapToEstimativaTempoDto(ordem);
+        return OrdemDeServicoMapper.ToEstimativaTempoDto(ordem);
     }
 
-    public async Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
+    protected async Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
     {
         var agora = _clock.Now;
         var ordens = (await _ordemRepository.ObterTodasAsync(cancellationToken)).ToList();
         var ordensMonitoradas = ordens
-            .Select(ordem => MapToMonitoramentoDto(ordem, agora))
+            .Select(ordem => OrdemDeServicoMapper.ToMonitoramentoDto(ordem, agora))
             .ToList();
 
         var ordensFinalizadas = ordensMonitoradas
@@ -268,7 +315,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         };
     }
 
-    public async Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(
+    protected async Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(
         int page,
         int pageSize,
         int? clienteId,
@@ -310,7 +357,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
 
         return new PagedResultDto<OrdemDeServicoDto>
         {
-            Items = ordens.Select(MapToDto).ToArray(),
+            Items = ordens.Select(OrdemDeServicoMapper.ToDto).ToArray(),
             Page = page,
             PageSize = pageSize,
             TotalItems = totalItems,
@@ -318,7 +365,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         };
     }
 
-    public async Task<OrdemDeServicoDto> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -348,7 +395,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 novoStatus == StatusOrdemDeServico.Entregue ? _clock.Now : null);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Status da ordem atualizado com sucesso para {ordemAtualizada.Status}");
-            return MapToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
         }
         catch (Exception ex)
         {
@@ -357,7 +404,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    public async Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -373,7 +420,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(IniciarDiagnosticoAsync), "Alterando status da ordem para EmDiagnostico");
             var eventoDiagnosticoIniciado = ordem.IniciarDiagnostico();
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
-            await RegistrarHistoricoAsync(
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoDiagnosticoIniciado.TipoEvento,
                 eventoDiagnosticoIniciado.StatusAnterior,
@@ -381,7 +428,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 eventoDiagnosticoIniciado.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Diagnostico iniciado com sucesso para a ordem {ordemAtualizada.Numero}");
-            return MapToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
         }
         catch (Exception ex)
         {
@@ -390,7 +437,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    public async Task<OrdemDeServicoDto> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -406,21 +453,21 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarDiagnosticoAsync), "Validando composicao da OS e alterando status para AguardandoAprovacao");
             var eventoDiagnosticoFinalizado = ordem.FinalizarDiagnosticoComEvento(_clock.Now);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
-            await RegistrarHistoricoAsync(
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoDiagnosticoFinalizado.TipoEvento,
                 eventoDiagnosticoFinalizado.StatusAnterior,
                 eventoDiagnosticoFinalizado.StatusNovo,
                 eventoDiagnosticoFinalizado.Descricao,
                 cancellationToken);
-            await RegistrarNotificacaoClienteAsync(
+            await _notificacaoService.RegistrarAsync(
                 ordemAtualizada.Id,
                 TipoNotificacaoCliente.OrcamentoDisponivel,
                 CanalNotificacaoCliente.WhatsApp,
-                $"Orcamento disponivel para a ordem de servico {ordemAtualizada.Numero}. Endpoint de acompanhamento: {MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
+                $"Orcamento disponivel para a ordem de servico {ordemAtualizada.Numero}. Endpoint de acompanhamento: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Diagnostico finalizado com sucesso para a ordem {ordemAtualizada.Numero}");
-            return MapToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
         }
         catch (Exception ex)
         {
@@ -429,7 +476,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    public async Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -455,13 +502,13 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                         throw new InvalidOperationException($"A ordem de servico nao pode ser aprovada no status atual: {ordem.Status}");
                     }
 
-                    var faltasEstoque = await ObterFaltasDeEstoqueAsync(ordem, token);
+                    var faltasEstoque = await _estoqueService.ObterFaltasAsync(ordem, token);
                     if (faltasEstoque.Count > 0)
                     {
                         _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AprovarAsync), "Bloqueando aprovacao por falta de estoque e gerando pedidos de compra");
-                        var eventoBloqueio = ordem.BloquearPorFaltaEstoqueComEvento(FormatarFaltasDeEstoque(faltasEstoque));
+                        var eventoBloqueio = ordem.BloquearPorFaltaEstoqueComEvento(OrdemDeServicoEstoqueService.FormatarFaltas(faltasEstoque));
                         var ordemBloqueada = await _ordemRepository.AtualizarAsync(ordem, token);
-                        await RegistrarHistoricoAsync(
+                        await _historicoService.RegistrarAsync(
                             ordemBloqueada,
                             eventoBloqueio.TipoEvento,
                             eventoBloqueio.StatusAnterior,
@@ -471,17 +518,17 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
 
                         foreach (var falta in faltasEstoque)
                         {
-                            await CriarOuAtualizarPedidoCompraAsync(ordemBloqueada, falta.Peca, falta.QuantidadeFaltante, token);
+                            await _estoqueService.CriarOuAtualizarPedidoCompraAsync(ordemBloqueada, falta.Peca, falta.QuantidadeFaltante, token);
                         }
 
                         return ordemBloqueada;
                     }
 
                     _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AprovarAsync), "Baixando estoque das pecas e liberando ordem para execucao");
-                    await BaixarEstoqueDaOrdemAsync(ordem, token);
+                    await _estoqueService.BaixarEstoqueDaOrdemAsync(ordem, token);
                     var eventoAprovacao = ordem.LiberarExecucaoComEvento();
                     var ordemExecutando = await _ordemRepository.AtualizarAsync(ordem, token);
-                    await RegistrarHistoricoAsync(
+                    await _historicoService.RegistrarAsync(
                         ordemExecutando,
                         eventoAprovacao.TipoEvento,
                         eventoAprovacao.StatusAnterior,
@@ -493,7 +540,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 cancellationToken);
 
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Orcamento aprovado com sucesso para a ordem {ordemAtualizada.Numero}");
-            return MapToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
         }
         catch (Exception ex)
         {
@@ -502,7 +549,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    public async Task<OrdemDeServicoDto> LiberarExecucaoAsync(int id, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> LiberarExecucaoAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -523,17 +570,17 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                         throw new InvalidOperationException($"A ordem de servico so pode ser liberada para execucao quando estiver aguardando estoque. Status atual: {ordem.Status}");
                     }
 
-                    var faltasEstoque = await ObterFaltasDeEstoqueAsync(ordem, token);
+                    var faltasEstoque = await _estoqueService.ObterFaltasAsync(ordem, token);
                     if (faltasEstoque.Count > 0)
                     {
-                        throw new InvalidOperationException($"Estoque indisponivel para liberar execucao da ordem de servico: {FormatarFaltasDeEstoque(faltasEstoque)}.");
+                        throw new InvalidOperationException($"Estoque indisponivel para liberar execucao da ordem de servico: {OrdemDeServicoEstoqueService.FormatarFaltas(faltasEstoque)}.");
                     }
 
                     _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(LiberarExecucaoAsync), "Baixando estoque das pecas e liberando ordem para execucao");
-                    await BaixarEstoqueDaOrdemAsync(ordem, token);
+                    await _estoqueService.BaixarEstoqueDaOrdemAsync(ordem, token);
                     var eventoLiberacao = ordem.LiberarExecucaoComEvento();
                     var ordemExecutando = await _ordemRepository.AtualizarAsync(ordem, token);
-                    await RegistrarHistoricoAsync(
+                    await _historicoService.RegistrarAsync(
                         ordemExecutando,
                         eventoLiberacao.TipoEvento,
                         eventoLiberacao.StatusAnterior,
@@ -545,7 +592,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 cancellationToken);
 
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Execucao liberada com sucesso para a ordem {ordemAtualizada.Numero}");
-            return MapToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
         }
         catch (Exception ex)
         {
@@ -554,7 +601,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    public async Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -570,21 +617,21 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarAsync), "Finalizando servico e alterando status para Finalizada");
             var eventoFinalizacao = ordem.FinalizarServicoComEvento(_clock.Now);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
-            await RegistrarHistoricoAsync(
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoFinalizacao.TipoEvento,
                 eventoFinalizacao.StatusAnterior,
                 eventoFinalizacao.StatusNovo,
                 eventoFinalizacao.Descricao,
                 cancellationToken);
-            await RegistrarNotificacaoClienteAsync(
+            await _notificacaoService.RegistrarAsync(
                 ordemAtualizada.Id,
                 TipoNotificacaoCliente.ServicoFinalizado,
                 CanalNotificacaoCliente.WhatsApp,
-                $"Servico finalizado para a ordem de servico {ordemAtualizada.Numero}. Veiculo pronto para pagamento e retirada. Endpoint de acompanhamento: {MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
+                $"Servico finalizado para a ordem de servico {ordemAtualizada.Numero}. Veiculo pronto para pagamento e retirada. Endpoint de acompanhamento: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Servico finalizado com sucesso para a ordem {ordemAtualizada.Numero}");
-            return MapToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
         }
         catch (Exception ex)
         {
@@ -593,7 +640,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    public async Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -609,7 +656,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(EntregarAsync), "Entregando veiculo e alterando status para Entregue");
             var eventoEntrega = ordem.EntregarComEvento(_clock.Now);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
-            await RegistrarHistoricoAsync(
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoEntrega.TipoEvento,
                 eventoEntrega.StatusAnterior,
@@ -617,7 +664,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 eventoEntrega.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Veiculo entregue com sucesso para a ordem {ordemAtualizada.Numero}");
-            return MapToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
         }
         catch (Exception ex)
         {
@@ -626,7 +673,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    public async Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -642,7 +689,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(RegistrarPagamentoAsync), "Registrando pagamento da ordem de servico");
             var eventoPagamento = ordem.RegistrarPagamentoComEvento(_clock.Now);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
-            await RegistrarHistoricoAsync(
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoPagamento.TipoEvento,
                 eventoPagamento.StatusAnterior,
@@ -650,7 +697,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 eventoPagamento.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Pagamento registrado com sucesso para a ordem {ordemAtualizada.Numero}");
-            return MapToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
         }
         catch (Exception ex)
         {
@@ -659,7 +706,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    public async Task<OrdemDeServicoDto> CancelarAsync(int id, CancelarOrdemDeServicoDto dto, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> CancelarAsync(int id, CancelarOrdemDeServicoDto dto, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -675,7 +722,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CancelarAsync), "Cancelando ordem de servico com motivo informado");
             var eventoCancelamento = ordem.CancelarComEvento(dto.MotivoCancelamento);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
-            await RegistrarHistoricoAsync(
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoCancelamento.TipoEvento,
                 eventoCancelamento.StatusAnterior,
@@ -683,7 +730,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 eventoCancelamento.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Ordem de servico cancelada com sucesso. Numero: {ordemAtualizada.Numero}");
-            return MapToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
         }
         catch (Exception ex)
         {
@@ -692,7 +739,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    public async Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -721,7 +768,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarServicoAsync), "Adicionando servico a ordem");
             var eventoServicoAdicionado = ordem.AdicionarServicoComEvento(servico);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
-            await RegistrarHistoricoAsync(
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoServicoAdicionado.TipoEvento,
                 eventoServicoAdicionado.StatusAnterior,
@@ -729,7 +776,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 eventoServicoAdicionado.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Servico adicionado com sucesso a ordem {ordemAtualizada.Numero}");
-            return MapToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
         }
         catch (Exception ex)
         {
@@ -738,7 +785,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    public async Task<OrdemDeServicoDto> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -761,7 +808,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarPecaAsync), "Adicionando peca a ordem");
             var eventoPecaAdicionada = ordem.AdicionarPecaComEvento(peca, dto.Quantidade);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
-            await RegistrarHistoricoAsync(
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoPecaAdicionada.TipoEvento,
                 eventoPecaAdicionada.StatusAnterior,
@@ -769,7 +816,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 eventoPecaAdicionada.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Peca adicionada com sucesso a ordem {ordemAtualizada.Numero}");
-            return MapToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
         }
         catch (Exception ex)
         {
@@ -778,7 +825,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    public async Task<OrdemDeServicoDto> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -796,7 +843,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
 
             var eventoServicoRemovido = ordem.RemoverServicoComEvento(servicoId, servico?.Nome ?? servicoId.ToString());
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
-            await RegistrarHistoricoAsync(
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoServicoRemovido.TipoEvento,
                 eventoServicoRemovido.StatusAnterior,
@@ -804,7 +851,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 eventoServicoRemovido.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Servico removido com sucesso da ordem {ordemAtualizada.Numero}");
-            return MapToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
         }
         catch (Exception ex)
         {
@@ -813,7 +860,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    public async Task<OrdemDeServicoDto> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
+    protected async Task<OrdemDeServicoDto> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -831,7 +878,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
 
             var eventoPecaRemovida = ordem.RemoverPecaComEvento(pecaId, peca?.Nome ?? pecaId.ToString());
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
-            await RegistrarHistoricoAsync(
+            await _historicoService.RegistrarAsync(
                 ordemAtualizada,
                 eventoPecaRemovida.TipoEvento,
                 eventoPecaRemovida.StatusAnterior,
@@ -839,7 +886,7 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
                 eventoPecaRemovida.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Peca removida com sucesso da ordem {ordemAtualizada.Numero}");
-            return MapToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
         }
         catch (Exception ex)
         {
@@ -848,328 +895,8 @@ public class OrdemDeServicoApplicationService : IOrdemDeServicoApplicationServic
         }
     }
 
-    private static string GerarNumeroTemporario()
-    {
-        return $"TMP-{Guid.NewGuid():N}";
-    }
-
-    private static string GerarNumeroOrdem(int id, DateTime dataAbertura)
-    {
-        return $"OS-{dataAbertura:yyyyMMdd}-{id}";
-    }
-
-    private static string MontarEndpointAcompanhamento(string codigoAcompanhamento)
-    {
-        return $"/api/v1/acompanhamento-os/{codigoAcompanhamento}";
-    }
-
-    private async Task<(string Codigo, string Token, string TokenHash)> GerarCredenciaisAcompanhamentoAsync(CancellationToken cancellationToken)
-    {
-        for (var tentativa = 0; tentativa < 5; tentativa++)
-        {
-            var codigo = $"AC-{StringHelper.GenerateSecureHexToken(8)}";
-            var existente = await _ordemRepository.ObterPorCodigoAcompanhamentoAsync(codigo, cancellationToken);
-            if (existente is not null)
-            {
-                continue;
-            }
-
-            var token = StringHelper.GenerateSecureHexToken(32);
-            return (codigo, token, StringHelper.ToSha256Hash(token));
-        }
-
-        throw new InvalidOperationException("Nao foi possivel gerar credenciais de acompanhamento unicas.");
-    }
-
-    private async Task RegistrarHistoricoAsync(
-        OrdemDeServico ordem,
-        TipoEventoOrdemServico tipoEvento,
-        StatusOrdemDeServico? statusAnterior,
-        StatusOrdemDeServico? statusNovo,
-        string descricao,
-        CancellationToken cancellationToken)
-    {
-        var usuarioAtual = _usuarioAutenticadoService.ObterUsuarioAtual();
-
-        await _historicoRepository.CriarAsync(
-            OrdemServicoHistorico.Registrar(
-                ordem.Id,
-                usuarioAtual.UsuarioId,
-                usuarioAtual.UsuarioNome,
-                statusAnterior,
-                statusNovo,
-                tipoEvento,
-                descricao,
-                _clock.Now),
-            cancellationToken);
-    }
-
-    private async Task RegistrarNotificacaoClienteAsync(
-        int ordemDeServicoId,
-        TipoNotificacaoCliente tipoNotificacao,
-        CanalNotificacaoCliente canal,
-        string mensagem,
-        CancellationToken cancellationToken)
-    {
-        await _notificacaoClienteRepository.CriarAsync(
-            NotificacaoCliente.Criar(
-                ordemDeServicoId,
-                _clock.Now,
-                canal,
-                tipoNotificacao,
-                mensagem,
-                true),
-            cancellationToken);
-    }
-
-    private async Task<List<FaltaEstoqueItem>> ObterFaltasDeEstoqueAsync(OrdemDeServico ordem, CancellationToken cancellationToken)
-    {
-        var faltas = new List<FaltaEstoqueItem>();
-
-        foreach (var item in ordem.Pecas)
-        {
-            var peca = await _pecaRepository.ObterPorIdAsync(item.PecaId, cancellationToken);
-            if (peca == null)
-            {
-                throw new KeyNotFoundException($"Peca com ID {item.PecaId} nao encontrada para validacao de estoque.");
-            }
-
-            if (peca.QuantidadeEstoque < item.Quantidade)
-            {
-                faltas.Add(new FaltaEstoqueItem(peca, item.Quantidade - peca.QuantidadeEstoque));
-            }
-        }
-
-        return faltas;
-    }
-
-    private async Task BaixarEstoqueDaOrdemAsync(OrdemDeServico ordem, CancellationToken cancellationToken)
-    {
-        if (!ordem.Pecas.Any())
-        {
-            return;
-        }
-
-        var movimentos = new List<string>();
-
-        foreach (var item in ordem.Pecas)
-        {
-            var peca = await _pecaRepository.ObterPorIdAsync(item.PecaId, cancellationToken);
-            if (peca == null)
-            {
-                throw new KeyNotFoundException($"Peca com ID {item.PecaId} nao encontrada para baixa de estoque.");
-            }
-
-            var estoqueAnterior = peca.QuantidadeEstoque;
-            peca.BaixarEstoque(item.Quantidade);
-            await _pecaRepository.AtualizarAsync(peca, cancellationToken);
-            await _movimentacaoEstoqueRepository.CriarAsync(
-                MovimentacaoEstoque.Registrar(
-                    peca.Id,
-                    ordem.Id,
-                    null,
-                    TipoMovimentacaoEstoque.BaixaParaOrdemDeServico,
-                    item.Quantidade,
-                    estoqueAnterior,
-                    peca.QuantidadeEstoque,
-                    $"Baixa de estoque para a ordem de servico {ordem.Numero}.",
-                    _clock.Now),
-                cancellationToken);
-            movimentos.Add($"{peca.Nome} x{item.Quantidade}");
-        }
-
-        await RegistrarHistoricoAsync(
-            ordem,
-            TipoEventoOrdemServico.EstoqueBaixado,
-            ordem.Status,
-            ordem.Status,
-            $"Baixa de estoque registrada para a ordem: {string.Join(", ", movimentos)}.",
-            cancellationToken);
-    }
-
-    private async Task CriarOuAtualizarPedidoCompraAsync(OrdemDeServico ordem, Peca peca, int quantidadeFaltante, CancellationToken cancellationToken)
-    {
-        var pedidoExistente = await _pedidoCompraRepository.ObterPendentePorOrdemEPecaAsync(ordem.Id, peca.Id, cancellationToken);
-        if (pedidoExistente == null)
-        {
-            var pedidoCriado = await _pedidoCompraRepository.CriarAsync(
-                PedidoCompra.Criar(
-                    ordem.Id,
-                    peca.Id,
-                    quantidadeFaltante,
-                    _clock.Now,
-                    $"Pedido gerado automaticamente por falta de estoque para a ordem {ordem.Numero}."),
-                cancellationToken);
-
-            await RegistrarHistoricoAsync(
-                ordem,
-                TipoEventoOrdemServico.PedidoCompraGerado,
-                ordem.Status,
-                ordem.Status,
-                $"Pedido de compra {pedidoCriado.Id} gerado para a peca {peca.Nome}. Quantidade solicitada: {quantidadeFaltante}.",
-                cancellationToken);
-            return;
-        }
-
-        if (pedidoExistente.QuantidadeSolicitada < quantidadeFaltante)
-        {
-            pedidoExistente.AtualizarQuantidadeSolicitada(quantidadeFaltante);
-            await _pedidoCompraRepository.AtualizarAsync(pedidoExistente, cancellationToken);
-        }
-
-        await RegistrarHistoricoAsync(
-            ordem,
-            TipoEventoOrdemServico.PedidoCompraGerado,
-            ordem.Status,
-            ordem.Status,
-            $"Pedido de compra pendente mantido para a peca {peca.Nome}. Quantidade solicitada: {pedidoExistente.QuantidadeSolicitada}.",
-            cancellationToken);
-    }
-
-    private static string FormatarFaltasDeEstoque(IEnumerable<FaltaEstoqueItem> faltas)
-    {
-        return string.Join(", ", faltas.Select(x => $"{x.Peca.Nome} ({x.QuantidadeFaltante})"));
-    }
-
-    private static OrdemServicoHistoricoDto MapToDto(OrdemServicoHistorico historico)
-    {
-        return new OrdemServicoHistoricoDto
-        {
-            Id = historico.Id,
-            OrdemDeServicoId = historico.OrdemDeServicoId,
-            UsuarioId = historico.UsuarioId,
-            UsuarioNome = historico.UsuarioNome,
-            StatusAnterior = historico.StatusAnterior?.ToString(),
-            StatusNovo = historico.StatusNovo?.ToString(),
-            TipoEvento = historico.TipoEvento.ToString(),
-            Descricao = historico.Descricao,
-            DataEvento = historico.DataEvento
-        };
-    }
-
-    private static NotificacaoClienteDto MapToDto(NotificacaoCliente notificacao)
-    {
-        return new NotificacaoClienteDto
-        {
-            Id = notificacao.Id,
-            OrdemDeServicoId = notificacao.OrdemDeServicoId,
-            Canal = notificacao.Canal.ToString(),
-            TipoNotificacao = notificacao.TipoNotificacao.ToString(),
-            Mensagem = notificacao.Mensagem,
-            Recebida = notificacao.Recebida,
-            DataNotificacao = notificacao.DataNotificacao
-        };
-    }
-
-    private static OrdemDeServicoDto MapToDto(OrdemDeServico ordem)
-    {
-        return new OrdemDeServicoDto
-        {
-            Id = ordem.Id,
-            Numero = ordem.Numero,
-            CodigoAcompanhamento = ordem.CodigoAcompanhamento,
-            UrlAcompanhamento = MontarEndpointAcompanhamento(ordem.CodigoAcompanhamento),
-            TokenAcompanhamento = null,
-            ClienteId = ordem.ClienteId,
-            VeiculoId = ordem.VeiculoId,
-            DescricaoSolicitacao = ordem.DescricaoSolicitacao,
-            ObservacoesRecepcao = ordem.ObservacoesRecepcao,
-            MotivoCancelamento = ordem.MotivoCancelamento,
-            OrcamentoEnviadoEm = ordem.OrcamentoEnviadoEm,
-            DataFinalizacao = ordem.DataFinalizacao,
-            DataPagamento = ordem.DataPagamento,
-            Status = ordem.Status.ToString(),
-            DataAbertura = ordem.DataAbertura,
-            DataConclusao = ordem.DataConclusao,
-            ValorTotal = ordem.ValorTotal,
-            Servicos = ordem.Servicos.Select(s => new OrdemDeServicoServicoDto
-            {
-                ServicoId = s.ServicoId,
-                Preco = s.Preco,
-                TempoEstimado = s.TempoEstimado
-            }).ToList(),
-            Pecas = ordem.Pecas.Select(p => new OrdemDeServicoPecaDto
-            {
-                PecaId = p.PecaId,
-                Quantidade = p.Quantidade,
-                Preco = p.Preco
-            }).ToList()
-        };
-    }
-
-    private static MovimentacaoEstoqueDto MapToDto(MovimentacaoEstoque movimentacao)
-    {
-        return new MovimentacaoEstoqueDto
-        {
-            Id = movimentacao.Id,
-            PecaId = movimentacao.PecaId,
-            OrdemDeServicoId = movimentacao.OrdemDeServicoId,
-            PedidoCompraId = movimentacao.PedidoCompraId,
-            NomePeca = movimentacao.Peca?.Nome ?? string.Empty,
-            TipoMovimentacao = movimentacao.TipoMovimentacao.ToString(),
-            Quantidade = movimentacao.Quantidade,
-            QuantidadeAnterior = movimentacao.QuantidadeAnterior,
-            QuantidadePosterior = movimentacao.QuantidadePosterior,
-            Descricao = movimentacao.Descricao,
-            DataMovimentacao = movimentacao.DataMovimentacao
-        };
-    }
-
-    private static MonitoramentoOrdemDeServicoDto MapToMonitoramentoDto(OrdemDeServico ordem, DateTime agora)
-    {
-        var dataReferencia = ordem.DataFinalizacao ?? agora;
-        var tempoDecorrido = dataReferencia - ordem.DataAbertura;
-        var tempoFinalizacao = ordem.DataFinalizacao.HasValue
-            ? ordem.DataFinalizacao.Value - ordem.DataAbertura
-            : (TimeSpan?)null;
-
-        return new MonitoramentoOrdemDeServicoDto
-        {
-            Id = ordem.Id,
-            Numero = ordem.Numero,
-            Status = ordem.Status.ToString(),
-            DataAbertura = ordem.DataAbertura,
-            DataFinalizacao = ordem.DataFinalizacao,
-            EstaFinalizada = ordem.DataFinalizacao.HasValue,
-            TempoDecorridoMinutos = Math.Max(0, (int)Math.Round(tempoDecorrido.TotalMinutes)),
-            TempoDecorridoHoras = Math.Max(0, Math.Round(tempoDecorrido.TotalHours, 2)),
-            TempoFinalizacaoMinutos = tempoFinalizacao.HasValue
-                ? Math.Max(0, (int)Math.Round(tempoFinalizacao.Value.TotalMinutes))
-                : null,
-            TempoFinalizacaoHoras = tempoFinalizacao.HasValue
-                ? Math.Max(0, Math.Round(tempoFinalizacao.Value.TotalHours, 2))
-                : null
-        };
-    }
-
-    private static EstimativaTempoOrdemDeServicoDto MapToEstimativaTempoDto(OrdemDeServico ordem)
-    {
-        var servicos = ordem.Servicos
-            .OrderBy(x => x.ServicoId)
-            .Select(x => new EstimativaTempoServicoDto
-            {
-                ServicoId = x.ServicoId,
-                TempoEstimadoMinutos = x.TempoEstimado,
-                TempoEstimadoHoras = Math.Round(x.TempoEstimado / 60d, 2)
-            })
-            .ToList();
-
-        var totalMinutos = servicos.Sum(x => x.TempoEstimadoMinutos);
-
-        return new EstimativaTempoOrdemDeServicoDto
-        {
-            OrdemDeServicoId = ordem.Id,
-            Numero = ordem.Numero,
-            Status = ordem.Status.ToString(),
-            TotalServicos = servicos.Count,
-            TempoEstimadoMinutos = totalMinutos,
-            TempoEstimadoHoras = Math.Round(totalMinutos / 60d, 2),
-            Servicos = servicos
-        };
-    }
-
-    private sealed record FaltaEstoqueItem(Peca Peca, int QuantidadeFaltante);
 }
+
 
 
 
