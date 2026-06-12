@@ -1,6 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Services.OrdensDeServico;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +18,10 @@ public static class DependencyInjection
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         RegisterValidatorsFromAssembly(services, typeof(DependencyInjection).Assembly);
 
-        services.AddScoped<IOrdemDeServicoApplicationService, OrdemDeServicoApplicationService>();
+        services.AddScoped<OrdemDeServicoAcompanhamentoService>();
+        services.AddScoped<OrdemDeServicoHistoricoService>();
+        services.AddScoped<OrdemDeServicoNotificacaoService>();
+        services.AddScoped<OrdemDeServicoEstoqueService>();
         services.AddScoped<IAuthApplicationService, AuthApplicationService>();
         services.AddScoped<IAcompanhamentoOSApplicationService, AcompanhamentoOSApplicationService>();
 

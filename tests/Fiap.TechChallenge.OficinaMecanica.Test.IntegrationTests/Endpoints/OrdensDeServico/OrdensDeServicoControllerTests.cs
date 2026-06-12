@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Infrastructure;
 using FluentAssertions;
 
@@ -36,7 +37,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
 
         var finalizarDiagnostico = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar-diagnostico", null);
         finalizarDiagnostico.StatusCode.Should().Be(HttpStatusCode.OK);
-        var aguardandoAprovacao = await finalizarDiagnostico.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        var aguardandoAprovacao = await finalizarDiagnostico.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         aguardandoAprovacao.Should().NotBeNull();
         aguardandoAprovacao!.Status.Should().Be("AguardandoAprovacao");
         aguardandoAprovacao.OrcamentoEnviadoEm.Should().NotBeNull();
@@ -44,30 +45,30 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
 
         var aprovar = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/aprovar", null);
         aprovar.StatusCode.Should().Be(HttpStatusCode.OK);
-        var emExecucao = await aprovar.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        var emExecucao = await aprovar.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         emExecucao!.Status.Should().Be("EmExecucao");
 
         var finalizar = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar", null);
         finalizar.StatusCode.Should().Be(HttpStatusCode.OK);
-        var finalizada = await finalizar.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        var finalizada = await finalizar.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         finalizada!.Status.Should().Be("Finalizada");
         finalizada.DataFinalizacao.Should().NotBeNull();
 
         var registrarPagamento = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/registrar-pagamento", null);
         registrarPagamento.StatusCode.Should().Be(HttpStatusCode.OK);
-        var pagamentoRegistrado = await registrarPagamento.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        var pagamentoRegistrado = await registrarPagamento.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         pagamentoRegistrado!.Status.Should().Be("Finalizada");
         pagamentoRegistrado.DataPagamento.Should().NotBeNull();
 
         var entregar = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/entregar", null);
         entregar.StatusCode.Should().Be(HttpStatusCode.OK);
-        var entregue = await entregar.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        var entregue = await entregar.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         entregue!.Status.Should().Be("Entregue");
         entregue.DataConclusao.Should().NotBeNull();
 
         var obterHistorico = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/historico");
         obterHistorico.StatusCode.Should().Be(HttpStatusCode.OK);
-        var historico = await obterHistorico.Content.ReadFromJsonAsync<List<OrdemServicoHistoricoDto>>();
+        var historico = await obterHistorico.Content.ReadFromJsonAsync<List<OrdemServicoHistoricoResponse>>();
         historico.Should().NotBeNull();
         historico.Should().HaveCount(10);
         historico![0].TipoEvento.Should().Be("OrdemCriada");
@@ -83,7 +84,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
 
         var obterNotificacoes = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/notificacoes");
         obterNotificacoes.StatusCode.Should().Be(HttpStatusCode.OK);
-        var notificacoes = await obterNotificacoes.Content.ReadFromJsonAsync<List<NotificacaoClienteDto>>();
+        var notificacoes = await obterNotificacoes.Content.ReadFromJsonAsync<List<NotificacaoClienteResponse>>();
         notificacoes.Should().NotBeNull();
         notificacoes.Should().HaveCount(3);
         notificacoes.Should().Contain(n => n.TipoNotificacao == "LinkAcompanhamentoEnviado" && n.Canal == "Email" && n.Recebida);
@@ -162,7 +163,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var response = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/monitoramento");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var monitoramento = await response.Content.ReadFromJsonAsync<MonitoramentoOrdemDeServicoDto>();
+        var monitoramento = await response.Content.ReadFromJsonAsync<MonitoramentoOrdemDeServicoResponse>();
         monitoramento.Should().NotBeNull();
         monitoramento!.Id.Should().Be(ordemCriada.Id);
         monitoramento.EstaFinalizada.Should().BeTrue();
@@ -184,7 +185,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var response = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/estimativa-tempo-servico");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var estimativa = await response.Content.ReadFromJsonAsync<EstimativaTempoOrdemDeServicoDto>();
+        var estimativa = await response.Content.ReadFromJsonAsync<EstimativaTempoOrdemDeServicoResponse>();
         estimativa.Should().NotBeNull();
         estimativa!.OrdemDeServicoId.Should().Be(ordemCriada.Id);
         estimativa.TotalServicos.Should().Be(1);
@@ -212,7 +213,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var response = await _client.GetAsync("/api/v1/ordens-servico/monitoramento?page=1&pageSize=2");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var resumo = await response.Content.ReadFromJsonAsync<ResumoMonitoramentoOrdensDeServicoDto>();
+        var resumo = await response.Content.ReadFromJsonAsync<ResumoMonitoramentoOrdensDeServicoResponse>();
         resumo.Should().NotBeNull();
         resumo!.TotalOrdens.Should().BeGreaterThanOrEqualTo(1);
         resumo.TotalOrdensFinalizadas.Should().BeGreaterThanOrEqualTo(1);
@@ -241,7 +242,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var primeiraAprovacao = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/aprovar", null);
 
         primeiraAprovacao.StatusCode.Should().Be(HttpStatusCode.OK);
-        var aguardandoEstoque = await primeiraAprovacao.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        var aguardandoEstoque = await primeiraAprovacao.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         aguardandoEstoque.Should().NotBeNull();
         aguardandoEstoque!.Status.Should().Be("AguardandoEstoque");
 
@@ -273,14 +274,14 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var liberacaoExecucao = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/liberar-execucao", null);
 
         liberacaoExecucao.StatusCode.Should().Be(HttpStatusCode.OK);
-        var emExecucao = await liberacaoExecucao.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        var emExecucao = await liberacaoExecucao.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         emExecucao.Should().NotBeNull();
         emExecucao!.Status.Should().Be("EmExecucao");
 
         var movimentacoesResponse = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/movimentacoes-estoque");
 
         movimentacoesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var movimentacoesPorPeca = await movimentacoesResponse.Content.ReadFromJsonAsync<List<MovimentacoesEstoquePorPecaDto>>();
+        var movimentacoesPorPeca = await movimentacoesResponse.Content.ReadFromJsonAsync<List<MovimentacoesEstoquePorPecaResponse>>();
         movimentacoesPorPeca.Should().NotBeNull();
         movimentacoesPorPeca.Should().ContainSingle(x => x.PecaId == CustomWebApplicationFactory.PecaExistenteId);
 
@@ -315,7 +316,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
 
         var removerServico = await _client.DeleteAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/servicos/{CustomWebApplicationFactory.ServicoExistenteId}");
         removerServico.StatusCode.Should().Be(HttpStatusCode.OK);
-        var ordemSemServico = await removerServico.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        var ordemSemServico = await removerServico.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         ordemSemServico.Should().NotBeNull();
         ordemSemServico!.Servicos.Should().BeEmpty();
 
@@ -352,7 +353,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         body.Should().Contain("ja foi adicionado");
     }
 
-    private async Task<OrdemDeServicoDto> CriarOrdemAsync()
+    private async Task<OrdemDeServicoResponse> CriarOrdemAsync()
     {
         var payload = new
         {
@@ -365,7 +366,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var response = await _client.PostAsJsonAsync("/api/v1/ordens-servico", payload);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var ordem = await response.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        var ordem = await response.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         ordem.Should().NotBeNull();
         return ordem!;
     }

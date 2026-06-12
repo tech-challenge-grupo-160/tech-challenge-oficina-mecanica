@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Infrastructure;
 using FluentAssertions;
 
@@ -72,7 +73,7 @@ public class PedidosCompraControllerTests : IClassFixture<CustomWebApplicationFa
         pedido.Observacao.Should().Be("Pedido manual para reposicao");
     }
 
-    private async Task<OrdemDeServicoDto> CriarOrdemComPedidoCompraAsync(string descricaoSolicitacao, int clienteId, int veiculoId)
+    private async Task<OrdemDeServicoResponse> CriarOrdemComPedidoCompraAsync(string descricaoSolicitacao, int clienteId, int veiculoId)
     {
         var ordem = await CriarOrdemAsync(descricaoSolicitacao, clienteId, veiculoId);
 
@@ -95,14 +96,14 @@ public class PedidosCompraControllerTests : IClassFixture<CustomWebApplicationFa
         var aprovarResponse = await _client.PatchAsync($"/api/v1/ordens-servico/{ordem.Id}/aprovar", null);
         aprovarResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var osBloqueada = await aprovarResponse.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        var osBloqueada = await aprovarResponse.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         osBloqueada.Should().NotBeNull();
         osBloqueada!.Status.Should().Be("AguardandoEstoque");
 
         return ordem;
     }
 
-    private async Task<OrdemDeServicoDto> CriarOrdemAsync(string descricaoSolicitacao, int clienteId, int veiculoId)
+    private async Task<OrdemDeServicoResponse> CriarOrdemAsync(string descricaoSolicitacao, int clienteId, int veiculoId)
     {
         var payload = new
         {
@@ -114,7 +115,7 @@ public class PedidosCompraControllerTests : IClassFixture<CustomWebApplicationFa
 
         var criarResponse = await _client.PostAsJsonAsync("/api/v1/ordens-servico", payload);
         criarResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var ordem = await criarResponse.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        var ordem = await criarResponse.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         ordem.Should().NotBeNull();
         return ordem!;
     }

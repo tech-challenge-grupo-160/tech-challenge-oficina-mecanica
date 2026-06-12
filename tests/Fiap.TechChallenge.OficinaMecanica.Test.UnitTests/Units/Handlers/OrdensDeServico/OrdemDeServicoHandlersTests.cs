@@ -1,21 +1,27 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
-using Fiap.TechChallenge.OficinaMecanica.Application.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Services.OrdensDeServico;
+using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units.Services;
+namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units.Handlers.OrdensDeServico;
 
-public class OrdemDeServicoApplicationServiceTests
+public class OrdemDeServicoHandlersTests
 {
     private readonly Mock<IOrdemDeServicoRepository> _ordemRepositoryMock;
     private readonly Mock<IClienteRepository> _clienteRepositoryMock;
@@ -29,9 +35,9 @@ public class OrdemDeServicoApplicationServiceTests
     private readonly Mock<IUsuarioAutenticadoService> _usuarioAutenticadoServiceMock;
     private readonly Mock<ITransactionManager> _transactionManagerMock;
     private readonly Mock<IClock> _clockMock;
-    private readonly OrdemDeServicoApplicationService _service;
+    private readonly TestableOrdemDeServicoHandler _service;
 
-    public OrdemDeServicoApplicationServiceTests()
+    public OrdemDeServicoHandlersTests()
     {
         _ordemRepositoryMock = new Mock<IOrdemDeServicoRepository>(MockBehavior.Strict);
         _clienteRepositoryMock = new Mock<IClienteRepository>(MockBehavior.Strict);
@@ -66,21 +72,37 @@ public class OrdemDeServicoApplicationServiceTests
         _ordemRepositoryMock
             .Setup(x => x.ObterPorCodigoAcompanhamentoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico?)null);
+        var historicoService = new OrdemDeServicoHistoricoService(
+            _historicoRepositoryMock.Object,
+            _usuarioAutenticadoServiceMock.Object,
+            _clockMock.Object);
+        var notificacaoService = new OrdemDeServicoNotificacaoService(
+            _notificacaoClienteRepositoryMock.Object,
+            _clockMock.Object);
+        var acompanhamentoService = new OrdemDeServicoAcompanhamentoService(_ordemRepositoryMock.Object);
+        var estoqueService = new OrdemDeServicoEstoqueService(
+            _pecaRepositoryMock.Object,
+            _pedidoCompraRepositoryMock.Object,
+            _movimentacaoEstoqueRepositoryMock.Object,
+            historicoService,
+            _clockMock.Object);
 
-        _service = new OrdemDeServicoApplicationService(
+        _service = new TestableOrdemDeServicoHandler(
             _ordemRepositoryMock.Object,
             _clienteRepositoryMock.Object,
             _veiculoRepositoryMock.Object,
             _servicoRepositoryMock.Object,
             _pecaRepositoryMock.Object,
-            _pedidoCompraRepositoryMock.Object,
             _movimentacaoEstoqueRepositoryMock.Object,
             _historicoRepositoryMock.Object,
             _notificacaoClienteRepositoryMock.Object,
-            _usuarioAutenticadoServiceMock.Object,
             _transactionManagerMock.Object,
             _clockMock.Object,
-            NullLoggerFactory.Instance);
+            NullLoggerFactory.Instance,
+            acompanhamentoService,
+            historicoService,
+            notificacaoService,
+            estoqueService);
     }
 
     [Fact]
@@ -536,5 +558,246 @@ public class OrdemDeServicoApplicationServiceTests
 
         await acao.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*ja foi adicionado*");
+    }
+
+    private sealed class TestableOrdemDeServicoHandler
+    {
+        private readonly IOrdemDeServicoRepository _ordemRepository;
+        private readonly IClienteRepository _clienteRepository;
+        private readonly IVeiculoRepository _veiculoRepository;
+        private readonly IServicoRepository _servicoRepository;
+        private readonly IPecaRepository _pecaRepository;
+        private readonly IMovimentacaoEstoqueRepository _movimentacaoEstoqueRepository;
+        private readonly IOrdemServicoHistoricoRepository _historicoRepository;
+        private readonly INotificacaoClienteRepository _notificacaoClienteRepository;
+        private readonly ITransactionManager _transactionManager;
+        private readonly IClock _clock;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly OrdemDeServicoAcompanhamentoService _acompanhamentoService;
+        private readonly OrdemDeServicoHistoricoService _historicoService;
+        private readonly OrdemDeServicoNotificacaoService _notificacaoService;
+        private readonly OrdemDeServicoEstoqueService _estoqueService;
+
+        public TestableOrdemDeServicoHandler(
+            IOrdemDeServicoRepository ordemRepository,
+            IClienteRepository clienteRepository,
+            IVeiculoRepository veiculoRepository,
+            IServicoRepository servicoRepository,
+            IPecaRepository pecaRepository,
+            IMovimentacaoEstoqueRepository movimentacaoEstoqueRepository,
+            IOrdemServicoHistoricoRepository historicoRepository,
+            INotificacaoClienteRepository notificacaoClienteRepository,
+            ITransactionManager transactionManager,
+            IClock clock,
+            ILoggerFactory loggerFactory,
+            OrdemDeServicoAcompanhamentoService acompanhamentoService,
+            OrdemDeServicoHistoricoService historicoService,
+            OrdemDeServicoNotificacaoService notificacaoService,
+            OrdemDeServicoEstoqueService estoqueService)
+        {
+            _ordemRepository = ordemRepository;
+            _clienteRepository = clienteRepository;
+            _veiculoRepository = veiculoRepository;
+            _servicoRepository = servicoRepository;
+            _pecaRepository = pecaRepository;
+            _movimentacaoEstoqueRepository = movimentacaoEstoqueRepository;
+            _historicoRepository = historicoRepository;
+            _notificacaoClienteRepository = notificacaoClienteRepository;
+            _transactionManager = transactionManager;
+            _clock = clock;
+            _loggerFactory = loggerFactory;
+            _acompanhamentoService = acompanhamentoService;
+            _historicoService = historicoService;
+            _notificacaoService = notificacaoService;
+            _estoqueService = estoqueService;
+        }
+
+        public Task<OrdemDeServicoResult> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
+        {
+            return new CriarOrdemDeServicoCommandHandler(
+                _acompanhamentoService,
+                _clienteRepository,
+                _clock,
+                _historicoService,
+                _notificacaoService,
+                _ordemRepository,
+                _veiculoRepository,
+                _loggerFactory).Handle(new CriarOrdemDeServicoCommand
+            {
+                ClienteId = dto.ClienteId,
+                VeiculoId = dto.VeiculoId,
+                DescricaoSolicitacao = dto.DescricaoSolicitacao,
+                ObservacoesRecepcao = dto.ObservacoesRecepcao
+            }, cancellationToken);
+        }
+
+        public Task<OrdemDeServicoResult> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken)
+        {
+            return new FinalizarDiagnosticoCommandHandler(
+                _clock,
+                _historicoService,
+                _notificacaoService,
+                _ordemRepository,
+                _loggerFactory).Handle(new FinalizarDiagnosticoCommand { Id = id }, cancellationToken);
+        }
+
+        public Task<OrdemDeServicoResult> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
+        {
+            return new IniciarDiagnosticoCommandHandler(
+                _historicoService,
+                _ordemRepository,
+                _loggerFactory).Handle(new IniciarDiagnosticoCommand { Id = id }, cancellationToken);
+        }
+
+        public Task<OrdemDeServicoResult> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
+        {
+            return new AdicionarServicoAOrdemCommandHandler(
+                _historicoService,
+                _ordemRepository,
+                _servicoRepository,
+                _loggerFactory).Handle(new AdicionarServicoAOrdemCommand
+            {
+                OrdemDeServicoId = id,
+                ServicoId = dto.ServicoId
+            }, cancellationToken);
+        }
+
+        public Task<OrdemDeServicoResult> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
+        {
+            return new AdicionarPecaAOrdemCommandHandler(
+                _historicoService,
+                _ordemRepository,
+                _pecaRepository,
+                _loggerFactory).Handle(new AdicionarPecaAOrdemCommand
+            {
+                OrdemDeServicoId = id,
+                PecaId = dto.PecaId,
+                Quantidade = dto.Quantidade
+            }, cancellationToken);
+        }
+
+        public Task<OrdemDeServicoResult> AprovarAsync(int id, CancellationToken cancellationToken)
+        {
+            return new AprovarOrdemDeServicoCommandHandler(
+                _estoqueService,
+                _historicoService,
+                _ordemRepository,
+                _transactionManager,
+                _loggerFactory).Handle(new AprovarOrdemDeServicoCommand { Id = id }, cancellationToken);
+        }
+
+        public Task<OrdemDeServicoResult> LiberarExecucaoAsync(int id, CancellationToken cancellationToken)
+        {
+            return new LiberarExecucaoCommandHandler(
+                _estoqueService,
+                _historicoService,
+                _ordemRepository,
+                _transactionManager,
+                _loggerFactory).Handle(new LiberarExecucaoCommand { Id = id }, cancellationToken);
+        }
+
+        public Task<OrdemDeServicoResult> FinalizarAsync(int id, CancellationToken cancellationToken)
+        {
+            return new FinalizarOrdemDeServicoCommandHandler(
+                _clock,
+                _historicoService,
+                _notificacaoService,
+                _ordemRepository,
+                _loggerFactory).Handle(new FinalizarOrdemDeServicoCommand { Id = id }, cancellationToken);
+        }
+
+        public Task<OrdemDeServicoResult> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
+        {
+            return new RegistrarPagamentoCommandHandler(
+                _clock,
+                _historicoService,
+                _ordemRepository,
+                _loggerFactory).Handle(new RegistrarPagamentoCommand { Id = id }, cancellationToken);
+        }
+
+        public Task<OrdemDeServicoResult> EntregarAsync(int id, CancellationToken cancellationToken)
+        {
+            return new EntregarOrdemDeServicoCommandHandler(
+                _clock,
+                _historicoService,
+                _ordemRepository,
+                _loggerFactory).Handle(new EntregarOrdemDeServicoCommand { Id = id }, cancellationToken);
+        }
+
+        public Task<MonitoramentoOrdemDeServicoResult> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
+        {
+            return new ObterMonitoramentoOrdemDeServicoQueryHandler(
+                _clock,
+                _ordemRepository,
+                _loggerFactory).Handle(new ObterMonitoramentoOrdemDeServicoQuery { Id = id }, cancellationToken);
+        }
+
+        public Task<ResumoMonitoramentoOrdensDeServicoResult> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
+        {
+            return new ObterResumoMonitoramentoOrdensDeServicoQueryHandler(
+                _clock,
+                _ordemRepository,
+                _loggerFactory).Handle(new ObterResumoMonitoramentoOrdensDeServicoQuery
+            {
+                Page = page,
+                PageSize = pageSize
+            }, cancellationToken);
+        }
+
+        public Task<EstimativaTempoOrdemDeServicoResult> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
+        {
+            return new ObterEstimativaTempoOrdemDeServicoQueryHandler(
+                _ordemRepository,
+                _loggerFactory).Handle(new ObterEstimativaTempoOrdemDeServicoQuery { Id = id }, cancellationToken);
+        }
+
+        public async Task<OrdemDeServicoResult> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
+        {
+            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            if (ordem == null)
+            {
+                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+            }
+
+            if (!Enum.TryParse<StatusOrdemDeServico>(dto.NovoStatus, out var novoStatus))
+            {
+                throw new ServiceValidationException($"Status invalido: {dto.NovoStatus}");
+            }
+
+            if (novoStatus == StatusOrdemDeServico.EmExecucao)
+            {
+                throw new InvalidOperationException("Nao e permitido alterar uma ordem de servico diretamente para EmExecucao. Use as rotas de aprovacao ou liberacao de execucao para garantir a validacao e baixa de estoque.");
+            }
+
+            ordem.AlterarStatus(novoStatus, novoStatus == StatusOrdemDeServico.Entregue ? _clock.Now : null);
+            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
+            return ordemAtualizada.ToResult();
+        }
+
+        public Task<OrdemDeServicoResult> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken)
+        {
+            return new RemoverServicoDaOrdemCommandHandler(
+                _historicoService,
+                _ordemRepository,
+                _servicoRepository,
+                _loggerFactory).Handle(new RemoverServicoDaOrdemCommand
+            {
+                OrdemDeServicoId = id,
+                ServicoId = servicoId
+            }, cancellationToken);
+        }
+
+        public Task<OrdemDeServicoResult> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
+        {
+            return new RemoverPecaDaOrdemCommandHandler(
+                _historicoService,
+                _ordemRepository,
+                _pecaRepository,
+                _loggerFactory).Handle(new RemoverPecaDaOrdemCommand
+            {
+                OrdemDeServicoId = id,
+                PecaId = pecaId
+            }, cancellationToken);
+        }
     }
 }
