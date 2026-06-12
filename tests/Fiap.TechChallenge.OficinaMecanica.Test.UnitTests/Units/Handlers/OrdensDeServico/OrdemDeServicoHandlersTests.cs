@@ -8,6 +8,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
@@ -611,7 +612,7 @@ public class OrdemDeServicoHandlersTests
             _estoqueService = estoqueService;
         }
 
-        public Task<OrdemDeServicoDto> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoResult> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
         {
             return new CriarOrdemDeServicoCommandHandler(
                 _acompanhamentoService,
@@ -630,7 +631,7 @@ public class OrdemDeServicoHandlersTests
             }, cancellationToken);
         }
 
-        public Task<OrdemDeServicoDto> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoResult> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken)
         {
             return new FinalizarDiagnosticoCommandHandler(
                 _clock,
@@ -640,7 +641,7 @@ public class OrdemDeServicoHandlersTests
                 _loggerFactory).Handle(new FinalizarDiagnosticoCommand { Id = id }, cancellationToken);
         }
 
-        public Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoResult> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
         {
             return new IniciarDiagnosticoCommandHandler(
                 _historicoService,
@@ -648,7 +649,7 @@ public class OrdemDeServicoHandlersTests
                 _loggerFactory).Handle(new IniciarDiagnosticoCommand { Id = id }, cancellationToken);
         }
 
-        public Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoResult> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
         {
             return new AdicionarServicoAOrdemCommandHandler(
                 _historicoService,
@@ -661,7 +662,7 @@ public class OrdemDeServicoHandlersTests
             }, cancellationToken);
         }
 
-        public Task<OrdemDeServicoDto> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoResult> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
         {
             return new AdicionarPecaAOrdemCommandHandler(
                 _historicoService,
@@ -675,7 +676,7 @@ public class OrdemDeServicoHandlersTests
             }, cancellationToken);
         }
 
-        public Task<OrdemDeServicoDto> AprovarAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoResult> AprovarAsync(int id, CancellationToken cancellationToken)
         {
             return new AprovarOrdemDeServicoCommandHandler(
                 _estoqueService,
@@ -685,7 +686,7 @@ public class OrdemDeServicoHandlersTests
                 _loggerFactory).Handle(new AprovarOrdemDeServicoCommand { Id = id }, cancellationToken);
         }
 
-        public Task<OrdemDeServicoDto> LiberarExecucaoAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoResult> LiberarExecucaoAsync(int id, CancellationToken cancellationToken)
         {
             return new LiberarExecucaoCommandHandler(
                 _estoqueService,
@@ -695,7 +696,7 @@ public class OrdemDeServicoHandlersTests
                 _loggerFactory).Handle(new LiberarExecucaoCommand { Id = id }, cancellationToken);
         }
 
-        public Task<OrdemDeServicoDto> FinalizarAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoResult> FinalizarAsync(int id, CancellationToken cancellationToken)
         {
             return new FinalizarOrdemDeServicoCommandHandler(
                 _clock,
@@ -705,7 +706,7 @@ public class OrdemDeServicoHandlersTests
                 _loggerFactory).Handle(new FinalizarOrdemDeServicoCommand { Id = id }, cancellationToken);
         }
 
-        public Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoResult> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
         {
             return new RegistrarPagamentoCommandHandler(
                 _clock,
@@ -714,7 +715,7 @@ public class OrdemDeServicoHandlersTests
                 _loggerFactory).Handle(new RegistrarPagamentoCommand { Id = id }, cancellationToken);
         }
 
-        public Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoResult> EntregarAsync(int id, CancellationToken cancellationToken)
         {
             return new EntregarOrdemDeServicoCommandHandler(
                 _clock,
@@ -723,7 +724,7 @@ public class OrdemDeServicoHandlersTests
                 _loggerFactory).Handle(new EntregarOrdemDeServicoCommand { Id = id }, cancellationToken);
         }
 
-        public Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
+        public Task<MonitoramentoOrdemDeServicoResult> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
         {
             return new ObterMonitoramentoOrdemDeServicoQueryHandler(
                 _clock,
@@ -731,7 +732,7 @@ public class OrdemDeServicoHandlersTests
                 _loggerFactory).Handle(new ObterMonitoramentoOrdemDeServicoQuery { Id = id }, cancellationToken);
         }
 
-        public Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
+        public Task<ResumoMonitoramentoOrdensDeServicoResult> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
         {
             return new ObterResumoMonitoramentoOrdensDeServicoQueryHandler(
                 _clock,
@@ -743,14 +744,14 @@ public class OrdemDeServicoHandlersTests
             }, cancellationToken);
         }
 
-        public Task<EstimativaTempoOrdemDeServicoDto> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
+        public Task<EstimativaTempoOrdemDeServicoResult> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
         {
             return new ObterEstimativaTempoOrdemDeServicoQueryHandler(
                 _ordemRepository,
                 _loggerFactory).Handle(new ObterEstimativaTempoOrdemDeServicoQuery { Id = id }, cancellationToken);
         }
 
-        public async Task<OrdemDeServicoDto> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
+        public async Task<OrdemDeServicoResult> AtualizarStatusAsync(int id, AtualizarStatusOrdemDeServicoDto dto, CancellationToken cancellationToken)
         {
             var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
             if (ordem == null)
@@ -770,10 +771,10 @@ public class OrdemDeServicoHandlersTests
 
             ordem.AlterarStatus(novoStatus, novoStatus == StatusOrdemDeServico.Entregue ? _clock.Now : null);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
-            return ordemAtualizada.ToDto();
+            return ordemAtualizada.ToResult();
         }
 
-        public Task<OrdemDeServicoDto> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoResult> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken)
         {
             return new RemoverServicoDaOrdemCommandHandler(
                 _historicoService,
@@ -786,7 +787,7 @@ public class OrdemDeServicoHandlersTests
             }, cancellationToken);
         }
 
-        public Task<OrdemDeServicoDto> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoResult> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
         {
             return new RemoverPecaDaOrdemCommandHandler(
                 _historicoService,

@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class RegistrarPagamentoCommandHandler : IRequestHandler<RegistrarPagamentoCommand, OrdemDeServicoDto>
+public sealed class RegistrarPagamentoCommandHandler : IRequestHandler<RegistrarPagamentoCommand, OrdemDeServicoResult>
 {
     private const string LoggerName = nameof(RegistrarPagamentoCommandHandler);
     private readonly IClock _clock;
@@ -34,12 +34,12 @@ public sealed class RegistrarPagamentoCommandHandler : IRequestHandler<Registrar
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<OrdemDeServicoDto> Handle(RegistrarPagamentoCommand command, CancellationToken cancellationToken)
+    public Task<OrdemDeServicoResult> Handle(RegistrarPagamentoCommand command, CancellationToken cancellationToken)
     {
         return RegistrarPagamentoAsync(command.Id, cancellationToken);
     }
 
-    private async Task<OrdemDeServicoDto> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoResult> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -63,7 +63,7 @@ public sealed class RegistrarPagamentoCommandHandler : IRequestHandler<Registrar
                 eventoPagamento.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Pagamento registrado com sucesso para a ordem {ordemAtualizada.Numero}");
-            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToResult(ordemAtualizada);
         }
         catch (Exception ex)
         {

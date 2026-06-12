@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class IniciarDiagnosticoCommandHandler : IRequestHandler<IniciarDiagnosticoCommand, OrdemDeServicoDto>
+public sealed class IniciarDiagnosticoCommandHandler : IRequestHandler<IniciarDiagnosticoCommand, OrdemDeServicoResult>
 {
     private const string LoggerName = nameof(IniciarDiagnosticoCommandHandler);
     private readonly OrdemDeServicoHistoricoService _historicoService;
@@ -31,12 +31,12 @@ public sealed class IniciarDiagnosticoCommandHandler : IRequestHandler<IniciarDi
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<OrdemDeServicoDto> Handle(IniciarDiagnosticoCommand command, CancellationToken cancellationToken)
+    public Task<OrdemDeServicoResult> Handle(IniciarDiagnosticoCommand command, CancellationToken cancellationToken)
     {
         return IniciarDiagnosticoAsync(command.Id, cancellationToken);
     }
 
-    private async Task<OrdemDeServicoDto> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoResult> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -60,7 +60,7 @@ public sealed class IniciarDiagnosticoCommandHandler : IRequestHandler<IniciarDi
                 eventoDiagnosticoIniciado.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Diagnostico iniciado com sucesso para a ordem {ordemAtualizada.Numero}");
-            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToResult(ordemAtualizada);
         }
         catch (Exception ex)
         {

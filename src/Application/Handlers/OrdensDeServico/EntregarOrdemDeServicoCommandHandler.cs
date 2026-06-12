@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class EntregarOrdemDeServicoCommandHandler : IRequestHandler<EntregarOrdemDeServicoCommand, OrdemDeServicoDto>
+public sealed class EntregarOrdemDeServicoCommandHandler : IRequestHandler<EntregarOrdemDeServicoCommand, OrdemDeServicoResult>
 {
     private const string LoggerName = nameof(EntregarOrdemDeServicoCommandHandler);
     private readonly IClock _clock;
@@ -34,12 +34,12 @@ public sealed class EntregarOrdemDeServicoCommandHandler : IRequestHandler<Entre
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<OrdemDeServicoDto> Handle(EntregarOrdemDeServicoCommand command, CancellationToken cancellationToken)
+    public Task<OrdemDeServicoResult> Handle(EntregarOrdemDeServicoCommand command, CancellationToken cancellationToken)
     {
         return EntregarAsync(command.Id, cancellationToken);
     }
 
-    private async Task<OrdemDeServicoDto> EntregarAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoResult> EntregarAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -63,7 +63,7 @@ public sealed class EntregarOrdemDeServicoCommandHandler : IRequestHandler<Entre
                 eventoEntrega.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Veiculo entregue com sucesso para a ordem {ordemAtualizada.Numero}");
-            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToResult(ordemAtualizada);
         }
         catch (Exception ex)
         {

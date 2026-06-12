@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class AdicionarServicoAOrdemCommandHandler : IRequestHandler<AdicionarServicoAOrdemCommand, OrdemDeServicoDto>
+public sealed class AdicionarServicoAOrdemCommandHandler : IRequestHandler<AdicionarServicoAOrdemCommand, OrdemDeServicoResult>
 {
     private const string LoggerName = nameof(AdicionarServicoAOrdemCommandHandler);
     private readonly OrdemDeServicoHistoricoService _historicoService;
@@ -34,35 +34,35 @@ public sealed class AdicionarServicoAOrdemCommandHandler : IRequestHandler<Adici
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<OrdemDeServicoDto> Handle(AdicionarServicoAOrdemCommand command, CancellationToken cancellationToken)
+    public Task<OrdemDeServicoResult> Handle(AdicionarServicoAOrdemCommand command, CancellationToken cancellationToken)
     {
-        return AdicionarServicoAsync(command.OrdemDeServicoId, new AdicionarServicoAOrdemDto { ServicoId = command.ServicoId }, cancellationToken);
+        return AdicionarServicoAsync(command, cancellationToken);
     }
 
-    private async Task<OrdemDeServicoDto> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoResult> AdicionarServicoAsync(AdicionarServicoAOrdemCommand command, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarServicoAsync), "Consultando ordem de servico e servico para composicao do orcamento");
-            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            var ordem = await _ordemRepository.ObterPorIdAsync(command.OrdemDeServicoId, cancellationToken);
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarServicoAsync), "Ordem de servico nao encontrada para adicionar servico");
-                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+                throw new ServiceNotFoundException($"Ordem de servico com ID {command.OrdemDeServicoId} nao encontrada.");
             }
 
-            if (ordem.Servicos.Any(x => x.ServicoId == dto.ServicoId))
+            if (ordem.Servicos.Any(x => x.ServicoId == command.ServicoId))
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarServicoAsync), "Servico ja adicionado a ordem de servico");
                 throw new ServiceValidationException("O servico informado ja foi adicionado a ordem de servico.");
             }
 
-            var servico = await _servicoRepository.ObterPorIdAsync(dto.ServicoId, cancellationToken);
+            var servico = await _servicoRepository.ObterPorIdAsync(command.ServicoId, cancellationToken);
             if (servico == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarServicoAsync), "Servico nao encontrado para composicao do orcamento");
-                throw new ServiceNotFoundException($"Servico com ID {dto.ServicoId} nao encontrado.");
+                throw new ServiceNotFoundException($"Servico com ID {command.ServicoId} nao encontrado.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarServicoAsync), "Adicionando servico a ordem");
@@ -76,7 +76,7 @@ public sealed class AdicionarServicoAOrdemCommandHandler : IRequestHandler<Adici
                 eventoServicoAdicionado.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Servico adicionado com sucesso a ordem {ordemAtualizada.Numero}");
-            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToResult(ordemAtualizada);
         }
         catch (Exception ex)
         {

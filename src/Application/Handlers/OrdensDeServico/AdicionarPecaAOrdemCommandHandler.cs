@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class AdicionarPecaAOrdemCommandHandler : IRequestHandler<AdicionarPecaAOrdemCommand, OrdemDeServicoDto>
+public sealed class AdicionarPecaAOrdemCommandHandler : IRequestHandler<AdicionarPecaAOrdemCommand, OrdemDeServicoResult>
 {
     private const string LoggerName = nameof(AdicionarPecaAOrdemCommandHandler);
     private readonly OrdemDeServicoHistoricoService _historicoService;
@@ -34,33 +34,33 @@ public sealed class AdicionarPecaAOrdemCommandHandler : IRequestHandler<Adiciona
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<OrdemDeServicoDto> Handle(AdicionarPecaAOrdemCommand command, CancellationToken cancellationToken)
+    public Task<OrdemDeServicoResult> Handle(AdicionarPecaAOrdemCommand command, CancellationToken cancellationToken)
     {
-        return AdicionarPecaAsync(command.OrdemDeServicoId, new AdicionarPecaAOrdemDto { PecaId = command.PecaId, Quantidade = command.Quantidade }, cancellationToken);
+        return AdicionarPecaAsync(command, cancellationToken);
     }
 
-    private async Task<OrdemDeServicoDto> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoResult> AdicionarPecaAsync(AdicionarPecaAOrdemCommand command, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarPecaAsync), "Consultando ordem de servico e peca para composicao do orcamento");
-            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            var ordem = await _ordemRepository.ObterPorIdAsync(command.OrdemDeServicoId, cancellationToken);
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarPecaAsync), "Ordem de servico nao encontrada para adicionar peca");
-                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+                throw new ServiceNotFoundException($"Ordem de servico com ID {command.OrdemDeServicoId} nao encontrada.");
             }
 
-            var peca = await _pecaRepository.ObterPorIdAsync(dto.PecaId, cancellationToken);
+            var peca = await _pecaRepository.ObterPorIdAsync(command.PecaId, cancellationToken);
             if (peca == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(AdicionarPecaAsync), "Peca nao encontrada para composicao do orcamento");
-                throw new ServiceNotFoundException($"Peca com ID {dto.PecaId} nao encontrada.");
+                throw new ServiceNotFoundException($"Peca com ID {command.PecaId} nao encontrada.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(AdicionarPecaAsync), "Adicionando peca a ordem");
-            var eventoPecaAdicionada = ordem.AdicionarPecaComEvento(peca, dto.Quantidade);
+            var eventoPecaAdicionada = ordem.AdicionarPecaComEvento(peca, command.Quantidade);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
             await _historicoService.RegistrarAsync(
                 ordemAtualizada,
@@ -70,7 +70,7 @@ public sealed class AdicionarPecaAOrdemCommandHandler : IRequestHandler<Adiciona
                 eventoPecaAdicionada.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Peca adicionada com sucesso a ordem {ordemAtualizada.Numero}");
-            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToResult(ordemAtualizada);
         }
         catch (Exception ex)
         {

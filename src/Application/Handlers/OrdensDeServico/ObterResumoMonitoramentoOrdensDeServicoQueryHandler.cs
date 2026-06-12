@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class ObterResumoMonitoramentoOrdensDeServicoQueryHandler : IRequestHandler<ObterResumoMonitoramentoOrdensDeServicoQuery, ResumoMonitoramentoOrdensDeServicoDto>
+public sealed class ObterResumoMonitoramentoOrdensDeServicoQueryHandler : IRequestHandler<ObterResumoMonitoramentoOrdensDeServicoQuery, ResumoMonitoramentoOrdensDeServicoResult>
 {
     private const string LoggerName = nameof(ObterResumoMonitoramentoOrdensDeServicoQueryHandler);
     private readonly IClock _clock;
@@ -31,17 +31,17 @@ public sealed class ObterResumoMonitoramentoOrdensDeServicoQueryHandler : IReque
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<ResumoMonitoramentoOrdensDeServicoDto> Handle(ObterResumoMonitoramentoOrdensDeServicoQuery query, CancellationToken cancellationToken)
+    public Task<ResumoMonitoramentoOrdensDeServicoResult> Handle(ObterResumoMonitoramentoOrdensDeServicoQuery query, CancellationToken cancellationToken)
     {
         return ObterResumoMonitoramentoAsync(query.Page, query.PageSize, cancellationToken);
     }
 
-    private async Task<ResumoMonitoramentoOrdensDeServicoDto> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
+    private async Task<ResumoMonitoramentoOrdensDeServicoResult> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
     {
         var agora = _clock.Now;
         var ordens = (await _ordemRepository.ObterTodasAsync(cancellationToken)).ToList();
         var ordensMonitoradas = ordens
-            .Select(ordem => OrdemDeServicoMapper.ToMonitoramentoDto(ordem, agora))
+            .Select(ordem => OrdemDeServicoMapper.ToMonitoramentoResult(ordem, agora))
             .ToList();
 
         var ordensFinalizadas = ordensMonitoradas
@@ -58,7 +58,7 @@ public sealed class ObterResumoMonitoramentoOrdensDeServicoQueryHandler : IReque
             .Take(pageSize)
             .ToList();
 
-        return new ResumoMonitoramentoOrdensDeServicoDto
+        return new ResumoMonitoramentoOrdensDeServicoResult
         {
             TotalOrdens = totalOrdens,
             TotalOrdensAbertas = ordensMonitoradas.Count(ordem => !ordem.EstaFinalizada),

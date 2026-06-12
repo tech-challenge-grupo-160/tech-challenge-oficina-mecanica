@@ -1,4 +1,4 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
@@ -6,9 +6,9 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 
 public static class OrdemDeServicoMapper
 {
-    public static OrdemServicoHistoricoDto ToDto(this OrdemServicoHistorico historico)
+    public static OrdemServicoHistoricoResult ToResult(this OrdemServicoHistorico historico)
     {
-        return new OrdemServicoHistoricoDto
+        return new OrdemServicoHistoricoResult
         {
             Id = historico.Id,
             OrdemDeServicoId = historico.OrdemDeServicoId,
@@ -22,9 +22,9 @@ public static class OrdemDeServicoMapper
         };
     }
 
-    public static NotificacaoClienteDto ToDto(this NotificacaoCliente notificacao)
+    public static NotificacaoClienteResult ToResult(this NotificacaoCliente notificacao)
     {
-        return new NotificacaoClienteDto
+        return new NotificacaoClienteResult
         {
             Id = notificacao.Id,
             OrdemDeServicoId = notificacao.OrdemDeServicoId,
@@ -36,9 +36,9 @@ public static class OrdemDeServicoMapper
         };
     }
 
-    public static OrdemDeServicoDto ToDto(this OrdemDeServico ordem)
+    public static OrdemDeServicoResult ToResult(this OrdemDeServico ordem)
     {
-        return new OrdemDeServicoDto
+        return new OrdemDeServicoResult
         {
             Id = ordem.Id,
             Numero = ordem.Numero,
@@ -57,13 +57,13 @@ public static class OrdemDeServicoMapper
             DataAbertura = ordem.DataAbertura,
             DataConclusao = ordem.DataConclusao,
             ValorTotal = ordem.ValorTotal,
-            Servicos = ordem.Servicos.Select(s => new OrdemDeServicoServicoDto
+            Servicos = ordem.Servicos.Select(s => new OrdemDeServicoServicoResult
             {
                 ServicoId = s.ServicoId,
                 Preco = s.Preco,
                 TempoEstimado = s.TempoEstimado
             }).ToList(),
-            Pecas = ordem.Pecas.Select(p => new OrdemDeServicoPecaDto
+            Pecas = ordem.Pecas.Select(p => new OrdemDeServicoPecaResult
             {
                 PecaId = p.PecaId,
                 Quantidade = p.Quantidade,
@@ -72,9 +72,9 @@ public static class OrdemDeServicoMapper
         };
     }
 
-    public static MovimentacaoEstoqueDto ToDto(this MovimentacaoEstoque movimentacao)
+    public static MovimentacaoEstoqueResult ToResult(this MovimentacaoEstoque movimentacao)
     {
-        return new MovimentacaoEstoqueDto
+        return new MovimentacaoEstoqueResult
         {
             Id = movimentacao.Id,
             PecaId = movimentacao.PecaId,
@@ -90,7 +90,7 @@ public static class OrdemDeServicoMapper
         };
     }
 
-    public static MonitoramentoOrdemDeServicoDto ToMonitoramentoDto(this OrdemDeServico ordem, DateTime agora)
+    public static MonitoramentoOrdemDeServicoResult ToMonitoramentoResult(this OrdemDeServico ordem, DateTime agora)
     {
         var dataReferencia = ordem.DataFinalizacao ?? agora;
         var tempoDecorrido = dataReferencia - ordem.DataAbertura;
@@ -98,7 +98,7 @@ public static class OrdemDeServicoMapper
             ? ordem.DataFinalizacao.Value - ordem.DataAbertura
             : (TimeSpan?)null;
 
-        return new MonitoramentoOrdemDeServicoDto
+        return new MonitoramentoOrdemDeServicoResult
         {
             Id = ordem.Id,
             Numero = ordem.Numero,
@@ -117,11 +117,11 @@ public static class OrdemDeServicoMapper
         };
     }
 
-    public static EstimativaTempoOrdemDeServicoDto ToEstimativaTempoDto(this OrdemDeServico ordem)
+    public static EstimativaTempoOrdemDeServicoResult ToEstimativaTempoResult(this OrdemDeServico ordem)
     {
         var servicos = ordem.Servicos
             .OrderBy(x => x.ServicoId)
-            .Select(x => new EstimativaTempoServicoDto
+            .Select(x => new EstimativaTempoServicoResult
             {
                 ServicoId = x.ServicoId,
                 TempoEstimadoMinutos = x.TempoEstimado,
@@ -131,7 +131,7 @@ public static class OrdemDeServicoMapper
 
         var totalMinutos = servicos.Sum(x => x.TempoEstimadoMinutos);
 
-        return new EstimativaTempoOrdemDeServicoDto
+        return new EstimativaTempoOrdemDeServicoResult
         {
             OrdemDeServicoId = ordem.Id,
             Numero = ordem.Numero,

@@ -1,9 +1,10 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using MediatR;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 
-public sealed class ListarOrdensDeServicoQuery : IRequest<PagedResultDto<OrdemDeServicoDto>>
+public sealed class ListarOrdensDeServicoQuery : IRequest<PagedResultDto<OrdemDeServicoResult>>
 {
     public int Page { get; init; }
     public int PageSize { get; init; }

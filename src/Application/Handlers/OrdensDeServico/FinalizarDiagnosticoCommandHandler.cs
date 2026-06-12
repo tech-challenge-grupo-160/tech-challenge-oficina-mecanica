@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class FinalizarDiagnosticoCommandHandler : IRequestHandler<FinalizarDiagnosticoCommand, OrdemDeServicoDto>
+public sealed class FinalizarDiagnosticoCommandHandler : IRequestHandler<FinalizarDiagnosticoCommand, OrdemDeServicoResult>
 {
     private const string LoggerName = nameof(FinalizarDiagnosticoCommandHandler);
     private readonly IClock _clock;
@@ -37,12 +37,12 @@ public sealed class FinalizarDiagnosticoCommandHandler : IRequestHandler<Finaliz
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<OrdemDeServicoDto> Handle(FinalizarDiagnosticoCommand command, CancellationToken cancellationToken)
+    public Task<OrdemDeServicoResult> Handle(FinalizarDiagnosticoCommand command, CancellationToken cancellationToken)
     {
         return FinalizarDiagnosticoAsync(command.Id, cancellationToken);
     }
 
-    private async Task<OrdemDeServicoDto> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoResult> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -72,7 +72,7 @@ public sealed class FinalizarDiagnosticoCommandHandler : IRequestHandler<Finaliz
                 $"Orcamento disponivel para a ordem de servico {ordemAtualizada.Numero}. Endpoint de acompanhamento: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Diagnostico finalizado com sucesso para a ordem {ordemAtualizada.Numero}");
-            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToResult(ordemAtualizada);
         }
         catch (Exception ex)
         {

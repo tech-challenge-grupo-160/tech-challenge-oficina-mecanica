@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Infrastructure;
 using FluentAssertions;
 
@@ -78,7 +79,7 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
         acompanhamentoAposEventoSemMudancaStatus.DataUltimaAtualizacao.Should().Be(dataAposMudancaStatus);
     }
 
-    private async Task<OrdemDeServicoDto> CriarOrdemAsync()
+    private async Task<OrdemDeServicoResponse> CriarOrdemAsync()
     {
         var payload = new
         {
@@ -91,7 +92,7 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
         var response = await _client.PostAsJsonAsync("/api/v1/ordens-servico", payload);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var ordem = await response.Content.ReadFromJsonAsync<OrdemDeServicoDto>();
+        var ordem = await response.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         ordem.Should().NotBeNull();
         ordem!.CodigoAcompanhamento.Should().NotBeNullOrWhiteSpace();
         ordem.TokenAcompanhamento.Should().NotBeNullOrWhiteSpace();

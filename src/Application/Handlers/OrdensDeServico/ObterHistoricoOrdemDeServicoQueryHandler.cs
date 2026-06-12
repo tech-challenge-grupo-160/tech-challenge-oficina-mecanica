@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class ObterHistoricoOrdemDeServicoQueryHandler : IRequestHandler<ObterHistoricoOrdemDeServicoQuery, IEnumerable<OrdemServicoHistoricoDto>>
+public sealed class ObterHistoricoOrdemDeServicoQueryHandler : IRequestHandler<ObterHistoricoOrdemDeServicoQuery, IEnumerable<OrdemServicoHistoricoResult>>
 {
     private const string LoggerName = nameof(ObterHistoricoOrdemDeServicoQueryHandler);
     private readonly IOrdemServicoHistoricoRepository _historicoRepository;
@@ -31,12 +31,12 @@ public sealed class ObterHistoricoOrdemDeServicoQueryHandler : IRequestHandler<O
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<IEnumerable<OrdemServicoHistoricoDto>> Handle(ObterHistoricoOrdemDeServicoQuery query, CancellationToken cancellationToken)
+    public Task<IEnumerable<OrdemServicoHistoricoResult>> Handle(ObterHistoricoOrdemDeServicoQuery query, CancellationToken cancellationToken)
     {
         return ObterHistoricoAsync(query.Id, cancellationToken);
     }
 
-    private async Task<IEnumerable<OrdemServicoHistoricoDto>> ObterHistoricoAsync(int id, CancellationToken cancellationToken)
+    private async Task<IEnumerable<OrdemServicoHistoricoResult>> ObterHistoricoAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -45,7 +45,7 @@ public sealed class ObterHistoricoOrdemDeServicoQueryHandler : IRequestHandler<O
         }
 
         var historicos = await _historicoRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken);
-        return historicos.Select(OrdemDeServicoMapper.ToDto);
+        return historicos.Select(OrdemDeServicoMapper.ToResult);
     }
 }
 

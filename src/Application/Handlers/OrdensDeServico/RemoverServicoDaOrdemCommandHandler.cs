@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class RemoverServicoDaOrdemCommandHandler : IRequestHandler<RemoverServicoDaOrdemCommand, OrdemDeServicoDto>
+public sealed class RemoverServicoDaOrdemCommandHandler : IRequestHandler<RemoverServicoDaOrdemCommand, OrdemDeServicoResult>
 {
     private const string LoggerName = nameof(RemoverServicoDaOrdemCommandHandler);
     private readonly OrdemDeServicoHistoricoService _historicoService;
@@ -34,12 +34,12 @@ public sealed class RemoverServicoDaOrdemCommandHandler : IRequestHandler<Remove
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<OrdemDeServicoDto> Handle(RemoverServicoDaOrdemCommand command, CancellationToken cancellationToken)
+    public Task<OrdemDeServicoResult> Handle(RemoverServicoDaOrdemCommand command, CancellationToken cancellationToken)
     {
         return RemoverServicoAsync(command.OrdemDeServicoId, command.ServicoId, cancellationToken);
     }
 
-    private async Task<OrdemDeServicoDto> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoResult> RemoverServicoAsync(int id, int servicoId, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -65,7 +65,7 @@ public sealed class RemoverServicoDaOrdemCommandHandler : IRequestHandler<Remove
                 eventoServicoRemovido.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Servico removido com sucesso da ordem {ordemAtualizada.Numero}");
-            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToResult(ordemAtualizada);
         }
         catch (Exception ex)
         {

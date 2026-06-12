@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class ObterMonitoramentoOrdemDeServicoQueryHandler : IRequestHandler<ObterMonitoramentoOrdemDeServicoQuery, MonitoramentoOrdemDeServicoDto>
+public sealed class ObterMonitoramentoOrdemDeServicoQueryHandler : IRequestHandler<ObterMonitoramentoOrdemDeServicoQuery, MonitoramentoOrdemDeServicoResult>
 {
     private const string LoggerName = nameof(ObterMonitoramentoOrdemDeServicoQueryHandler);
     private readonly IClock _clock;
@@ -31,12 +31,12 @@ public sealed class ObterMonitoramentoOrdemDeServicoQueryHandler : IRequestHandl
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<MonitoramentoOrdemDeServicoDto> Handle(ObterMonitoramentoOrdemDeServicoQuery query, CancellationToken cancellationToken)
+    public Task<MonitoramentoOrdemDeServicoResult> Handle(ObterMonitoramentoOrdemDeServicoQuery query, CancellationToken cancellationToken)
     {
         return ObterMonitoramentoAsync(query.Id, cancellationToken);
     }
 
-    private async Task<MonitoramentoOrdemDeServicoDto> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
+    private async Task<MonitoramentoOrdemDeServicoResult> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -44,7 +44,7 @@ public sealed class ObterMonitoramentoOrdemDeServicoQueryHandler : IRequestHandl
             throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
-        return OrdemDeServicoMapper.ToMonitoramentoDto(ordem, _clock.Now);
+        return OrdemDeServicoMapper.ToMonitoramentoResult(ordem, _clock.Now);
     }
 }
 

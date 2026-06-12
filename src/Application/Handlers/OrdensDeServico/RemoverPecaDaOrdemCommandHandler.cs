@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class RemoverPecaDaOrdemCommandHandler : IRequestHandler<RemoverPecaDaOrdemCommand, OrdemDeServicoDto>
+public sealed class RemoverPecaDaOrdemCommandHandler : IRequestHandler<RemoverPecaDaOrdemCommand, OrdemDeServicoResult>
 {
     private const string LoggerName = nameof(RemoverPecaDaOrdemCommandHandler);
     private readonly OrdemDeServicoHistoricoService _historicoService;
@@ -34,12 +34,12 @@ public sealed class RemoverPecaDaOrdemCommandHandler : IRequestHandler<RemoverPe
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<OrdemDeServicoDto> Handle(RemoverPecaDaOrdemCommand command, CancellationToken cancellationToken)
+    public Task<OrdemDeServicoResult> Handle(RemoverPecaDaOrdemCommand command, CancellationToken cancellationToken)
     {
         return RemoverPecaAsync(command.OrdemDeServicoId, command.PecaId, cancellationToken);
     }
 
-    private async Task<OrdemDeServicoDto> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoResult> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -65,7 +65,7 @@ public sealed class RemoverPecaDaOrdemCommandHandler : IRequestHandler<RemoverPe
                 eventoPecaRemovida.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Peca removida com sucesso da ordem {ordemAtualizada.Numero}");
-            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToResult(ordemAtualizada);
         }
         catch (Exception ex)
         {

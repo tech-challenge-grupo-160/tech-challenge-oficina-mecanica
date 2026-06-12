@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class ObterEstimativaTempoOrdemDeServicoQueryHandler : IRequestHandler<ObterEstimativaTempoOrdemDeServicoQuery, EstimativaTempoOrdemDeServicoDto>
+public sealed class ObterEstimativaTempoOrdemDeServicoQueryHandler : IRequestHandler<ObterEstimativaTempoOrdemDeServicoQuery, EstimativaTempoOrdemDeServicoResult>
 {
     private const string LoggerName = nameof(ObterEstimativaTempoOrdemDeServicoQueryHandler);
     private readonly IOrdemDeServicoRepository _ordemRepository;
@@ -28,12 +28,12 @@ public sealed class ObterEstimativaTempoOrdemDeServicoQueryHandler : IRequestHan
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<EstimativaTempoOrdemDeServicoDto> Handle(ObterEstimativaTempoOrdemDeServicoQuery query, CancellationToken cancellationToken)
+    public Task<EstimativaTempoOrdemDeServicoResult> Handle(ObterEstimativaTempoOrdemDeServicoQuery query, CancellationToken cancellationToken)
     {
         return ObterEstimativaTempoAsync(query.Id, cancellationToken);
     }
 
-    private async Task<EstimativaTempoOrdemDeServicoDto> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
+    private async Task<EstimativaTempoOrdemDeServicoResult> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -41,7 +41,7 @@ public sealed class ObterEstimativaTempoOrdemDeServicoQueryHandler : IRequestHan
             throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
-        return OrdemDeServicoMapper.ToEstimativaTempoDto(ordem);
+        return OrdemDeServicoMapper.ToEstimativaTempoResult(ordem);
     }
 }
 

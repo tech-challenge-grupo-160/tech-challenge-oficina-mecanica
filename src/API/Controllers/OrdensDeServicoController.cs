@@ -1,9 +1,11 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.API.Mappers;
+using Fiap.TechChallenge.OficinaMecanica.API.Requests.OrdensDeServico;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
@@ -20,48 +22,47 @@ public class OrdensDeServicoController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<OrdemDeServicoDto>> Criar([FromBody] CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> Criar(
+        [FromBody] CriarOrdemDeServicoRequest request,
+        CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new CriarOrdemDeServicoCommand
-        {
-            ClienteId = dto.ClienteId,
-            VeiculoId = dto.VeiculoId,
-            DescricaoSolicitacao = dto.DescricaoSolicitacao,
-            ObservacoesRecepcao = dto.ObservacoesRecepcao
-        }, cancellationToken);
-        return CreatedAtAction(nameof(Obter), new { id = ordem.Id }, ordem);
+        var ordem = await _mediator.Send(request.ToCommand(), cancellationToken);
+        var response = ordem.ToResponse();
+        return CreatedAtAction(nameof(Obter), new { id = response.Id }, response);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<OrdemDeServicoDto>> Obter(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> Obter(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new ObterOrdemDeServicoPorIdQuery { Id = id }, cancellationToken);
-        return Ok(ordem);
+        var ordem = await _mediator.Send(id.ToOrdemDeServicoQueryById(), cancellationToken);
+        return Ok(ordem.ToResponse());
     }
 
     [HttpGet("{id}/historico")]
-    public async Task<ActionResult<IEnumerable<OrdemServicoHistoricoDto>>> ObterHistorico(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<IEnumerable<OrdemServicoHistoricoResponse>>> ObterHistorico(int id, CancellationToken cancellationToken)
     {
-        var historico = await _mediator.Send(new ObterHistoricoOrdemDeServicoQuery { Id = id }, cancellationToken);
-        return Ok(historico);
+        var historico = await _mediator.Send(id.ToHistoricoOrdemDeServicoQuery(), cancellationToken);
+        return Ok(historico.ToResponse());
     }
 
     [HttpGet("{id}/notificacoes")]
-    public async Task<ActionResult<IEnumerable<NotificacaoClienteDto>>> ObterNotificacoes(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<IEnumerable<NotificacaoClienteResponse>>> ObterNotificacoes(int id, CancellationToken cancellationToken)
     {
-        var notificacoes = await _mediator.Send(new ObterNotificacoesOrdemDeServicoQuery { Id = id }, cancellationToken);
-        return Ok(notificacoes);
+        var notificacoes = await _mediator.Send(id.ToNotificacoesOrdemDeServicoQuery(), cancellationToken);
+        return Ok(notificacoes.ToResponse());
     }
 
     [HttpGet("{id}/movimentacoes-estoque")]
-    public async Task<ActionResult<IEnumerable<MovimentacoesEstoquePorPecaDto>>> ObterMovimentacoesEstoque(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<IEnumerable<MovimentacoesEstoquePorPecaResponse>>> ObterMovimentacoesEstoque(
+        int id,
+        CancellationToken cancellationToken)
     {
-        var movimentacoes = await _mediator.Send(new ObterMovimentacoesEstoqueOrdemDeServicoQuery { Id = id }, cancellationToken);
-        return Ok(movimentacoes);
+        var movimentacoes = await _mediator.Send(id.ToMovimentacoesEstoqueOrdemDeServicoQuery(), cancellationToken);
+        return Ok(movimentacoes.ToResponse());
     }
 
     [HttpGet("monitoramento")]
-    public async Task<ActionResult<ResumoMonitoramentoOrdensDeServicoDto>> ObterResumoMonitoramento(
+    public async Task<ActionResult<ResumoMonitoramentoOrdensDeServicoResponse>> ObterResumoMonitoramento(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken = default)
@@ -71,25 +72,25 @@ public class OrdensDeServicoController : ControllerBase
             Page = page,
             PageSize = pageSize
         }, cancellationToken);
-        return Ok(resumo);
+        return Ok(resumo.ToResponse());
     }
 
     [HttpGet("{id}/monitoramento")]
-    public async Task<ActionResult<MonitoramentoOrdemDeServicoDto>> ObterMonitoramento(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<MonitoramentoOrdemDeServicoResponse>> ObterMonitoramento(int id, CancellationToken cancellationToken)
     {
-        var monitoramento = await _mediator.Send(new ObterMonitoramentoOrdemDeServicoQuery { Id = id }, cancellationToken);
-        return Ok(monitoramento);
+        var monitoramento = await _mediator.Send(id.ToMonitoramentoOrdemDeServicoQuery(), cancellationToken);
+        return Ok(monitoramento.ToResponse());
     }
 
     [HttpGet("{id}/estimativa-tempo-servico")]
-    public async Task<ActionResult<EstimativaTempoOrdemDeServicoDto>> ObterEstimativaTempo(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<EstimativaTempoOrdemDeServicoResponse>> ObterEstimativaTempo(int id, CancellationToken cancellationToken)
     {
-        var estimativa = await _mediator.Send(new ObterEstimativaTempoOrdemDeServicoQuery { Id = id }, cancellationToken);
-        return Ok(estimativa);
+        var estimativa = await _mediator.Send(id.ToEstimativaTempoOrdemDeServicoQuery(), cancellationToken);
+        return Ok(estimativa.ToResponse());
     }
 
     [HttpGet]
-    public async Task<ActionResult<PagedResultDto<OrdemDeServicoDto>>> Listar(
+    public async Task<ActionResult<PagedResponse<OrdemDeServicoResponse>>> Listar(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] int? clienteId = null,
@@ -109,112 +110,99 @@ public class OrdensDeServicoController : ControllerBase
             DataAberturaInicio = dataAberturaInicio,
             DataAberturaFim = dataAberturaFim
         }, cancellationToken);
-        return Ok(ordens);
+        return Ok(ordens.ToResponse());
     }
 
     [HttpPatch("{id}/iniciar-diagnostico")]
-    public async Task<ActionResult<OrdemDeServicoDto>> IniciarDiagnostico(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> IniciarDiagnostico(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new IniciarDiagnosticoCommand { Id = id }, cancellationToken);
-        return Ok(ordem);
+        var ordem = await _mediator.Send(id.ToIniciarDiagnosticoCommand(), cancellationToken);
+        return Ok(ordem.ToResponse());
     }
 
     [HttpPatch("{id}/finalizar-diagnostico")]
-    public async Task<ActionResult<OrdemDeServicoDto>> FinalizarDiagnostico(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> FinalizarDiagnostico(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new FinalizarDiagnosticoCommand { Id = id }, cancellationToken);
-        return Ok(ordem);
+        var ordem = await _mediator.Send(id.ToFinalizarDiagnosticoCommand(), cancellationToken);
+        return Ok(ordem.ToResponse());
     }
 
     [HttpPatch("{id}/aprovar")]
-    public async Task<ActionResult<OrdemDeServicoDto>> Aprovar(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> Aprovar(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new AprovarOrdemDeServicoCommand { Id = id }, cancellationToken);
-        return Ok(ordem);
+        var ordem = await _mediator.Send(id.ToAprovarOrdemDeServicoCommand(), cancellationToken);
+        return Ok(ordem.ToResponse());
     }
 
     [HttpPatch("{id}/liberar-execucao")]
-    public async Task<ActionResult<OrdemDeServicoDto>> LiberarExecucao(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> LiberarExecucao(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new LiberarExecucaoCommand { Id = id }, cancellationToken);
-        return Ok(ordem);
+        var ordem = await _mediator.Send(id.ToLiberarExecucaoCommand(), cancellationToken);
+        return Ok(ordem.ToResponse());
     }
 
     [HttpPatch("{id}/finalizar")]
-    public async Task<ActionResult<OrdemDeServicoDto>> Finalizar(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> Finalizar(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new FinalizarOrdemDeServicoCommand { Id = id }, cancellationToken);
-        return Ok(ordem);
+        var ordem = await _mediator.Send(id.ToFinalizarOrdemDeServicoCommand(), cancellationToken);
+        return Ok(ordem.ToResponse());
     }
 
     [HttpPatch("{id}/registrar-pagamento")]
-    public async Task<ActionResult<OrdemDeServicoDto>> RegistrarPagamento(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> RegistrarPagamento(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new RegistrarPagamentoCommand { Id = id }, cancellationToken);
-        return Ok(ordem);
+        var ordem = await _mediator.Send(id.ToRegistrarPagamentoCommand(), cancellationToken);
+        return Ok(ordem.ToResponse());
     }
 
     [HttpPatch("{id}/entregar")]
-    public async Task<ActionResult<OrdemDeServicoDto>> Entregar(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> Entregar(int id, CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new EntregarOrdemDeServicoCommand { Id = id }, cancellationToken);
-        return Ok(ordem);
+        var ordem = await _mediator.Send(id.ToEntregarOrdemDeServicoCommand(), cancellationToken);
+        return Ok(ordem.ToResponse());
     }
 
     [HttpPatch("{id}/cancelar")]
-    public async Task<ActionResult<OrdemDeServicoDto>> Cancelar(int id, [FromBody] CancelarOrdemDeServicoDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> Cancelar(
+        int id,
+        [FromBody] CancelarOrdemDeServicoRequest request,
+        CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new CancelarOrdemDeServicoCommand
-        {
-            Id = id,
-            MotivoCancelamento = dto.MotivoCancelamento
-        }, cancellationToken);
-        return Ok(ordem);
+        var ordem = await _mediator.Send(request.ToCommand(id), cancellationToken);
+        return Ok(ordem.ToResponse());
     }
 
     [HttpPost("{id}/servicos")]
-    public async Task<ActionResult<OrdemDeServicoDto>> AdicionarServico(int id, [FromBody] AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> AdicionarServico(
+        int id,
+        [FromBody] AdicionarServicoAOrdemRequest request,
+        CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new AdicionarServicoAOrdemCommand
-        {
-            OrdemDeServicoId = id,
-            ServicoId = dto.ServicoId
-        }, cancellationToken);
-        return Ok(ordem);
+        var ordem = await _mediator.Send(request.ToCommand(id), cancellationToken);
+        return Ok(ordem.ToResponse());
     }
 
     [HttpDelete("{id}/servicos/{servicoId:int}")]
-    public async Task<ActionResult<OrdemDeServicoDto>> RemoverServico(int id, int servicoId, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> RemoverServico(int id, int servicoId, CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new RemoverServicoDaOrdemCommand
-        {
-            OrdemDeServicoId = id,
-            ServicoId = servicoId
-        }, cancellationToken);
-        return Ok(ordem);
+        var ordem = await _mediator.Send(id.ToRemoverServicoDaOrdemCommand(servicoId), cancellationToken);
+        return Ok(ordem.ToResponse());
     }
 
     [HttpPost("{id}/pecas")]
-    public async Task<ActionResult<OrdemDeServicoDto>> AdicionarPeca(int id, [FromBody] AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> AdicionarPeca(
+        int id,
+        [FromBody] AdicionarPecaAOrdemRequest request,
+        CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new AdicionarPecaAOrdemCommand
-        {
-            OrdemDeServicoId = id,
-            PecaId = dto.PecaId,
-            Quantidade = dto.Quantidade
-        }, cancellationToken);
-        return Ok(ordem);
+        var ordem = await _mediator.Send(request.ToCommand(id), cancellationToken);
+        return Ok(ordem.ToResponse());
     }
 
     [HttpDelete("{id}/pecas/{pecaId:int}")]
-    public async Task<ActionResult<OrdemDeServicoDto>> RemoverPeca(int id, int pecaId, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrdemDeServicoResponse>> RemoverPeca(int id, int pecaId, CancellationToken cancellationToken)
     {
-        var ordem = await _mediator.Send(new RemoverPecaDaOrdemCommand
-        {
-            OrdemDeServicoId = id,
-            PecaId = pecaId
-        }, cancellationToken);
-        return Ok(ordem);
+        var ordem = await _mediator.Send(id.ToRemoverPecaDaOrdemCommand(pecaId), cancellationToken);
+        return Ok(ordem.ToResponse());
     }
-
 }

@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class ObterOrdemDeServicoPorIdQueryHandler : IRequestHandler<ObterOrdemDeServicoPorIdQuery, OrdemDeServicoDto>
+public sealed class ObterOrdemDeServicoPorIdQueryHandler : IRequestHandler<ObterOrdemDeServicoPorIdQuery, OrdemDeServicoResult>
 {
     private const string LoggerName = nameof(ObterOrdemDeServicoPorIdQueryHandler);
     private readonly IOrdemDeServicoRepository _ordemRepository;
@@ -28,12 +28,12 @@ public sealed class ObterOrdemDeServicoPorIdQueryHandler : IRequestHandler<Obter
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<OrdemDeServicoDto> Handle(ObterOrdemDeServicoPorIdQuery query, CancellationToken cancellationToken)
+    public Task<OrdemDeServicoResult> Handle(ObterOrdemDeServicoPorIdQuery query, CancellationToken cancellationToken)
     {
         return ObterOrdemDeServicoAsync(query.Id, cancellationToken);
     }
 
-    private async Task<OrdemDeServicoDto> ObterOrdemDeServicoAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoResult> ObterOrdemDeServicoAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -41,7 +41,7 @@ public sealed class ObterOrdemDeServicoPorIdQueryHandler : IRequestHandler<Obter
             throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
         }
 
-        return OrdemDeServicoMapper.ToDto(ordem);
+        return OrdemDeServicoMapper.ToResult(ordem);
     }
 }
 

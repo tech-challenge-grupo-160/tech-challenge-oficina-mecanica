@@ -1,6 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +15,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class ListarOrdensDeServicoQueryHandler : IRequestHandler<ListarOrdensDeServicoQuery, PagedResultDto<OrdemDeServicoDto>>
+public sealed class ListarOrdensDeServicoQueryHandler : IRequestHandler<ListarOrdensDeServicoQuery, PagedResultDto<OrdemDeServicoResult>>
 {
     private const string LoggerName = nameof(ListarOrdensDeServicoQueryHandler);
     private readonly IOrdemDeServicoRepository _ordemRepository;
@@ -28,12 +29,12 @@ public sealed class ListarOrdensDeServicoQueryHandler : IRequestHandler<ListarOr
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<PagedResultDto<OrdemDeServicoDto>> Handle(ListarOrdensDeServicoQuery query, CancellationToken cancellationToken)
+    public Task<PagedResultDto<OrdemDeServicoResult>> Handle(ListarOrdensDeServicoQuery query, CancellationToken cancellationToken)
     {
         return ListarOrdensDeServicoAsync(query.Page, query.PageSize, query.ClienteId, query.Status, query.Numero, query.DataAberturaInicio, query.DataAberturaFim, cancellationToken);
     }
 
-    private async Task<PagedResultDto<OrdemDeServicoDto>> ListarOrdensDeServicoAsync(
+    private async Task<PagedResultDto<OrdemDeServicoResult>> ListarOrdensDeServicoAsync(
         int page,
         int pageSize,
         int? clienteId,
@@ -73,9 +74,9 @@ public sealed class ListarOrdensDeServicoQueryHandler : IRequestHandler<ListarOr
             dataAberturaFim,
             cancellationToken);
 
-        return new PagedResultDto<OrdemDeServicoDto>
+        return new PagedResultDto<OrdemDeServicoResult>
         {
-            Items = ordens.Select(OrdemDeServicoMapper.ToDto).ToArray(),
+            Items = ordens.Select(OrdemDeServicoMapper.ToResult).ToArray(),
             Page = page,
             PageSize = pageSize,
             TotalItems = totalItems,

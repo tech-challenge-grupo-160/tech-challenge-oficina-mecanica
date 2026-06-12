@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class CancelarOrdemDeServicoCommandHandler : IRequestHandler<CancelarOrdemDeServicoCommand, OrdemDeServicoDto>
+public sealed class CancelarOrdemDeServicoCommandHandler : IRequestHandler<CancelarOrdemDeServicoCommand, OrdemDeServicoResult>
 {
     private const string LoggerName = nameof(CancelarOrdemDeServicoCommandHandler);
     private readonly OrdemDeServicoHistoricoService _historicoService;
@@ -31,26 +31,26 @@ public sealed class CancelarOrdemDeServicoCommandHandler : IRequestHandler<Cance
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<OrdemDeServicoDto> Handle(CancelarOrdemDeServicoCommand command, CancellationToken cancellationToken)
+    public Task<OrdemDeServicoResult> Handle(CancelarOrdemDeServicoCommand command, CancellationToken cancellationToken)
     {
-        return CancelarAsync(command.Id, new CancelarOrdemDeServicoDto { MotivoCancelamento = command.MotivoCancelamento }, cancellationToken);
+        return CancelarAsync(command, cancellationToken);
     }
 
-    private async Task<OrdemDeServicoDto> CancelarAsync(int id, CancelarOrdemDeServicoDto dto, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoResult> CancelarAsync(CancelarOrdemDeServicoCommand command, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CancelarAsync), "Consultando ordem de servico para cancelamento");
-            var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
+            var ordem = await _ordemRepository.ObterPorIdAsync(command.Id, cancellationToken);
             if (ordem == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CancelarAsync), "Ordem de servico nao encontrada para cancelamento");
-                throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
+                throw new ServiceNotFoundException($"Ordem de servico com ID {command.Id} nao encontrada.");
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CancelarAsync), "Cancelando ordem de servico com motivo informado");
-            var eventoCancelamento = ordem.CancelarComEvento(dto.MotivoCancelamento);
+            var eventoCancelamento = ordem.CancelarComEvento(command.MotivoCancelamento);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
             await _historicoService.RegistrarAsync(
                 ordemAtualizada,
@@ -60,7 +60,7 @@ public sealed class CancelarOrdemDeServicoCommandHandler : IRequestHandler<Cance
                 eventoCancelamento.Descricao,
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Ordem de servico cancelada com sucesso. Numero: {ordemAtualizada.Numero}");
-            return OrdemDeServicoMapper.ToDto(ordemAtualizada);
+            return OrdemDeServicoMapper.ToResult(ordemAtualizada);
         }
         catch (Exception ex)
         {

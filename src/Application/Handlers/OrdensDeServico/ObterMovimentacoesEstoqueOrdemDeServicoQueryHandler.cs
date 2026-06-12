@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class ObterMovimentacoesEstoqueOrdemDeServicoQueryHandler : IRequestHandler<ObterMovimentacoesEstoqueOrdemDeServicoQuery, IEnumerable<MovimentacoesEstoquePorPecaDto>>
+public sealed class ObterMovimentacoesEstoqueOrdemDeServicoQueryHandler : IRequestHandler<ObterMovimentacoesEstoqueOrdemDeServicoQuery, IEnumerable<MovimentacoesEstoquePorPecaResult>>
 {
     private const string LoggerName = nameof(ObterMovimentacoesEstoqueOrdemDeServicoQueryHandler);
     private readonly IMovimentacaoEstoqueRepository _movimentacaoEstoqueRepository;
@@ -34,12 +34,12 @@ public sealed class ObterMovimentacoesEstoqueOrdemDeServicoQueryHandler : IReque
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<IEnumerable<MovimentacoesEstoquePorPecaDto>> Handle(ObterMovimentacoesEstoqueOrdemDeServicoQuery query, CancellationToken cancellationToken)
+    public Task<IEnumerable<MovimentacoesEstoquePorPecaResult>> Handle(ObterMovimentacoesEstoqueOrdemDeServicoQuery query, CancellationToken cancellationToken)
     {
         return ObterMovimentacoesEstoqueAsync(query.Id, cancellationToken);
     }
 
-    private async Task<IEnumerable<MovimentacoesEstoquePorPecaDto>> ObterMovimentacoesEstoqueAsync(int id, CancellationToken cancellationToken)
+    private async Task<IEnumerable<MovimentacoesEstoquePorPecaResult>> ObterMovimentacoesEstoqueAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -48,20 +48,20 @@ public sealed class ObterMovimentacoesEstoqueOrdemDeServicoQueryHandler : IReque
         }
 
         var movimentacoes = (await _movimentacaoEstoqueRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken))
-            .Select(OrdemDeServicoMapper.ToDto)
+            .Select(OrdemDeServicoMapper.ToResult)
             .GroupBy(x => x.PecaId)
             .ToDictionary(x => x.Key, x => x.ToList());
 
-        var grupos = new List<MovimentacoesEstoquePorPecaDto>();
+        var grupos = new List<MovimentacoesEstoquePorPecaResult>();
 
         foreach (var item in ordem.Pecas.OrderBy(x => x.PecaId))
         {
             var peca = item.Peca ?? await _pecaRepository.ObterPorIdAsync(item.PecaId, cancellationToken);
             var movimentacoesDaPeca = movimentacoes.TryGetValue(item.PecaId, out var valores)
                 ? valores
-                : new List<MovimentacaoEstoqueDto>();
+                : new List<MovimentacaoEstoqueResult>();
 
-            grupos.Add(new MovimentacoesEstoquePorPecaDto
+            grupos.Add(new MovimentacoesEstoquePorPecaResult
             {
                 PecaId = item.PecaId,
                 NomePeca = peca?.Nome ?? movimentacoesDaPeca.FirstOrDefault()?.NomePeca ?? string.Empty,

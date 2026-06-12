@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServico;
 
-public sealed class ObterNotificacoesOrdemDeServicoQueryHandler : IRequestHandler<ObterNotificacoesOrdemDeServicoQuery, IEnumerable<NotificacaoClienteDto>>
+public sealed class ObterNotificacoesOrdemDeServicoQueryHandler : IRequestHandler<ObterNotificacoesOrdemDeServicoQuery, IEnumerable<NotificacaoClienteResult>>
 {
     private const string LoggerName = nameof(ObterNotificacoesOrdemDeServicoQueryHandler);
     private readonly INotificacaoClienteRepository _notificacaoClienteRepository;
@@ -31,12 +31,12 @@ public sealed class ObterNotificacoesOrdemDeServicoQueryHandler : IRequestHandle
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public Task<IEnumerable<NotificacaoClienteDto>> Handle(ObterNotificacoesOrdemDeServicoQuery query, CancellationToken cancellationToken)
+    public Task<IEnumerable<NotificacaoClienteResult>> Handle(ObterNotificacoesOrdemDeServicoQuery query, CancellationToken cancellationToken)
     {
         return ObterNotificacoesAsync(query.Id, cancellationToken);
     }
 
-    private async Task<IEnumerable<NotificacaoClienteDto>> ObterNotificacoesAsync(int id, CancellationToken cancellationToken)
+    private async Task<IEnumerable<NotificacaoClienteResult>> ObterNotificacoesAsync(int id, CancellationToken cancellationToken)
     {
         var ordem = await _ordemRepository.ObterPorIdAsync(id, cancellationToken);
         if (ordem == null)
@@ -45,7 +45,7 @@ public sealed class ObterNotificacoesOrdemDeServicoQueryHandler : IRequestHandle
         }
 
         var notificacoes = await _notificacaoClienteRepository.ObterPorOrdemDeServicoAsync(id, cancellationToken);
-        return notificacoes.Select(OrdemDeServicoMapper.ToDto);
+        return notificacoes.Select(OrdemDeServicoMapper.ToResult);
     }
 }
 
