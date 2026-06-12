@@ -1,8 +1,10 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
+using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Security;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Time;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -53,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<ITransactionManager, EfTransactionManager>();
         services.AddSingleton<IClock, BrazilClock>();
+        services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
 
         return services;
     }
