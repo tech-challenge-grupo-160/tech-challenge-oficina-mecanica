@@ -1,5 +1,7 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
-using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
+using Fiap.TechChallenge.OficinaMecanica.API.Mappers;
+using Fiap.TechChallenge.OficinaMecanica.API.Requests.AcompanhamentoOS;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.AcompanhamentoOS;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,16 +11,16 @@ namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 [Route("api/v1/acompanhamento-os")]
 public class AcompanhamentoOSController : ControllerBase
 {
-    private readonly IAcompanhamentoOSApplicationService _acompanhamentoService;
+    private readonly IMediator _mediator;
 
-    public AcompanhamentoOSController(IAcompanhamentoOSApplicationService acompanhamentoService)
+    public AcompanhamentoOSController(IMediator mediator)
     {
-        _acompanhamentoService = acompanhamentoService;
+        _mediator = mediator;
     }
 
     [AllowAnonymous]
     [HttpGet("{codigo}")]
-    public async Task<ActionResult<AcompanhamentoOrdemDeServicoDto>> ObterStatus(
+    public async Task<ActionResult<AcompanhamentoOrdemDeServicoResponse>> ObterStatus(
         string codigo,
         [FromHeader(Name = "X-Tracking-Token")] string? trackingToken,
         CancellationToken cancellationToken)
@@ -28,7 +30,13 @@ public class AcompanhamentoOSController : ControllerBase
             return BadRequest("Header X-Tracking-Token e obrigatorio.");
         }
 
-        var acompanhamento = await _acompanhamentoService.ObterStatusAsync(codigo, trackingToken, cancellationToken);
-        return Ok(acompanhamento);
+        var request = new ObterAcompanhamentoOSRequest
+        {
+            Codigo = codigo,
+            Token = trackingToken
+        };
+
+        var result = await _mediator.Send(request.ToQuery(), cancellationToken);
+        return Ok(result.ToResponse());
     }
 }
