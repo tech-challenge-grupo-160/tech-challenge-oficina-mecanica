@@ -1,213 +1,227 @@
 # Evolucao para Clean Architecture com CQRS e MediatR
 
-Este documento resume uma proposta de evolucao arquitetural para aproximar o projeto de Clean Architecture usando CQRS com MediatR.
+Este documento descreve o estado atual da migracao arquitetural do projeto. A base ja esta organizada em Clean Architecture com CQRS e MediatR: controllers enviam Commands e Queries por `IMediator`, handlers executam os casos de uso, validators rodam no pipeline do MediatR e a Infrastructure implementa detalhes tecnicos.
 
-CQRS significa Command Query Responsibility Segregation. No contexto deste projeto, a ideia e separar operacoes que alteram estado, chamadas de Commands, de operacoes que apenas consultam dados, chamadas de Queries.
+O objetivo daqui em diante e manter a documentacao sincronizada com o codigo e orientar a continuidade da migracao sem reintroduzir services grandes, dependencias HTTP na Application ou acesso direto a infraestrutura pelos controllers.
 
-MediatR entra como mediador entre a API e os casos de uso da Application. Em vez de controllers chamarem services grandes ou handlers concretos, eles enviam Commands e Queries via `IMediator`.
+## Estado atual da migracao
 
-Esta proposta nao exige banco separado, mensageria ou event sourcing. A recomendacao inicial e aplicar CQRS com MediatR usando a mesma API, o mesmo PostgreSQL e o mesmo Entity Framework Core, mas com casos de uso separados por responsabilidade.
+Concluido:
 
-## Estrutura proposta
+- `Program.cs` delega registros para `AddApiServices`, `AddApplication` e `AddInfrastructure`.
+- Controllers dependem de `IMediator`, nao de handlers concretos.
+- Casos de uso estao separados em `Commands`, `Queries` e `Handlers`.
+- Commands e Queries implementam `IRequest<TResponse>`.
+- Handlers implementam `IRequestHandler<TRequest,TResponse>`.
+- Results ficam na Application.
+- Responses ficam na API.
+- Mappers da API convertem `Request -> Command/Query` e `Result -> Response`.
+- `ValidationBehavior<TRequest,TResponse>` executa validators da Application antes dos handlers.
+- Mapeamentos EF estao separados em `Infrastructure/Data/Configurations`.
+- JWT esta abstraido por `ITokenGenerator` e implementado em `JwtTokenGenerator`.
+- `IClock` esta abstraido na Application e implementado em `BrazilClock`.
+
+Pontos ainda aceitos no estado atual:
+
+- contratos de repositories permanecem em `Domain/Repositories`;
+- alguns servicos de apoio ainda existem em `Application/Services`, principalmente para coordenar regras de ordem de servico;
+- a Application referencia `Microsoft.AspNetCore.App` no projeto, embora os casos de uso devam continuar sem depender de tipos HTTP;
+- Commands e Queries usam o mesmo banco e o mesmo `OficinaDbContext`;
+- nao ha mensageria, event sourcing ou banco de leitura separado.
+
+## Estrutura real
 
 ```text
 src/
   API/
+    Bootstrap/
     Controllers/
+    Filters/
+    Mappers/
+    ProblemDetails/
     Requests/
     Responses/
-    Mappers/
+    Services/
     Validators/
 
   Application/
-    Abstractions/
-      Repositories/
-      ReadModels/
-      Security/
-      Time/
     Behaviors/
     Commands/
-      Clientes/
-      Veiculos/
-      Servicos/
-      Pecas/
-      OrdensDeServico/
-      PedidosCompra/
-      Auth/
+    Common/
+    DTOs/
+    Exceptions/
+    Handlers/
+    Interfaces/
+    Mappers/
+    Options/
     Queries/
-      Clientes/
-      Veiculos/
-      Servicos/
-      Pecas/
-      OrdensDeServico/
-      PedidosCompra/
-      AcompanhamentoOS/
     Results/
+    Security/
+    Services/
     Validators/
 
   Domain/
     Entities/
     Enums/
+    Repositories/
     ValueObjects/
 
   Infrastructure/
     Data/
     Data/Configurations/
+    Data/Seeders/
+    Extensions/
+    HealthChecks/
+    Logging/
+    Migrations/
     Repositories/
-    ReadModels/
     Security/
     Time/
+
+  Shared/
+    Helpers/
+    Logging/
 ```
 
-## 1. Limpar o composition root
+## Padrao Controller -> IMediator -> Handler
 
-Hoje o `Program.cs` concentra muitos registros: DbContext, repositories, application services, clock, autenticacao, Swagger e health checks.
-
-A evolucao recomendada e criar extensoes por camada:
-
-```csharp
-builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
-```
-
-Na Application ficam handlers do MediatR, validators, pipeline behaviors e abstracoes:
-
-```csharp
-public static class DependencyInjection
-{
-    public static IServiceCollection AddApplication(this IServiceCollection services)
-    {
-        services.AddMediatR(config =>
-            config.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
-
-        services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
-        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-
-        return services;
-    }
-}
-```
-
-Pacotes esperados na Application:
+Todo endpoint deve seguir este padrao:
 
 ```text
-MediatR
-FluentValidation
-FluentValidation.DependencyInjectionExtensions
+Controller
+  -> recebe Request/body/route/query string
+  -> cria Command ou Query usando mapper da API
+  -> chama _mediator.Send(commandOrQuery, cancellationToken)
+  -> recebe Result
+  -> converte Result para Response
+  -> retorna ActionResult
 ```
 
-Na Infrastructure ficam EF Core, repositories e implementacoes tecnicas:
+O controller deve conter apenas logica HTTP:
 
-```csharp
-public static class DependencyInjection
-{
-    public static IServiceCollection AddInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        IHostEnvironment environment)
-    {
-        services.AddDbContext<OficinaDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+- binding de parametros;
+- normalizacao simples de paginacao ou filtros;
+- escolha de status HTTP;
+- chamada ao mediator;
+- conversao para response.
 
-        services.AddScoped<IClienteRepository, ClienteRepository>();
-        services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
-        services.AddSingleton<IClock, BrazilClock>();
+O controller nao deve:
 
-        return services;
-    }
-}
-```
+- injetar repository;
+- injetar `OficinaDbContext`;
+- chamar handler concreto;
+- conter regra de negocio;
+- retornar `Result` da Application diretamente;
+- expor entidades de dominio.
 
-## 2. Separar Commands e Queries
-
-Hoje services como `ClienteApplicationService` misturam operacoes de escrita e leitura.
-
-Exemplo atual:
-
-```text
-CriarClienteAsync
-ObterClienteAsync
-ObterClientePorCpfCnpjAsync
-ListarClientesAsync
-AtualizarClientePorCpfCnpjAsync
-DeletarClientePorCpfCnpjAsync
-```
-
-Com CQRS, separar:
-
-```text
-Commands:
-- CriarCliente
-- AtualizarCliente
-- DeletarCliente
-
-Queries:
-- ObterCliente
-- ObterClientePorDocumento
-- ListarClientes
-```
-
-Estrutura sugerida:
-
-```text
-Application/
-  Commands/
-    Clientes/
-      CriarCliente/
-        CriarClienteCommand.cs
-        CriarClienteCommandHandler.cs
-      AtualizarCliente/
-        AtualizarClienteCommand.cs
-        AtualizarClienteCommandHandler.cs
-      DeletarCliente/
-        DeletarClienteCommand.cs
-        DeletarClienteCommandHandler.cs
-
-  Queries/
-    Clientes/
-      ObterClientePorDocumento/
-        ObterClientePorDocumentoQuery.cs
-        ObterClientePorDocumentoQueryHandler.cs
-      ListarClientes/
-        ListarClientesQuery.cs
-        ListarClientesQueryHandler.cs
-```
-
-## 3. Padronizar Request, Command, Query, Result e Response
-
-O fluxo de clientes ja segue parcialmente este caminho:
-
-```text
-CriarClienteRequest -> CriarClienteCommand -> ClienteResult -> ClienteResponse
-```
-
-Com CQRS e MediatR, o fluxo completo fica:
+## Fluxo Request -> Command/Query -> Handler -> Result -> Response
 
 ```text
 Request da API
   -> Command ou Query da Application
   -> IMediator
+  -> ValidationBehavior
   -> Handler da Application
+  -> Domain / Repository / Service de apoio
   -> Result da Application
   -> Response da API
 ```
 
-Exemplo:
+Exemplo real do modulo de clientes:
 
 ```text
 CriarClienteRequest
-  -> CriarClienteCommand
+  -> ClienteApiMapper.ToCommand()
+  -> CriarClienteCommand : IRequest<ClienteResult>
   -> IMediator.Send(command)
+  -> CriarClienteCommandValidator
   -> CriarClienteCommandHandler
+  -> Cliente.Criar(...)
+  -> IClienteRepository.CriarAsync(...)
   -> ClienteResult
+  -> ClienteApiMapper.ToResponse()
   -> ClienteResponse
 ```
 
-Esse padrao deve ser replicado em `Veiculos`, `Servicos`, `Pecas`, `OrdensDeServico` e `PedidosCompra`.
+### Request
 
-## 4. Exemplo de Command
+Fica em `src/API/Requests`.
 
-Command representa uma intencao de alterar estado.
+Representa o contrato HTTP de entrada. Deve ter somente os dados que o consumidor envia para a API. Pode ser validado por validators da API, como `CriarClienteRequestValidator`.
+
+### Command
+
+Fica em `src/Application/Commands`.
+
+Representa uma intencao de escrita. Deve implementar `IRequest<TResult>` ou `IRequest<Unit>`.
+
+Exemplos:
+
+- `CriarClienteCommand`
+- `AtualizarVeiculoCommand`
+- `CriarPedidoCompraCommand`
+- `LiberarExecucaoCommand`
+- `RegistrarPagamentoCommand`
+
+### Query
+
+Fica em `src/Application/Queries`.
+
+Representa uma consulta. Deve implementar `IRequest<TResult>` e nao deve alterar estado.
+
+Exemplos:
+
+- `ListarClientesQuery`
+- `ObterVeiculoPorPlacaQuery`
+- `ListarOrdensDeServicoQuery`
+- `ObterAcompanhamentoOSQuery`
+- `ObterMovimentacoesEstoqueOrdemDeServicoQuery`
+
+### Handler
+
+Fica em `src/Application/Handlers`.
+
+Executa o caso de uso. Deve implementar `IRequestHandler<TRequest,TResult>`.
+
+Responsabilidades:
+
+- carregar entidades por repositories;
+- aplicar value objects e regras de negocio;
+- chamar metodos das entidades;
+- coordenar servicos de apoio quando necessario;
+- persistir alteracoes por contratos de repositorio;
+- retornar Result;
+- lancar excecoes previsiveis da Application quando necessario.
+
+### Result
+
+Fica em `src/Application/Results`.
+
+Representa o retorno interno do caso de uso. Ele separa a Application dos contratos HTTP. Um Result pode ser convertido para uma Response pela API.
+
+### Response
+
+Fica em `src/API/Responses`.
+
+Representa o contrato HTTP de saida. Deve ser pensado para consumidores externos, sem vazar entidades de dominio nem detalhes de persistencia.
+
+## Como criar ou migrar um caso de uso
+
+Use esta ordem para manter consistencia:
+
+1. Criar ou ajustar o `Request` em `API/Requests`, quando o endpoint recebe body.
+2. Criar ou ajustar o `Response` em `API/Responses`, quando o retorno publico muda.
+3. Criar o `Command` ou `Query` em `Application/Commands` ou `Application/Queries`.
+4. Criar o validator do Command/Query em `Application/Validators`.
+5. Criar o `Handler` em `Application/Handlers`.
+6. Usar entidades, value objects e repositories pelo handler.
+7. Retornar um `Result` de `Application/Results`.
+8. Criar ou atualizar o mapper da Application, quando houver conversao de entidade para Result.
+9. Criar ou atualizar o mapper da API para `Request -> Command/Query` e `Result -> Response`.
+10. Ajustar o controller para chamar somente `_mediator.Send(...)`.
+11. Cobrir com teste unitario de handler e, quando o fluxo HTTP mudar, teste de integracao de endpoint.
+
+## Exemplo de Command
 
 ```csharp
 public sealed class CriarClienteCommand : IRequest<ClienteResult>
@@ -227,14 +241,6 @@ public sealed class CriarClienteCommandHandler
 {
     private readonly IClienteRepository _clienteRepository;
     private readonly IClock _clock;
-
-    public CriarClienteCommandHandler(
-        IClienteRepository clienteRepository,
-        IClock clock)
-    {
-        _clienteRepository = clienteRepository;
-        _clock = clock;
-    }
 
     public async Task<ClienteResult> Handle(
         CriarClienteCommand command,
@@ -266,9 +272,7 @@ public sealed class CriarClienteCommandHandler
 }
 ```
 
-## 5. Exemplo de Query
-
-Query representa uma consulta. Ela nao deve alterar estado.
+## Exemplo de Query
 
 ```csharp
 public sealed class ObterClientePorDocumentoQuery : IRequest<ClienteResult>
@@ -284,11 +288,6 @@ public sealed class ObterClientePorDocumentoQueryHandler
     : IRequestHandler<ObterClientePorDocumentoQuery, ClienteResult>
 {
     private readonly IClienteRepository _clienteRepository;
-
-    public ObterClientePorDocumentoQueryHandler(IClienteRepository clienteRepository)
-    {
-        _clienteRepository = clienteRepository;
-    }
 
     public async Task<ClienteResult> Handle(
         ObterClientePorDocumentoQuery query,
@@ -311,420 +310,75 @@ public sealed class ObterClientePorDocumentoQueryHandler
 }
 ```
 
-## 6. Controller usando CQRS com MediatR
+## Validacao com pipeline behavior
 
-O controller deixa de depender de um service grande ou de handlers concretos. Ele depende apenas de `IMediator`.
-
-```csharp
-[ApiController]
-[Authorize]
-[Route("api/v1/[controller]")]
-public class ClientesController : ControllerBase
-{
-    private readonly IMediator _mediator;
-
-    public ClientesController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
-    [HttpPost]
-    public async Task<ActionResult<ClienteResponse>> Criar(
-        [FromBody] CriarClienteRequest request,
-        CancellationToken cancellationToken)
-    {
-        var result = await _mediator.Send(
-            request.ToCommand(),
-            cancellationToken);
-
-        var response = result.ToResponse();
-
-        return CreatedAtAction(
-            nameof(ObterPorDocumento),
-            new { cpfCnpj = response.CpfCnpj },
-            response);
-    }
-
-    [HttpGet("documento/{cpfCnpj}")]
-    public async Task<ActionResult<ClienteResponse>> ObterPorDocumento(
-        string cpfCnpj,
-        CancellationToken cancellationToken)
-    {
-        var result = await _mediator.Send(
-            new ObterClientePorDocumentoQuery { CpfCnpj = cpfCnpj },
-            cancellationToken);
-
-        return Ok(result.ToResponse());
-    }
-}
-```
-
-## 7. Repositorios como abstracoes da Application
-
-Atualmente os contratos estao em `src/Domain/Repositories`.
-
-Uma alternativa mais alinhada a Clean Architecture e mover esses contratos para:
-
-```text
-Application/Abstractions/Repositories/
-```
-
-Exemplo:
+`AddApplication()` registra:
 
 ```csharp
-namespace Fiap.TechChallenge.OficinaMecanica.Application.Abstractions.Repositories;
+services.AddMediatR(config =>
+    config.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
 
-public interface IClienteRepository
-{
-    Task<Cliente?> ObterPorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken);
-    Task<Cliente> CriarAsync(Cliente cliente, CancellationToken cancellationToken);
-    Task<Cliente> AtualizarAsync(Cliente cliente, CancellationToken cancellationToken);
-    Task DeletarAsync(int id, CancellationToken cancellationToken);
-}
+services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 ```
 
-A implementacao continua na Infrastructure:
+O `ValidationBehavior<TRequest,TResponse>` busca todos os `IValidator<TRequest>` registrados e executa a validacao antes do handler. Quando ha erro, ele lanca `ServiceValidationException`, que a API converte em resposta HTTP padronizada.
 
-```text
-Infrastructure/Repositories/ClienteRepository.cs
-```
-
-## 8. Queries podem usar repositorios de leitura
-
-No inicio, Commands e Queries podem usar os mesmos repositories.
-
-Se as consultas crescerem ou precisarem de performance, crie repositories especificos de leitura:
-
-```text
-Application/Abstractions/ReadModels/IClienteReadRepository.cs
-Infrastructure/ReadModels/ClienteReadRepository.cs
-```
-
-Exemplo:
-
-```csharp
-public interface IClienteReadRepository
-{
-    Task<ClienteResult?> ObterPorDocumentoAsync(
-        string cpfCnpj,
-        CancellationToken cancellationToken);
-}
-```
-
-Esse tipo de repository pode retornar direto um `Result`, sem carregar o agregado completo, desde que nao altere estado.
-
-## 9. Commands usam o dominio
-
-Commands devem passar pelas entidades de dominio e respeitar invariantes.
-
-Exemplo em ordem de servico:
-
-```csharp
-ordem.AdicionarServico(servico);
-ordem.FinalizarDiagnostico();
-ordem.LiberarExecucaoAposValidacaoEstoque();
-ordem.Entregar();
-```
-
-Evite alterar estado diretamente:
-
-```csharp
-ordem.Status = StatusOrdemDeServico.Finalizada;
-```
-
-Prefira metodos de negocio:
-
-```csharp
-ordem.FinalizarServico();
-```
-
-## 10. Remover dependencia ASP.NET da Application
-
-A camada Application deve depender de abstracoes proprias, nao de detalhes HTTP.
-
-Exemplo:
-
-```csharp
-public interface ICurrentUser
-{
-    string? Id { get; }
-    string? Nome { get; }
-}
-```
-
-A implementacao que usa `HttpContext` deve ficar na API:
-
-```csharp
-public sealed class UsuarioAutenticadoService : ICurrentUser
-{
-    private readonly IHttpContextAccessor _httpContextAccessor;
-
-    public string? Id =>
-        _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-}
-```
-
-Com isso, a Application nao precisa referenciar ASP.NET Core.
-
-## 11. Extrair geracao de JWT
-
-O login pode ser modelado como Command:
-
-```text
-Application/Commands/Auth/Login/
-  LoginCommand.cs
-  LoginCommandHandler.cs
-```
-
-A geracao concreta do JWT deve ficar fora da Application:
-
-```csharp
-public interface ITokenGenerator
-{
-    LoginResult Generate(Usuario usuario);
-}
-```
-
-Handler:
-
-```csharp
-public sealed class LoginCommandHandler
-    : IRequestHandler<LoginCommand, LoginResult>
-{
-    private readonly IUsuarioRepository _usuarioRepository;
-    private readonly ITokenGenerator _tokenGenerator;
-
-    public async Task<LoginResult> Handle(
-        LoginCommand command,
-        CancellationToken cancellationToken)
-    {
-        var usuario = await _usuarioRepository.ObterPorUsuarioAsync(
-            command.Usuario,
-            cancellationToken);
-
-        if (usuario == null)
-        {
-            throw new ServiceUnauthorizedException("Usuario ou senha invalidos.");
-        }
-
-        var senhaHash = StringHelper.ToMd5Hash(command.Senha);
-
-        if (!string.Equals(senhaHash, usuario.SenhaHash, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ServiceUnauthorizedException("Usuario ou senha invalidos.");
-        }
-
-        return _tokenGenerator.Generate(usuario);
-    }
-}
-```
-
-## 12. Validacao com CQRS e pipeline behavior
-
-Valide entrada por Command ou Query.
+Padrao de pastas:
 
 ```text
 Application/Validators/Clientes/CriarClienteCommandValidator.cs
-Application/Validators/Clientes/AtualizarClienteCommandValidator.cs
 Application/Validators/Clientes/ListarClientesQueryValidator.cs
+Application/Validators/OrdensDeServico/LiberarExecucaoCommandValidator.cs
 ```
 
-Exemplo:
+Validadores de `API/Validators` continuam existindo para o contrato HTTP. Validadores de `Application/Validators` validam o caso de uso.
 
-```csharp
-public sealed class CriarClienteCommandValidator : AbstractValidator<CriarClienteCommand>
-{
-    public CriarClienteCommandValidator()
-    {
-        RuleFor(x => x.Nome).NotEmpty().MaximumLength(255);
-        RuleFor(x => x.CpfCnpj).NotEmpty();
-        RuleFor(x => x.Telefone).NotEmpty();
-        RuleFor(x => x.Email).NotEmpty().EmailAddress();
-    }
-}
-```
+## Repositories e Infrastructure
 
-Com MediatR, a validacao pode rodar automaticamente antes do handler usando um pipeline behavior:
-
-```csharp
-public sealed class ValidationBehavior<TRequest, TResponse>
-    : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : notnull
-{
-    private readonly IEnumerable<IValidator<TRequest>> _validators;
-
-    public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
-    {
-        _validators = validators;
-    }
-
-    public async Task<TResponse> Handle(
-        TRequest request,
-        RequestHandlerDelegate<TResponse> next,
-        CancellationToken cancellationToken)
-    {
-        var context = new ValidationContext<TRequest>(request);
-        var failures = await Task.WhenAll(
-            _validators.Select(validator => validator.ValidateAsync(context, cancellationToken)));
-
-        var errors = failures
-            .SelectMany(result => result.Errors)
-            .Where(error => error != null)
-            .ToArray();
-
-        if (errors.Length > 0)
-        {
-            throw new ServiceValidationException(
-                string.Join("; ", errors.Select(error => error.ErrorMessage)));
-        }
-
-        return await next();
-    }
-}
-```
-
-Regras de negocio continuam no Domain:
-
-```csharp
-if (Status != StatusOrdemDeServico.EmDiagnostico)
-{
-    throw new InvalidOperationException(
-        "So e possivel adicionar servicos durante o diagnostico.");
-}
-```
-
-## 13. Pipeline behaviors para logging e transacao
-
-Depois da validacao, o proximo passo natural e usar pipeline behaviors para centralizar cross-cutting concerns.
-
-Exemplos:
+No estado atual, os contratos ficam em:
 
 ```text
-LoggingBehavior<TRequest, TResponse>
-TransactionBehavior<TRequest, TResponse>
+Domain/Repositories/
 ```
 
-Uso esperado:
-
-- `ValidationBehavior` valida commands e queries antes do handler.
-- `LoggingBehavior` padroniza logs de entrada, saida e falha.
-- `TransactionBehavior` abre transacao apenas para requests de escrita.
-
-Se necessario, uma interface marcador pode ajudar a limitar transacao apenas para Commands:
-
-```csharp
-public interface ICommand<TResult> : IRequest<TResult>
-{
-}
-```
-
-## 14. Fortalecer value objects
-
-O projeto ja possui value objects como `Documento`, `Telefone` e `PlacaVeiculo`.
-
-A evolucao e fazer as entidades usarem esses tipos internamente sempre que possivel:
-
-```csharp
-public Documento Documento { get; private set; }
-public Telefone Telefone { get; private set; }
-```
-
-Essa mudanca exige mapeamento adequado no EF Core, usando owned types ou conversions.
-
-## 15. Encapsular entidades
-
-Entidades devem expor comportamento, nao apenas dados mutaveis.
-
-```csharp
-public string Nome { get; private set; }
-
-public void AtualizarNome(string nome)
-{
-    if (string.IsNullOrWhiteSpace(nome))
-    {
-        throw new ArgumentException("Nome e obrigatorio.");
-    }
-
-    Nome = nome.Trim();
-}
-```
-
-Esse padrao deve ser aplicado gradualmente em entidades que ainda tenham setters publicos.
-
-## 16. Padronizar erros com ProblemDetails
-
-O `DomainExceptionFilter` pode evoluir para retornar `ProblemDetails`, padrao do ASP.NET Core.
-
-```csharp
-return new ProblemDetails
-{
-    Title = "Erro de validacao",
-    Detail = exception.Message,
-    Status = StatusCodes.Status400BadRequest,
-    Instance = context.HttpContext.Request.Path
-};
-```
-
-Isso melhora a interoperabilidade da API e facilita documentacao.
-
-## 17. Separar mapeamentos do DbContext
-
-O `OficinaDbContext` concentra muitos mapeamentos no `OnModelCreating`.
-
-A melhoria e separar em configuracoes por entidade:
+As implementacoes ficam em:
 
 ```text
-Infrastructure/Data/Configurations/ClienteConfiguration.cs
-Infrastructure/Data/Configurations/VeiculoConfiguration.cs
-Infrastructure/Data/Configurations/OrdemDeServicoConfiguration.cs
+Infrastructure/Repositories/
 ```
 
-No DbContext:
+`AddInfrastructure()` registra os repositories concretos, `OficinaDbContext`, `ITransactionManager`, `IClock` e `ITokenGenerator`.
 
-```csharp
-protected override void OnModelCreating(ModelBuilder modelBuilder)
-{
-    base.OnModelCreating(modelBuilder);
-    modelBuilder.ApplyConfigurationsFromAssembly(typeof(OficinaDbContext).Assembly);
-}
-```
+Essa estrutura e valida para a migracao atual. Se a equipe decidir mover contratos de repositorio para `Application/Interfaces` no futuro, a mudanca deve ser feita de forma planejada e atualizada nesta documentacao.
 
-## 18. Estrutura sugerida para Ordens de Servico
+## Ordem real para continuar a migracao
 
-Como ordem de servico e o agregado principal do projeto, CQRS ajuda a organizar melhor esse fluxo.
+1. Manter todo endpoint novo usando `IMediator`.
+2. Criar Commands para escrita e Queries para leitura.
+3. Criar um Handler por caso de uso.
+4. Criar validator de Application para cada Command/Query que tenha entrada validavel.
+5. Manter regra de negocio em entidades/value objects sempre que ela for invariante do dominio.
+6. Usar services de apoio apenas quando houver coordenacao entre multiplos repositories ou regras transversais de um agregado.
+7. Retornar Results da Application e converter para Responses na API.
+8. Atualizar testes unitarios de handlers e testes de integracao de endpoints.
+9. Remover qualquer chamada direta de controller para repository, DbContext ou handler concreto caso apareca em codigo novo.
+10. Revisar a dependencia `Microsoft.AspNetCore.App` da Application em uma etapa futura, garantindo antes que nenhum caso de uso dependa de tipos HTTP.
 
-Commands:
+## Regras para novas implementacoes
 
-```text
-Commands/OrdensDeServico/CriarOrdemDeServico
-Commands/OrdensDeServico/IniciarDiagnostico
-Commands/OrdensDeServico/AdicionarServico
-Commands/OrdensDeServico/AdicionarPeca
-Commands/OrdensDeServico/FinalizarDiagnostico
-Commands/OrdensDeServico/AprovarOrcamento
-Commands/OrdensDeServico/LiberarExecucao
-Commands/OrdensDeServico/FinalizarServico
-Commands/OrdensDeServico/RegistrarPagamento
-Commands/OrdensDeServico/Entregar
-Commands/OrdensDeServico/Cancelar
-```
+- Controller injeta apenas `IMediator` e dependencias estritamente HTTP.
+- Command altera estado; Query nao altera estado.
+- Handler nao retorna Response da API.
+- Handler nao recebe Request da API.
+- Entity nao recebe DTO, Request, Response ou Result.
+- Infrastructure nao deve ser chamada diretamente pela API fora do composition root.
+- Validacao de entrada fica em validators; invariantes ficam no dominio.
+- Result e o contrato entre Application e API.
+- Response e o contrato entre API e consumidor externo.
 
-Queries:
+## Quando usar CQRS simples ou completo
 
-```text
-Queries/OrdensDeServico/ObterOrdemDeServico
-Queries/OrdensDeServico/ListarOrdensDeServico
-Queries/OrdensDeServico/ObterHistorico
-Queries/OrdensDeServico/ObterNotificacoes
-Queries/OrdensDeServico/ObterMovimentacoesEstoque
-Queries/OrdensDeServico/ObterMonitoramento
-Queries/OrdensDeServico/ObterEstimativaTempoServico
-Queries/AcompanhamentoOS/ObterAcompanhamentoPublico
-```
-
-## 19. Quando usar CQRS com MediatR simples ou completo
-
-Para este projeto, a recomendacao inicial e CQRS com MediatR simples:
+O projeto usa CQRS simples:
 
 ```text
 Mesmo banco.
@@ -732,44 +386,16 @@ Mesmo DbContext.
 Sem mensageria obrigatoria.
 Sem banco de leitura separado.
 Separacao entre Commands, Queries e Handlers via MediatR.
-Controllers chamando apenas IMediator.
+Controllers chamando IMediator.
 ```
 
-CQRS completo com projections, eventos, mensageria e banco separado so faria sentido com necessidade real de escala, alto volume de leitura, relatorios pesados ou integracoes assincronas.
+CQRS completo com projections, eventos, mensageria e banco separado so deve ser considerado se houver necessidade concreta de escala, alto volume de leitura, relatorios pesados ou integracoes assincronas.
 
-## Ordem recomendada de implementacao
+## Checklist de aceite para mudancas futuras
 
-1. Criar `AddApplication()` e `AddInfrastructure()`.
-2. Adicionar MediatR na Application.
-3. Registrar `AddMediatR` em `AddApplication()`.
-4. Criar `ValidationBehavior<TRequest, TResponse>` com FluentValidation.
-5. Separar mappings EF com `IEntityTypeConfiguration<T>`.
-6. Escolher um modulo piloto, preferencialmente `Clientes`.
-7. Converter `Clientes` para CQRS com MediatR:
-   - `CriarClienteCommand : IRequest<ClienteResult>`
-   - `CriarClienteCommandHandler : IRequestHandler<CriarClienteCommand, ClienteResult>`
-   - `AtualizarClienteCommand`
-   - `DeletarClienteCommand`
-   - `ObterClientePorDocumentoQuery`
-   - `ListarClientesQuery`
-8. Alterar o controller de `Clientes` para usar apenas `IMediator`.
-9. Aplicar o mesmo padrao em `Veiculos`.
-10. Extrair JWT para `ITokenGenerator`.
-11. Remover dependencias ASP.NET da Application.
-12. Avaliar repositories de leitura para consultas mais pesadas.
-13. Converter `OrdensDeServico` por partes, priorizando commands de alteracao de status.
-14. Manter o dominio encapsulado e sem dependencia de infraestrutura.
-
-## Resultado esperado
-
-Com essa evolucao, o projeto passa a ter:
-
-- controllers mais simples;
-- casos de uso menores e mais testaveis;
-- separacao clara entre leitura e escrita;
-- uso padronizado de `IMediator` entre API e Application;
-- possibilidade de pipeline behaviors para validacao, logging e transacao;
-- menos acoplamento entre API e Application;
-- dominio mais protegido;
-- Infrastructure isolada como detalhe tecnico;
-- estrutura mais aderente a Clean Architecture sem complexidade desnecessaria.
+- A documentacao de arquitetura continua refletindo a estrutura real.
+- Nao ha referencias a services antigos como fluxo principal.
+- Todo endpoint novo segue `Controller -> IMediator -> Handler`.
+- Commands, Queries, Handlers, Results e Responses estao nas pastas corretas.
+- Testes cobrem handlers novos ou alterados.
+- README e docs sao atualizados quando dependencias, execucao ou estrutura mudarem.
