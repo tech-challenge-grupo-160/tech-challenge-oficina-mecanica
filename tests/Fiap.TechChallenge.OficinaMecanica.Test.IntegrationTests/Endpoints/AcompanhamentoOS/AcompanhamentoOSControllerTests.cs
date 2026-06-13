@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.AcompanhamentoOS;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Infrastructure;
 using FluentAssertions;
@@ -30,7 +30,7 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
         var response = await _client.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<AcompanhamentoOrdemDeServicoDto>();
+        var body = await response.Content.ReadFromJsonAsync<AcompanhamentoOrdemDeServicoResponse>();
         body.Should().NotBeNull();
         body!.Numero.Should().Be(ordemCriada.Numero);
         body.CodigoAcompanhamento.Should().Be(ordemCriada.CodigoAcompanhamento);
@@ -99,7 +99,7 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
         return ordem;
     }
 
-    private async Task<AcompanhamentoOrdemDeServicoDto> ObterAcompanhamentoAsync(string codigo, string token)
+    private async Task<AcompanhamentoOrdemDeServicoResponse> ObterAcompanhamentoAsync(string codigo, string token)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/acompanhamento-os/{codigo}");
         request.Headers.TryAddWithoutValidation("X-Tracking-Token", token);
@@ -107,7 +107,7 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
         var response = await _client.SendAsync(request);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var body = await response.Content.ReadFromJsonAsync<AcompanhamentoOrdemDeServicoDto>();
+        var body = await response.Content.ReadFromJsonAsync<AcompanhamentoOrdemDeServicoResponse>();
         body.Should().NotBeNull();
         return body!;
     }
