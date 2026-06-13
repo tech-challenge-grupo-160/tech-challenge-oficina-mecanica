@@ -2,8 +2,8 @@ using Fiap.TechChallenge.OficinaMecanica.API.Requests.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Clientes;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Clientes;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results;
 using Fiap.TechChallenge.OficinaMecanica.Application.Results.Clientes;
 
 namespace Fiap.TechChallenge.OficinaMecanica.API.Mappers;
@@ -61,7 +61,7 @@ public static class ClienteApiMapper
         };
     }
 
-    public static PagedResponse<ClienteResponse> ToResponse(this PagedResultDto<ClienteResult> result)
+    public static PagedResponse<ClienteResponse> ToResponse(this PagedResult<ClienteResult> result)
     {
         return new PagedResponse<ClienteResponse>
         {
