@@ -1,7 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.OrdensDeServico;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Infrastructure;
 using FluentAssertions;
 
@@ -33,7 +34,7 @@ public class PedidosCompraControllerTests : IClassFixture<CustomWebApplicationFa
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var resultado = await response.Content.ReadFromJsonAsync<PagedResultDto<PedidoCompraDto>>();
+        var resultado = await response.Content.ReadFromJsonAsync<PagedResponse<PedidoCompraResponse>>();
         resultado.Should().NotBeNull();
         resultado!.Items.Should().HaveCount(1);
         resultado.Page.Should().Be(1);
@@ -64,7 +65,7 @@ public class PedidosCompraControllerTests : IClassFixture<CustomWebApplicationFa
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var pedido = await response.Content.ReadFromJsonAsync<PedidoCompraDto>();
+        var pedido = await response.Content.ReadFromJsonAsync<PedidoCompraResponse>();
         pedido.Should().NotBeNull();
         pedido!.OrdemDeServicoId.Should().Be(ordem.Id);
         pedido.PecaId.Should().Be(CustomWebApplicationFactory.PecaExistenteId);

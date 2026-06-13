@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.OrdensDeServico;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Infrastructure;
 using FluentAssertions;
 
@@ -249,7 +249,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var pedidosResponse = await _client.GetAsync($"/api/v1/pedidos-compra/ordem/{ordemCriada.Id}");
 
         pedidosResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var pedidos = await pedidosResponse.Content.ReadFromJsonAsync<List<PedidoCompraDto>>();
+        var pedidos = await pedidosResponse.Content.ReadFromJsonAsync<List<PedidoCompraResponse>>();
         pedidos.Should().NotBeNull();
         pedidos.Should().ContainSingle();
         pedidos![0].QuantidadeSolicitada.Should().Be(1);
@@ -260,7 +260,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
             new { quantidadeRecebida = 1 });
 
         receberPedido.StatusCode.Should().Be(HttpStatusCode.OK);
-        var pedidoRecebido = await receberPedido.Content.ReadFromJsonAsync<PedidoCompraDto>();
+        var pedidoRecebido = await receberPedido.Content.ReadFromJsonAsync<PedidoCompraResponse>();
         pedidoRecebido.Should().NotBeNull();
         pedidoRecebido!.Status.Should().Be("Recebido");
         pedidoRecebido.QuantidadeRecebida.Should().Be(1);

@@ -1,9 +1,9 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.PedidosCompra;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
@@ -49,8 +49,8 @@ public class PedidoCompraHandlersTests
         var peca = PecaMock.Criar(id: 1000);
 
         _transactionManagerMock
-            .Setup(x => x.ExecuteAsync(It.IsAny<Func<CancellationToken, Task<PedidoCompraDto>>>(), It.IsAny<CancellationToken>()))
-            .Returns((Func<CancellationToken, Task<PedidoCompraDto>> action, CancellationToken ct) => action(ct));
+            .Setup(x => x.ExecuteAsync(It.IsAny<Func<CancellationToken, Task<PedidoCompraResult>>>(), It.IsAny<CancellationToken>()))
+            .Returns((Func<CancellationToken, Task<PedidoCompraResult>> action, CancellationToken ct) => action(ct));
         _ordemDeServicoRepositoryMock
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ordem);
@@ -125,8 +125,8 @@ public class PedidoCompraHandlersTests
         var peca = PecaMock.Criar(id: 1000, quantidadeEstoque: 7);
 
         _transactionManagerMock
-            .Setup(x => x.ExecuteAsync(It.IsAny<Func<CancellationToken, Task<PedidoCompraDto>>>(), It.IsAny<CancellationToken>()))
-            .Returns((Func<CancellationToken, Task<PedidoCompraDto>> action, CancellationToken ct) => action(ct));
+            .Setup(x => x.ExecuteAsync(It.IsAny<Func<CancellationToken, Task<PedidoCompraResult>>>(), It.IsAny<CancellationToken>()))
+            .Returns((Func<CancellationToken, Task<PedidoCompraResult>> action, CancellationToken ct) => action(ct));
         _pedidoCompraRepositoryMock
             .Setup(x => x.ObterPorIdAsync(pedido.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(pedido);
