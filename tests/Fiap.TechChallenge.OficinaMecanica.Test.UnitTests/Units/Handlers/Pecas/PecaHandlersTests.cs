@@ -1,6 +1,6 @@
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Pecas;
 using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Pecas;
-using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;

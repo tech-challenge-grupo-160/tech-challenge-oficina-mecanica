@@ -1,8 +1,8 @@
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
-using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Repositories;
 using FluentAssertions;

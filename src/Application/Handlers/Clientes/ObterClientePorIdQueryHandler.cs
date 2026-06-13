@@ -1,8 +1,8 @@
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Results.Clientes;
-using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using MediatR;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Clientes;

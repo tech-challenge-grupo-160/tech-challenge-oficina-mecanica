@@ -1,7 +1,7 @@
-using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+namespace Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
 
 public interface IOrdemDeServicoRepository
 {

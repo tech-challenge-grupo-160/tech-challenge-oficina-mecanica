@@ -1,6 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+namespace Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
 
 public interface IOrdemServicoHistoricoRepository
 {
