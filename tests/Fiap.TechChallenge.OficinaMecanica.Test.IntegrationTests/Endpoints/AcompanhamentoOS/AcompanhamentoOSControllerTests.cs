@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.AcompanhamentoOS;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Infrastructure;
@@ -50,8 +51,17 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
         var response = await _client.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        var body = await response.Content.ReadAsStringAsync();
-        body.Should().Contain("Acompanhamento nao encontrado");
+        response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
+
+        await using var body = await response.Content.ReadAsStreamAsync();
+        using var problemDetails = await JsonDocument.ParseAsync(body);
+        var root = problemDetails.RootElement;
+
+        root.GetProperty("status").GetInt32().Should().Be((int)HttpStatusCode.NotFound);
+        root.GetProperty("title").GetString().Should().Be("Recurso nao encontrado.");
+        root.GetProperty("detail").GetString().Should().Contain("Acompanhamento nao encontrado");
+        root.GetProperty("instance").GetString().Should().Be($"/api/v1/acompanhamento-os/{ordemCriada.CodigoAcompanhamento}");
+        root.GetProperty("traceId").GetString().Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
