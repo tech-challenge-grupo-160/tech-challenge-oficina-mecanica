@@ -1,5 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.API.Mappers;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.API.Requests.PedidosCompra;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.PedidosCompra;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -20,14 +22,15 @@ public class PedidosCompraController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<PedidoCompraDto>> Criar([FromBody] CriarPedidoCompraDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<PedidoCompraResponse>> Criar([FromBody] CriarPedidoCompraRequest request, CancellationToken cancellationToken)
     {
-        var pedido = await _mediator.Send(dto.ToCommand(), cancellationToken);
-        return CreatedAtAction(nameof(ListarPorOrdemDeServico), new { ordemDeServicoId = pedido.OrdemDeServicoId }, pedido);
+        var pedido = await _mediator.Send(request.ToCommand(), cancellationToken);
+        var response = pedido.ToResponse();
+        return CreatedAtAction(nameof(ListarPorOrdemDeServico), new { ordemDeServicoId = response.OrdemDeServicoId }, response);
     }
 
     [HttpGet]
-    public async Task<ActionResult<PagedResultDto<PedidoCompraDto>>> Listar(
+    public async Task<ActionResult<PagedResponse<PedidoCompraResponse>>> Listar(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken = default)
@@ -37,23 +40,23 @@ public class PedidosCompraController : ControllerBase
             Page = page,
             PageSize = pageSize
         }, cancellationToken);
-        return Ok(pedidos);
+        return Ok(pedidos.ToResponse());
     }
 
     [HttpGet("ordem/{ordemDeServicoId:int}")]
-    public async Task<ActionResult<IEnumerable<PedidoCompraDto>>> ListarPorOrdemDeServico(int ordemDeServicoId, CancellationToken cancellationToken)
+    public async Task<ActionResult<IEnumerable<PedidoCompraResponse>>> ListarPorOrdemDeServico(int ordemDeServicoId, CancellationToken cancellationToken)
     {
         var pedidos = await _mediator.Send(new ListarPedidosCompraPorOrdemQuery
         {
             OrdemDeServicoId = ordemDeServicoId
         }, cancellationToken);
-        return Ok(pedidos);
+        return Ok(pedidos.ToResponse());
     }
 
     [HttpPatch("{id:int}/receber")]
-    public async Task<ActionResult<PedidoCompraDto>> RegistrarRecebimento(int id, [FromBody] ReceberPedidoCompraDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<PedidoCompraResponse>> RegistrarRecebimento(int id, [FromBody] ReceberPedidoCompraRequest request, CancellationToken cancellationToken)
     {
-        var pedido = await _mediator.Send(dto.ToCommand(id), cancellationToken);
-        return Ok(pedido);
+        var pedido = await _mediator.Send(request.ToCommand(id), cancellationToken);
+        return Ok(pedido.ToResponse());
     }
 }

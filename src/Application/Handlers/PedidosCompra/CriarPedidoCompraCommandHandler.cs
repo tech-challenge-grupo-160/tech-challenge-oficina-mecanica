@@ -1,8 +1,8 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.PedidosCompra;
 
-public sealed class CriarPedidoCompraCommandHandler : IRequestHandler<CriarPedidoCompraCommand, PedidoCompraDto>
+public sealed class CriarPedidoCompraCommandHandler : IRequestHandler<CriarPedidoCompraCommand, PedidoCompraResult>
 {
     private const string LoggerName = nameof(CriarPedidoCompraCommandHandler);
     private readonly IPedidoCompraRepository _pedidoCompraRepository;
@@ -45,7 +45,7 @@ public sealed class CriarPedidoCompraCommandHandler : IRequestHandler<CriarPedid
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public async Task<PedidoCompraDto> Handle(CriarPedidoCompraCommand command, CancellationToken cancellationToken)
+    public async Task<PedidoCompraResult> Handle(CriarPedidoCompraCommand command, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -90,7 +90,7 @@ public sealed class CriarPedidoCompraCommandHandler : IRequestHandler<CriarPedid
                         token);
 
                     _logger.LogInformation(LogTemplate.End, LoggerName, $"Pedido de compra {pedido.Id} criado manualmente com sucesso.");
-                    return pedido.ToDto();
+                    return pedido.ToResult();
                 },
                 cancellationToken);
         }

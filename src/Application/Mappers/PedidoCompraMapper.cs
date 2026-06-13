@@ -1,13 +1,13 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 
 public static class PedidoCompraMapper
 {
-    public static PedidoCompraDto ToDto(this PedidoCompra pedidoCompra)
+    public static PedidoCompraResult ToResult(this PedidoCompra pedidoCompra)
     {
-        return new PedidoCompraDto
+        return new PedidoCompraResult
         {
             Id = pedidoCompra.Id,
             OrdemDeServicoId = pedidoCompra.OrdemDeServicoId,

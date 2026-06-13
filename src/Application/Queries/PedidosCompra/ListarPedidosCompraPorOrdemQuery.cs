@@ -1,9 +1,9 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.PedidosCompra;
 using MediatR;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Queries.PedidosCompra;
 
-public sealed class ListarPedidosCompraPorOrdemQuery : IRequest<IEnumerable<PedidoCompraDto>>
+public sealed class ListarPedidosCompraPorOrdemQuery : IRequest<IEnumerable<PedidoCompraResult>>
 {
     public int OrdemDeServicoId { get; init; }
 }
