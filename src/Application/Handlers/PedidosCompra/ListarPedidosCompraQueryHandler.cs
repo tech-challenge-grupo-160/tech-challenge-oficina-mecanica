@@ -1,8 +1,8 @@
+using Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Application.Results;
 using Fiap.TechChallenge.OficinaMecanica.Application.Results.PedidosCompra;
-using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using MediatR;
 using Microsoft.Extensions.Logging;

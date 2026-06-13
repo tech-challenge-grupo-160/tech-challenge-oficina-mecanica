@@ -1,6 +1,6 @@
+using Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
-using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using MediatR;

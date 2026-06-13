@@ -1,9 +1,9 @@
+using Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
-using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Commands;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Repositories;
