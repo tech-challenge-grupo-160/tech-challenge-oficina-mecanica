@@ -1,6 +1,7 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.PedidosCompra;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using MediatR;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.PedidosCompra;
 
-public sealed class ListarPedidosCompraQueryHandler : IRequestHandler<ListarPedidosCompraQuery, PagedResultDto<PedidoCompraDto>>
+public sealed class ListarPedidosCompraQueryHandler : IRequestHandler<ListarPedidosCompraQuery, PagedResult<PedidoCompraResult>>
 {
     private const string LoggerName = nameof(ListarPedidosCompraQueryHandler);
     private readonly IPedidoCompraRepository _pedidoCompraRepository;
@@ -22,7 +23,7 @@ public sealed class ListarPedidosCompraQueryHandler : IRequestHandler<ListarPedi
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public async Task<PagedResultDto<PedidoCompraDto>> Handle(ListarPedidosCompraQuery query, CancellationToken cancellationToken)
+    public async Task<PagedResult<PedidoCompraResult>> Handle(ListarPedidosCompraQuery query, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -31,9 +32,9 @@ public sealed class ListarPedidosCompraQueryHandler : IRequestHandler<ListarPedi
             var totalItems = await _pedidoCompraRepository.ContarAsync(cancellationToken);
             var pedidos = await _pedidoCompraRepository.ObterPaginadoAsync(query.Page, query.PageSize, cancellationToken);
 
-            var resultado = new PagedResultDto<PedidoCompraDto>
+            var resultado = new PagedResult<PedidoCompraResult>
             {
-                Items = pedidos.Select(pedido => pedido.ToDto()).ToArray(),
+                Items = pedidos.Select(pedido => pedido.ToResult()).ToArray(),
                 Page = query.Page,
                 PageSize = query.PageSize,
                 TotalItems = totalItems,

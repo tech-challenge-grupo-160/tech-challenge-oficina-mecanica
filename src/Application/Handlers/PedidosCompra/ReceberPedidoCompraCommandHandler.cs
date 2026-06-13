@@ -1,8 +1,8 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
+using Fiap.TechChallenge.OficinaMecanica.Application.Results.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.PedidosCompra;
 
-public sealed class ReceberPedidoCompraCommandHandler : IRequestHandler<ReceberPedidoCompraCommand, PedidoCompraDto>
+public sealed class ReceberPedidoCompraCommandHandler : IRequestHandler<ReceberPedidoCompraCommand, PedidoCompraResult>
 {
     private const string LoggerName = nameof(ReceberPedidoCompraCommandHandler);
     private readonly IPedidoCompraRepository _pedidoCompraRepository;
@@ -45,7 +45,7 @@ public sealed class ReceberPedidoCompraCommandHandler : IRequestHandler<ReceberP
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
-    public async Task<PedidoCompraDto> Handle(ReceberPedidoCompraCommand command, CancellationToken cancellationToken)
+    public async Task<PedidoCompraResult> Handle(ReceberPedidoCompraCommand command, CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -105,7 +105,7 @@ public sealed class ReceberPedidoCompraCommandHandler : IRequestHandler<ReceberP
                     pedido.VincularPeca(peca);
 
                     _logger.LogInformation(LogTemplate.End, LoggerName, $"Recebimento do pedido de compra {pedido.Id} registrado com sucesso.");
-                    return pedido.ToDto();
+                    return pedido.ToResult();
                 },
                 cancellationToken);
         }
