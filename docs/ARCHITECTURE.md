@@ -1,120 +1,281 @@
 # Arquitetura
 
-## Visão geral
+## Visao geral
 
-A solução é um monólito em camadas orientado a casos de uso. O domínio principal é a ordem de serviço, integrado ao controle de estoque, movimentações e pedidos de compra para suportar o avanço seguro dos status da OS.
+A solucao e uma API REST em Clean Architecture, organizada por camadas e orientada a casos de uso. A camada `API` expoe contratos HTTP e delega a execucao para a `Application` via MediatR. A `Application` implementa CQRS separando Commands, Queries, Handlers, Validators e Results. A `Domain` concentra entidades, value objects, enums e contratos de repositorio. A `Infrastructure` implementa os detalhes tecnicos, como Entity Framework Core, PostgreSQL, JWT, clock e repositorios concretos.
+
+O dominio principal e a ordem de servico, integrado a clientes, veiculos, servicos, pecas, estoque, notificacoes e pedidos de compra.
 
 ## Camadas
 
 ```text
 API
-  controllers, filtros e contrato HTTP
+  Contratos HTTP, controllers, filtros, autenticacao, validacao de requests,
+  mappers de entrada/saida e composition root da aplicacao.
 
 Application
-  serviços de aplicação, DTOs e validações
+  Casos de uso com CQRS + MediatR, validators de commands/queries,
+  pipeline behaviors, results, DTOs, interfaces tecnicas e servicos de apoio.
 
 Domain
-  entidades, enums e regras de negócio
+  Entidades, value objects, enums, regras de negocio e contratos de repositorio.
 
 Infrastructure
-  EF Core, repositórios, migrations, seed e extensões de startup
+  DbContext, configuracoes EF Core, migrations, repositories, seed,
+  health checks, JWT, clock e transacoes.
+
+Shared
+  Helpers e utilitarios compartilhados sem dependencia das camadas externas.
 ```
+
+## Dependencias entre projetos
+
+```text
+API
+  -> Application
+  -> Infrastructure
+
+Infrastructure
+  -> Application
+  -> Domain
+
+Application
+  -> Domain
+
+Domain
+  -> sem dependencia de API, Application ou Infrastructure
+```
+
+A API referencia Infrastructure apenas no composition root para registrar implementacoes concretas. Controllers nao acessam `DbContext`, repositories concretos ou servicos de infraestrutura diretamente.
 
 ## Estrutura principal
 
 ```text
 src/
   API/
+    Bootstrap/
     Controllers/
     Filters/
+    Mappers/
+    ProblemDetails/
+    Requests/
+    Responses/
+    Services/
+    Validators/
+
   Application/
+    Behaviors/
+    Commands/
+    Common/
     DTOs/
+    Exceptions/
+    Handlers/
+    Interfaces/
+    Mappers/
     Options/
+    Queries/
+    Results/
     Security/
     Services/
     Validators/
+
   Domain/
     Entities/
     Enums/
     Repositories/
+    ValueObjects/
+
   Infrastructure/
     Data/
+      Configurations/
+      Seeders/
     Extensions/
     HealthChecks/
+    Logging/
     Migrations/
     Repositories/
+    Security/
+    Time/
+
   Shared/
     Helpers/
     Logging/
 ```
 
-## Componentes centrais
+## Papel de cada pasta
 
-### API
+### `src/API`
 
-Responsabilidades:
+- `Bootstrap`: extensoes de inicializacao da API, como servicos, pipeline HTTP, Swagger, JWT, logging e banco.
+- `Controllers`: endpoints REST. Cada controller recebe `IMediator`, monta Commands/Queries e retorna Responses HTTP.
+- `Filters`: filtros globais. `DomainExceptionFilter` converte excecoes conhecidas em respostas padronizadas.
+- `Mappers`: conversoes entre `Request -> Command/Query` e `Result -> Response`.
+- `ProblemDetails`: modelo padronizado para erros HTTP.
+- `Requests`: contratos de entrada da API. Representam payloads e parametros HTTP, nao regras de negocio.
+- `Responses`: contratos de saida da API. Representam a forma publica retornada ao consumidor.
+- `Services`: implementacoes acopladas ao ASP.NET Core, como usuario autenticado via `HttpContext`.
+- `Validators`: validadores de requests HTTP usados pela integracao do FluentValidation com ASP.NET Core.
 
-- expor endpoints REST;
-- aplicar autenticação e autorização;
-- receber DTOs;
-- traduzir exceções de domínio em resposta HTTP.
+### `src/Application`
 
-Pontos relevantes:
+- `Behaviors`: pipelines do MediatR. Hoje `ValidationBehavior<TRequest,TResponse>` executa validadores antes do handler.
+- `Commands`: intencoes de escrita, como criar, atualizar, deletar, aprovar, liberar ou finalizar.
+- `Common`: abstracoes comuns da aplicacao, como `IClock`.
+- `DTOs`: modelos internos usados em casos de uso mais compostos.
+- `Exceptions`: excecoes previsiveis da aplicacao, convertidas pela API em respostas HTTP.
+- `Handlers`: implementacao dos casos de uso. Cada handler implementa `IRequestHandler<TRequest,TResponse>`.
+- `Interfaces`: contratos tecnicos consumidos pela aplicacao, como `ITransactionManager`.
+- `Mappers`: conversoes entre entidades de dominio, DTOs e Results.
+- `Options`: opcoes de configuracao consumidas pela aplicacao, como JWT.
+- `Queries`: intencoes de leitura. Nao devem alterar estado.
+- `Results`: modelos de retorno dos casos de uso. Nao sao contratos HTTP.
+- `Security`: abstracoes e resultados relacionados a autenticacao/autorizacao.
+- `Services`: servicos de apoio da aplicacao para regras que coordenam mais de uma operacao, especialmente em ordens de servico.
+- `Validators`: validadores de Commands e Queries, executados pelo `ValidationBehavior`.
 
-- `Program.cs` registra DI, JWT, EF Core, Swagger, CORS e health checks;
-- `DomainExceptionFilter` converte erros previsíveis de domínio em `400` e `404`;
-- controllers delegam a lógica para `Application.Services`.
+### `src/Domain`
 
-### Application
+- `Entities`: entidades e agregados com comportamento de negocio.
+- `Enums`: estados e classificacoes do dominio.
+- `Repositories`: contratos de persistencia usados pelos handlers e implementados pela Infrastructure.
+- `ValueObjects`: objetos de valor como `Documento`, `Telefone` e `PlacaVeiculo`.
 
-Responsabilidades:
+### `src/Infrastructure`
 
-- implementar casos de uso;
-- consultar e persistir dados via contratos de repositório;
-- coordenar transações entre OS, estoque, histórico e compras;
-- montar DTOs de saída;
-- registrar logs.
+- `Data`: `OficinaDbContext`, configuracoes EF Core e seeders.
+- `Data/Configurations`: mapeamentos por entidade com `IEntityTypeConfiguration<T>`.
+- `Extensions`: extensoes de host, incluindo migracao e seed no startup.
+- `HealthChecks`: configuracoes de health checks.
+- `Logging`: formatacao de log de console.
+- `Migrations`: migrations do Entity Framework Core.
+- `Repositories`: implementacoes concretas dos contratos de `Domain.Repositories`.
+- `Security`: implementacao tecnica de geracao de token JWT.
+- `Time`: implementacao concreta de relogio da aplicacao.
 
-Principais serviços:
+### `src/Shared`
 
-- `ClienteApplicationService`
-- `VeiculoApplicationService`
-- `ServicoApplicationService`
-- `PecaApplicationService`
-- `OrdemDeServicoApplicationService`
-- `PedidoCompraApplicationService`
-- `AuthApplicationService`
-- `AcompanhamentoOSApplicationService`
+- `Helpers`: funcoes utilitarias para documentos, telefone, placa, strings e datas.
+- `Logging`: templates padronizados de log compartilhados.
 
-### Domain
+## Clean Architecture aplicada
 
-Responsabilidades:
+A regra principal e manter dependencias apontando para dentro:
 
-- encapsular regras do negócio;
-- controlar transições válidas de status;
-- manter consistência do agregado de ordem de serviço;
-- impedir execução da OS sem estoque validado.
+```text
+HTTP / ASP.NET Core / EF Core / PostgreSQL / JWT
+        -> API e Infrastructure
+        -> Application
+        -> Domain
+```
 
-Entidades centrais:
+Na pratica:
 
-- `Cliente`
-- `Veiculo`
-- `Servico`
-- `Peca`
-- `OrdemDeServico`
-- `OrdemServicoHistorico`
-- `PedidoCompra`
-- `MovimentacaoEstoque`
-- `NotificacaoCliente`
-- `Usuario`
+- controllers conhecem `IMediator`, requests, responses e mappers da API;
+- controllers nao conhecem handlers concretos, repositories ou `DbContext`;
+- handlers conhecem Commands/Queries, Results, entidades, value objects e contratos de repositorio;
+- handlers nao conhecem controllers, requests HTTP ou responses HTTP;
+- entidades de dominio nao conhecem MediatR, EF Core, ASP.NET Core ou PostgreSQL;
+- Infrastructure conhece os contratos internos para fornecer implementacoes concretas.
 
-`OrdemDeServico` concentra:
+## CQRS com MediatR
 
-- fluxo de status;
-- composição do orçamento;
-- histórico da ordem;
-- validações operacionais;
-- bloqueio por falta de estoque.
+CQRS significa separar comandos de escrita de consultas de leitura:
+
+- `Commands`: requests que alteram estado. Ex.: `CriarClienteCommand`, `AtualizarPecaCommand`, `LiberarExecucaoCommand`.
+- `Queries`: requests que apenas consultam dados. Ex.: `ListarClientesQuery`, `ObterOrdemDeServicoPorIdQuery`, `ObterAcompanhamentoOSQuery`.
+
+MediatR e o mediador entre a API e os casos de uso:
+
+```text
+Controller -> IMediator.Send(command/query) -> Handler
+```
+
+Cada Command ou Query implementa `IRequest<TResponse>`. Cada Handler implementa `IRequestHandler<TRequest,TResponse>`.
+
+Exemplo real simplificado:
+
+```text
+CriarClienteCommand : IRequest<ClienteResult>
+CriarClienteCommandHandler : IRequestHandler<CriarClienteCommand, ClienteResult>
+```
+
+Para operacoes sem corpo de retorno, o projeto usa `Unit`, por exemplo `DeletarClienteCommand : IRequest<Unit>`.
+
+## Fluxo Request -> Command/Query -> Handler -> Result -> Response
+
+O fluxo padrao implementado e:
+
+```text
+HTTP Request
+  -> Controller
+  -> API Mapper
+  -> Command ou Query da Application
+  -> IMediator.Send(...)
+  -> ValidationBehavior<TRequest, TResponse>
+  -> Handler da Application
+  -> Domain / Repositories / Services de apoio
+  -> Result da Application
+  -> API Mapper
+  -> HTTP Response
+```
+
+Exemplo com criacao de cliente:
+
+```text
+POST /api/v1/clientes
+  -> CriarClienteRequest
+  -> ClienteApiMapper.ToCommand()
+  -> CriarClienteCommand
+  -> IMediator.Send(command)
+  -> CriarClienteCommandValidator
+  -> CriarClienteCommandHandler
+  -> Cliente.Criar(...)
+  -> IClienteRepository.CriarAsync(...)
+  -> ClienteResult
+  -> ClienteApiMapper.ToResponse()
+  -> 201 Created + ClienteResponse
+```
+
+Papel de cada objeto:
+
+- `Request`: contrato HTTP de entrada da API. Deve refletir o payload externo.
+- `Command`: intencao de alterar estado. Pertence a Application e representa um caso de uso de escrita.
+- `Query`: intencao de consulta. Pertence a Application e nao deve alterar estado.
+- `Handler`: executa o caso de uso, aplica regras, chama dominio, repositories e servicos de apoio.
+- `Result`: retorno interno da Application. Nao deve depender de ASP.NET Core.
+- `Response`: contrato HTTP de saida da API. Deve ser estavel para consumidores externos.
+
+## Validacao
+
+Existem dois pontos de validacao:
+
+```text
+API Validators
+  -> validam Requests HTTP antes ou durante o model binding.
+
+Application Validators
+  -> validam Commands e Queries pelo ValidationBehavior do MediatR.
+```
+
+Regras de formato e obrigatoriedade ficam nos validators. Regras de negocio e invariantes ficam nas entidades, value objects e handlers.
+
+## Composition root
+
+`Program.cs` esta enxuto e delega o registro por camada:
+
+```csharp
+builder.Services.AddApiServices(builder.Configuration);
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
+```
+
+- `AddApiServices`: controllers, filtros, ProblemDetails, validators de requests, JWT, Swagger, CORS e usuario autenticado.
+- `AddApplication`: MediatR, `ValidationBehavior`, validators de Application e servicos de apoio.
+- `AddInfrastructure`: DbContext, PostgreSQL/InMemory, health checks, repositories, transacao, clock e JWT.
+
+## Dominio de ordem de servico
+
+`OrdemDeServico` e o agregado central. Ele concentra fluxo de status, composicao de orcamento, validacoes operacionais e bloqueio por falta de estoque.
 
 Fluxo implementado:
 
@@ -125,76 +286,41 @@ Recebida -> EmDiagnostico -> AguardandoAprovacao -> EmExecucao -> Finalizada -> 
 
 Regras relevantes:
 
-- serviços só podem ser adicionados ou removidos em `EmDiagnostico`;
-- peças podem ser adicionadas em `EmDiagnostico`, `AguardandoAprovacao` e `AguardandoEstoque`;
-- peças só podem ser removidas em `EmDiagnostico`;
-- a transição para `EmExecucao` depende de validação de estoque com sucesso;
+- servicos so podem ser adicionados ou removidos em `EmDiagnostico`;
+- pecas podem ser adicionadas em `EmDiagnostico`, `AguardandoAprovacao` e `AguardandoEstoque`;
+- pecas so podem ser removidas em `EmDiagnostico`;
+- a transicao para `EmExecucao` depende de validacao de estoque com sucesso;
 - se faltar estoque, a OS vai para `AguardandoEstoque` e pode gerar pedido de compra.
 
-### Infrastructure
-
-Responsabilidades:
-
-- mapear entidades com Entity Framework Core;
-- implementar repositórios concretos;
-- manter migrations;
-- executar seed de desenvolvimento;
-- aplicar startup tasks como migration automática.
-
-Pontos relevantes:
-
-- `OficinaDbContext` centraliza o modelo relacional;
-- `HostExtensions.MigrateAndSeedAsync` aplica migrations com retry;
-- `OficinaDbContextSeeder` cria dados base para desenvolvimento;
-- `EfTransactionManager` garante consistência entre atualizações relacionadas.
-
-## Fluxo de requisição
-
-```text
-HTTP Request
-  -> Controller
-  -> Application Service
-  -> Domain Entity / Business Rule
-  -> Repository
-  -> DbContext / PostgreSQL
-  -> DTO de resposta
-  -> HTTP Response
-```
-
-## Persistência
+## Persistencia
 
 Banco principal:
 
 - PostgreSQL 16
 
-Justificativa da escolha do PostgreSQL:
-
-O PostgreSQL foi escolhido por ser um banco relacional robusto, open source e amplamente adotado em aplicações transacionais. O domínio da oficina mecânica possui relacionamentos fortes entre clientes, veículos, ordens de serviço, serviços, peças, movimentações de estoque, notificações e pedidos de compra. Por isso, o modelo relacional atende bem à necessidade de integridade, consistência e rastreabilidade das operações.
-
-A escolha também favorece o controle transacional exigido pelo fluxo da ordem de serviço. Operações como liberar uma OS para execução, validar estoque, registrar movimentações e gerar pedidos de compra precisam manter os dados consistentes mesmo quando envolvem múltiplas tabelas. O PostgreSQL oferece suporte maduro a transações ACID, chaves estrangeiras, índices, constraints e consultas relacionais, recursos importantes para esse tipo de regra de negócio.
-
-Outro ponto considerado foi a integração com a stack do projeto. O PostgreSQL possui excelente suporte no Entity Framework Core por meio do provider Npgsql, funciona bem em ambientes Docker e permite que o projeto seja executado localmente com baixo custo de infraestrutura. Assim, a escolha equilibra confiabilidade, facilidade de desenvolvimento, portabilidade e aderência ao cenário de uma API de gestão operacional.
-
 Banco para testes:
 
-- EF Core InMemory quando `Environment=Testing` ou connection string `UseInMemory`
+- EF Core InMemory quando `Environment=Testing` ou connection string `UseInMemory`.
 
 Migrations:
 
-- mantidas em `src/Infrastructure/Migrations`
-- aplicadas automaticamente no startup fora do ambiente de testes
+- mantidas em `src/Infrastructure/Migrations`;
+- aplicadas automaticamente no startup fora do ambiente de testes.
 
-## Segurança
+O PostgreSQL foi escolhido por ser relacional, transacional e adequado ao dominio, que possui relacionamentos fortes entre clientes, veiculos, ordens de servico, servicos, pecas, movimentacoes de estoque, notificacoes e pedidos de compra. O controle transacional e importante para operacoes que envolvem validacao de estoque, mudanca de status, historico e criacao de pedidos de compra.
 
-Autenticação:
+## Seguranca
 
-- JWT Bearer
-- emissão de token por `AuthApplicationService`
+Autenticacao:
 
-Estado atual da autorização:
+- JWT Bearer;
+- login implementado por `LoginCommand` e `LoginCommandHandler`;
+- geracao concreta do token em `JwtTokenGenerator`, na Infrastructure.
 
-- protegidos: `Clientes`, `Veiculos`, `Servicos`, `Pecas`, `OrdensDeServico`, `PedidosCompra`
-- públicos: `Auth` e acompanhamento público de OS em `AcompanhamentoOS`
+Estado atual da autorizacao:
+
+- protegidos: `Clientes`, `Veiculos`, `Servicos`, `Pecas`, `OrdensDeServico`, `PedidosCompra`;
+- publicos: `Auth` e acompanhamento publico de OS em `AcompanhamentoOS`.
 
 ## Observabilidade
 
@@ -207,12 +333,13 @@ Health checks expostos:
 Logging:
 
 - console logging;
-- template padronizado nas principais operações de aplicação e startup.
+- templates padronizados em `Shared/Logging`;
+- logs em handlers e startup.
 
 ## Testabilidade
 
 O projeto possui:
 
-- testes unitários focados em serviços de aplicação;
-- testes de integração focados em controllers;
-- suporte a banco em memória para cenários de teste.
+- testes unitarios focados em handlers, behaviors e registros de dependency injection;
+- testes de integracao focados em controllers/endpoints;
+- suporte a banco em memoria para cenarios de teste.

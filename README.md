@@ -24,6 +24,7 @@ O domínio principal do projeto é a ordem de serviço. A API permite:
 - ASP.NET Core Web API
 - Entity Framework Core
 - PostgreSQL 16
+- MediatR
 - JWT Bearer Authentication
 - FluentValidation
 - xUnit
@@ -74,11 +75,11 @@ Seed de desenvolvimento:
 
 ```text
 src/
-  API/
-  Application/
-  Domain/
-  Infrastructure/
-  Shared/
+  API/              # Controllers, requests, responses, mappers e bootstrap HTTP
+  Application/      # CQRS com Commands, Queries, Handlers, Results e validators
+  Domain/           # Entidades, value objects, enums e contratos de repositorio
+  Infrastructure/   # EF Core, repositories, migrations, JWT, clock e health checks
+  Shared/           # Helpers e templates de logging
 
 tests/
   Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/
