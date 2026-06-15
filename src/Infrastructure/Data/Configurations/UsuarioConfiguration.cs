@@ -16,7 +16,7 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
             .HasIdentityOptions(startValue: 1000);
         entity.Property(e => e.Nome).IsRequired().HasMaxLength(255);
         entity.Property(e => e.UsuarioLogin).IsRequired().HasMaxLength(100);
-        entity.Property(e => e.SenhaHash).IsRequired().HasMaxLength(64);
+        entity.Property(e => e.SenhaHash).IsRequired().HasMaxLength(255);
         entity.Property(e => e.Role).IsRequired().HasMaxLength(50);
 
         entity.HasIndex(e => e.UsuarioLogin).IsUnique();

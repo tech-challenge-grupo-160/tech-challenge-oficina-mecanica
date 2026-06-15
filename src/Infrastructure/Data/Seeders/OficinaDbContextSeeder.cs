@@ -1,6 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Security;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.CodeAnalysis;
@@ -253,10 +254,11 @@ public static class OficinaDbContextSeeder
 
             if (!await context.Usuarios.AnyAsync())
             {
+                var passwordHasher = new BCryptPasswordHasher();
                 var usuario = Usuario.Criar(
                     "Administrador",
                     "admin",
-                    StringHelper.ToMd5Hash("admin123"),
+                    passwordHasher.Hash("admin123"),
                     "Administrador");
 
                 await context.Usuarios.AddAsync(usuario);
