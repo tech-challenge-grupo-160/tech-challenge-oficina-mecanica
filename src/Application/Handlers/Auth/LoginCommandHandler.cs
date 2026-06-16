@@ -3,7 +3,6 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Auth;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Results.Auth;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
-using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -15,15 +14,18 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, LoginRes
     private const string LoggerName = nameof(LoginCommandHandler);
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly ITokenGenerator _tokenGenerator;
+    private readonly IPasswordHasher _passwordHasher;
     private readonly ILogger _logger;
 
     public LoginCommandHandler(
         IUsuarioRepository usuarioRepository,
         ITokenGenerator tokenGenerator,
+        IPasswordHasher passwordHasher,
         ILoggerFactory loggerFactory)
     {
         _usuarioRepository = usuarioRepository;
         _tokenGenerator = tokenGenerator;
+        _passwordHasher = passwordHasher;
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
@@ -41,8 +43,7 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, LoginRes
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(Handle), "Validando credenciais do usuario");
-            var senhaHash = StringHelper.ToMd5Hash(command.Senha);
-            if (!string.Equals(senhaHash, usuario.SenhaHash, StringComparison.OrdinalIgnoreCase))
+            if (!_passwordHasher.Verify(command.Senha, usuario.SenhaHash))
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(Handle), "Credenciais invalidas para o usuario informado");
                 throw new ServiceUnauthorizedException("Usuario ou senha invalidos.");

@@ -3,17 +3,20 @@ using System;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
+namespace Fiap.TechChallenge.OficinaMecanica.Api.src.Infrastructure.Migrations
 {
     [DbContext(typeof(OficinaDbContext))]
-    partial class OficinaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260615234350_ReplaceMd5PasswordHashWithBCrypt")]
+    partial class ReplaceMd5PasswordHashWithBCrypt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

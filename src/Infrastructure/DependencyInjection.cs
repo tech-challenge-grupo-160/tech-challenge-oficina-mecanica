@@ -56,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<ITransactionManager, EfTransactionManager>();
         services.AddSingleton<IClock, BrazilClock>();
         services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
+        services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
 
         return services;
     }
