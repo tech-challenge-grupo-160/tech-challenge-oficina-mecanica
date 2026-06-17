@@ -1,0 +1,13 @@
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+
+namespace Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
+
+public interface IServicoRepository
+{
+    Task<bool> ExisteEmOrdemDeServicoAtivaAsync(int servicoId, CancellationToken cancellationToken);
+    Task<Servico?> ObterPorIdAsync(int id, CancellationToken cancellationToken);
+    Task<IEnumerable<Servico>> ObterTodosAsync(CancellationToken cancellationToken);
+    Task<Servico> CriarAsync(Servico servico, CancellationToken cancellationToken);
+    Task<Servico> AtualizarAsync(Servico servico, CancellationToken cancellationToken);
+    Task DeletarAsync(int id, CancellationToken cancellationToken);
+}

@@ -79,7 +79,7 @@ dotnet user-secrets set "Jwt:Audience" "Fiap.TechChallenge.OficinaMecanica"
 
 ```bash
 dotnet restore
-dotnet run --project Fiap.TechChallenge.OficinaMecanica.Api.csproj
+dotnet run --project src/API/Fiap.TechChallenge.OficinaMecanica.Api.csproj
 ```
 
 Observações:
@@ -96,8 +96,8 @@ dotnet test
 Para rodar suites separadas:
 
 ```bash
-dotnet test Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.csproj
-dotnet test Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.csproj
+dotnet test tests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.csproj
+dotnet test tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.csproj
 ```
 
 ## Operação básica

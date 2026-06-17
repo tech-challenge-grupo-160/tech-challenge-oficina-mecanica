@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Fiap.TechChallenge.OficinaMecanica.Domain</RootNamespace>
+    <AssemblyName>Fiap.TechChallenge.OficinaMecanica.Domain</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Shared\Helpers\*.cs" Link="Shared\Helpers\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

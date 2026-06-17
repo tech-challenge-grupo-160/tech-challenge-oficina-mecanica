@@ -4,15 +4,19 @@ namespace Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 
 public class Veiculo
 {
-    public int Id { get; set; }
-    public string Placa { get; set; } = null!;
-    public string Marca { get; set; } = null!;
-    public string Modelo { get; set; } = null!;
-    public int Ano { get; set; }
-    public int ClienteId { get; set; }
+    private Veiculo()
+    {
+    }
 
-    public Cliente? Cliente { get; set; }
-    public ICollection<OrdemDeServico> OrdensDeServico { get; set; } = new List<OrdemDeServico>();
+    public int Id { get; private set; }
+    public string Placa { get; private set; } = null!;
+    public string Marca { get; private set; } = null!;
+    public string Modelo { get; private set; } = null!;
+    public int Ano { get; private set; }
+    public int ClienteId { get; private set; }
+
+    public Cliente? Cliente { get; private set; }
+    public ICollection<OrdemDeServico> OrdensDeServico { get; private set; } = new List<OrdemDeServico>();
 
     public static Veiculo Criar(PlacaVeiculo placa, string marca, string modelo, int ano, int clienteId)
     {
