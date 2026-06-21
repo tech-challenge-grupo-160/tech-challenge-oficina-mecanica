@@ -1,7 +1,7 @@
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
+namespace Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
 
 public interface IVeiculoRepository
 {
