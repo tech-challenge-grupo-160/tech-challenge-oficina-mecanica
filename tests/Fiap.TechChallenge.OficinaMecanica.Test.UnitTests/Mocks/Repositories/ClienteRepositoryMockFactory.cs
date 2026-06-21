@@ -1,4 +1,5 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Moq;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Repositories;

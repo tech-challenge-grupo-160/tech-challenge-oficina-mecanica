@@ -1,4 +1,5 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Application.Services.OrdensDeServico;

@@ -1,4 +1,5 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Servicos;
 using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Servicos;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
