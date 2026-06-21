@@ -35,12 +35,12 @@ RUN dotnet restore "src/API/Fiap.TechChallenge.OficinaMecanica.Api.csproj"
 COPY . .
 RUN dotnet publish "src/API/Fiap.TechChallenge.OficinaMecanica.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
 WORKDIR /app
-RUN apt-get update && apt-get install -y wget libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 
-COPY --from=build /app/publish .
+COPY --from=build --chown=app:app /app/publish .
 
+USER app
 ENTRYPOINT ["dotnet", "Fiap.TechChallenge.OficinaMecanica.Api.dll"]
