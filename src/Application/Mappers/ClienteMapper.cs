@@ -11,9 +11,9 @@ public static class ClienteMapper
         {
             Id = cliente.Id,
             Nome = cliente.Nome,
-            CpfCnpj = cliente.CpfCnpj,
-            Telefone = cliente.Telefone,
-            Email = cliente.Email,
+            CpfCnpj = cliente.CpfCnpj.Valor,
+            Telefone = cliente.Telefone.Valor,
+            Email = cliente.Email.Valor,
             DataCadastro = cliente.DataCadastro
         };
     }

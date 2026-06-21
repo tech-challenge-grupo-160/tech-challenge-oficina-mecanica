@@ -19,10 +19,10 @@ public static class OficinaDbContextSeeder
             {
                 var clientes = new[]
                 {
-                    Cliente.Criar("Vanessa Luna Duarte", Documento.Parse("476.548.668-01"), Telefone.Parse("15984608796"), "vanessa_luna_duarte@maissaude.adm.br", DateTimeHelper.UTCBrazilNow()),
-                    Cliente.Criar("Rafael Mateus Cesar Souza", Documento.Parse("093.678.498-93"), Telefone.Parse("15983042238"), "rafael-souza91@gilbertorodrigues.com", DateTimeHelper.UTCBrazilNow()),
-                    Cliente.Criar("Betina e Fernanda Contabil Ltda", Documento.Parse("60.617.051/0001-99"), Telefone.Parse("16985344781"), "ouvidoria@betinaefernandacontabilltda.com.br", DateTimeHelper.UTCBrazilNow()),
-                    Cliente.Criar("Vicente e Giovanni Advocacia Ltda", Documento.Parse("46.981.686/0001-40"), Telefone.Parse("11983202194"), "contato@vicenteegiovanniadvocacialtda.com.br", DateTimeHelper.UTCBrazilNow())
+                    Cliente.Criar("Vanessa Luna Duarte", Documento.Parse("476.548.668-01"), Telefone.Parse("15984608796"), Email.Parse("vanessa_luna_duarte@maissaude.adm.br"), DateTimeHelper.UTCBrazilNow()),
+                    Cliente.Criar("Rafael Mateus Cesar Souza", Documento.Parse("093.678.498-93"), Telefone.Parse("15983042238"), Email.Parse("rafael-souza91@gilbertorodrigues.com"), DateTimeHelper.UTCBrazilNow()),
+                    Cliente.Criar("Betina e Fernanda Contabil Ltda", Documento.Parse("60.617.051/0001-99"), Telefone.Parse("16985344781"), Email.Parse("ouvidoria@betinaefernandacontabilltda.com.br"), DateTimeHelper.UTCBrazilNow()),
+                    Cliente.Criar("Vicente e Giovanni Advocacia Ltda", Documento.Parse("46.981.686/0001-40"), Telefone.Parse("11983202194"), Email.Parse("contato@vicenteegiovanniadvocacialtda.com.br"), DateTimeHelper.UTCBrazilNow())
                 };
 
                 await context.Clientes.AddRangeAsync(clientes);
@@ -32,10 +32,10 @@ public static class OficinaDbContextSeeder
             if (!await context.Veiculos.AnyAsync())
             {
                 var clientes = await context.Clientes.OrderBy(c => c.Id).ToListAsync();
-                var clienteVanessa = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("476.548.668-01"));
-                var clienteRafael = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("093.678.498-93"));
-                var clienteBetina = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCnpj("60.617.051/0001-99"));
-                var clienteVicente = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCnpj("46.981.686/0001-40"));
+                var clienteVanessa = clientes.Single(c => c.CpfCnpj.Valor == DocumentoHelper.NormalizarCpf("476.548.668-01"));
+                var clienteRafael = clientes.Single(c => c.CpfCnpj.Valor == DocumentoHelper.NormalizarCpf("093.678.498-93"));
+                var clienteBetina = clientes.Single(c => c.CpfCnpj.Valor == DocumentoHelper.NormalizarCnpj("60.617.051/0001-99"));
+                var clienteVicente = clientes.Single(c => c.CpfCnpj.Valor == DocumentoHelper.NormalizarCnpj("46.981.686/0001-40"));
 
                 var veiculos = new[]
                 {
@@ -86,14 +86,14 @@ public static class OficinaDbContextSeeder
                 var veiculos = await context.Veiculos.OrderBy(v => v.Id).ToListAsync();
                 var servicos = await context.Servicos.OrderBy(s => s.Id).ToListAsync();
                 var pecas = await context.Pecas.OrderBy(p => p.Id).ToListAsync();
-                var clienteVanessa = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("476.548.668-01"));
-                var clienteRafael = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCpf("093.678.498-93"));
-                var clienteBetina = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCnpj("60.617.051/0001-99"));
-                var clienteVicente = clientes.Single(c => c.CpfCnpj == DocumentoHelper.NormalizarCnpj("46.981.686/0001-40"));
-                var veiculoCorolla = veiculos.Single(v => v.Placa == "ABC1234");
-                var veiculoCivic = veiculos.Single(v => v.Placa == "XYZ5678");
-                var veiculoGol = veiculos.Single(v => v.Placa == "DEF9101");
-                var veiculoStrada = veiculos.Single(v => v.Placa == "GHI2345");
+                var clienteVanessa = clientes.Single(c => c.CpfCnpj.Valor == DocumentoHelper.NormalizarCpf("476.548.668-01"));
+                var clienteRafael = clientes.Single(c => c.CpfCnpj.Valor == DocumentoHelper.NormalizarCpf("093.678.498-93"));
+                var clienteBetina = clientes.Single(c => c.CpfCnpj.Valor == DocumentoHelper.NormalizarCnpj("60.617.051/0001-99"));
+                var clienteVicente = clientes.Single(c => c.CpfCnpj.Valor == DocumentoHelper.NormalizarCnpj("46.981.686/0001-40"));
+                var veiculoCorolla = veiculos.Single(v => v.Placa.Valor == "ABC1234");
+                var veiculoCivic = veiculos.Single(v => v.Placa.Valor == "XYZ5678");
+                var veiculoGol = veiculos.Single(v => v.Placa.Valor == "DEF9101");
+                var veiculoStrada = veiculos.Single(v => v.Placa.Valor == "GHI2345");
                 var servicoTrocaOleo = servicos.Single(s => s.Nome == "Troca de Oleo");
                 var servicoRevisaoCompleta = servicos.Single(s => s.Nome == "Revisao Completa");
                 var servicoAlinhamento = servicos.Single(s => s.Nome == "Alinhamento");

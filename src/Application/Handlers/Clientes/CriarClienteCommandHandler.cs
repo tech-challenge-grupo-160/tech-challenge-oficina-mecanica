@@ -37,16 +37,17 @@ public sealed class CriarClienteCommandHandler : IRequestHandler<CriarClienteCom
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(Handle), "Validando documento e telefone do cliente");
             var documento = Documento.Parse(command.CpfCnpj);
             var telefone = Telefone.Parse(command.Telefone);
+            var email = Email.Parse(command.Email);
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(Handle), "Verificando duplicidade de cliente por documento");
-            var clienteExistente = await _clienteRepository.ObterPorCpfCnpjAsync(documento.Valor, cancellationToken);
+            var clienteExistente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
             if (clienteExistente != null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(Handle), "Cliente ja cadastrado para o documento informado");
                 throw new ServiceValidationException("Cliente com este CPF/CNPJ ja existe.");
             }
 
-            var cliente = Cliente.Criar(command.Nome, documento, telefone, command.Email, _clock.Now);
+            var cliente = Cliente.Criar(command.Nome, documento, telefone, email, _clock.Now);
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(Handle), "Persistindo novo cliente");
             var clienteCriado = await _clienteRepository.CriarAsync(cliente, cancellationToken);

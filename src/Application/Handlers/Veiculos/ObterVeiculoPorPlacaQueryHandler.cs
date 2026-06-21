@@ -30,7 +30,7 @@ public sealed class ObterVeiculoPorPlacaQueryHandler : IRequestHandler<ObterVeic
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(Handle), "Normalizando placa e consultando veiculo");
-            var placaNormalizada = PlacaVeiculo.Parse(query.Placa).Valor;
+            var placaNormalizada = PlacaVeiculo.Parse(query.Placa);
             var veiculo = await _veiculoRepository.ObterPorPlacaAsync(placaNormalizada, cancellationToken);
             if (veiculo == null)
             {

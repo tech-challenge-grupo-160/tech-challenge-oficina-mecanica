@@ -10,7 +10,7 @@ public static class VeiculoMapper
         return new VeiculoResult
         {
             Id = veiculo.Id,
-            Placa = veiculo.Placa,
+            Placa = veiculo.Placa.Valor,
             Marca = veiculo.Marca,
             Modelo = veiculo.Modelo,
             Ano = veiculo.Ano,

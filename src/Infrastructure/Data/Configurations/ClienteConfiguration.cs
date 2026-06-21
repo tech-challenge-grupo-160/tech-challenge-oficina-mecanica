@@ -1,4 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -15,9 +16,27 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
             .ValueGeneratedOnAdd()
             .HasIdentityOptions(startValue: 1000);
         entity.Property(e => e.Nome).IsRequired().HasMaxLength(255);
-        entity.Property(e => e.CpfCnpj).IsRequired().HasMaxLength(20);
-        entity.Property(e => e.Telefone).IsRequired().HasMaxLength(20);
-        entity.Property(e => e.Email).IsRequired().HasMaxLength(255);
+        entity.Property(e => e.CpfCnpj)
+            .HasConversion(
+                vo => vo.Valor,
+                str => Documento.Parse(str))
+            .IsRequired()
+            .HasMaxLength(20);
+        
+        entity.Property(e => e.Telefone)
+            .HasConversion(
+                vo => vo.Valor, 
+                str => Telefone.FromDatabase(str))
+            .IsRequired()
+            .HasMaxLength(20);
+        
+        entity.Property(e => e.Email)
+            .HasConversion(
+                vo => vo.Valor,
+                str => Email.FromDatabase(str))
+            .IsRequired()
+            .HasMaxLength(255);
+        
         entity.Property(e => e.DataCadastro).HasColumnType("timestamp without time zone");
 
         entity.HasIndex(e => e.CpfCnpj).IsUnique();

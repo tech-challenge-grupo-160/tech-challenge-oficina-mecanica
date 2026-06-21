@@ -34,7 +34,7 @@ public sealed class DeletarClienteCommandHandler : IRequestHandler<DeletarClient
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(Handle), "Normalizando documento e consultando cliente");
-            var documento = Documento.Parse(command.CpfCnpj).Valor;
+            var documento = Documento.Parse(command.CpfCnpj);
             var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
             if (cliente == null)
             {

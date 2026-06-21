@@ -3,6 +3,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Repositories;
 using FluentAssertions;
@@ -36,11 +37,11 @@ public class VeiculoHandlersTests
         };
 
         _clienteRepositoryMock
-            .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ObterPorCpfCnpjAsync(Documento.Parse("47654866801"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ClienteMock.Criar(id: clienteId, cpfCnpj: "47654866801"));
 
         _veiculoRepositoryMock
-            .Setup(x => x.ObterPorPlacaAsync("ABC1234", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ObterPorPlacaAsync(PlacaVeiculo.Parse("ABC1234"), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Veiculo?)null);
 
         _veiculoRepositoryMock
@@ -63,11 +64,11 @@ public class VeiculoHandlersTests
     {
         const int clienteId = 1;
         _clienteRepositoryMock
-            .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ObterPorCpfCnpjAsync(Documento.Parse("47654866801"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ClienteMock.Criar(id: clienteId, cpfCnpj: "47654866801"));
 
         _veiculoRepositoryMock
-            .Setup(x => x.ObterPorPlacaAsync("BRA2E19", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ObterPorPlacaAsync(PlacaVeiculo.Parse("BRA2E19"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(VeiculoMock.Criar(id: 10, placa: "BRA2E19"));
 
         var handler = new CriarVeiculoCommandHandler(
@@ -101,7 +102,7 @@ public class VeiculoHandlersTests
             clienteId: clienteId);
 
         _veiculoRepositoryMock
-            .Setup(x => x.ObterPorPlacaAsync("BRA2E19", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ObterPorPlacaAsync(PlacaVeiculo.Parse("BRA2E19"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(veiculo);
 
         var handler = new ObterVeiculoPorPlacaQueryHandler(
