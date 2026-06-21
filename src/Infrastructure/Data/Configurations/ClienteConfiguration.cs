@@ -19,7 +19,7 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         entity.Property(e => e.CpfCnpj)
             .HasConversion(
                 vo => vo.Valor,
-                str => Documento.Parse(str))
+                str => Documento.FromDatabase(str))
             .IsRequired()
             .HasMaxLength(20);
         

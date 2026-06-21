@@ -18,7 +18,7 @@ public sealed class VeiculoConfiguration : IEntityTypeConfiguration<Veiculo>
         entity.Property(e => e.Placa)
             .HasConversion(
                 vo => vo.Valor,
-                str => PlacaVeiculo.Parse(str))
+                str => PlacaVeiculo.FromDatabase(str))
             .IsRequired()
             .HasMaxLength(10);
         entity.Property(e => e.Marca).IsRequired().HasMaxLength(100);
