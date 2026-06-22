@@ -1,18 +1,25 @@
 using System.Net;
 using System.Net.Http.Json;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.PedidosCompra;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Infrastructure;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Endpoints.OrdensDeServico;
 
 public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplicationFactory>
 {
+    private readonly CustomWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
     public OrdensDeServicoControllerTests(CustomWebApplicationFactory factory)
     {
+        _factory = factory;
         factory.ResetDatabase();
         _client = factory.CreateClient();
     }
@@ -300,6 +307,29 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
     }
 
     [Fact]
+    public async Task Listar_DeveOrdenarPorStatusEDataMaisAntigaEOcultarFinalizadasEntreguesECanceladas()
+    {
+        SeedOrdensParaListagem();
+
+        var response = await _client.GetAsync("/api/v1/ordens-servico?page=1&pageSize=10");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var resultado = await response.Content.ReadFromJsonAsync<PagedResponse<OrdemDeServicoResponse>>();
+        resultado.Should().NotBeNull();
+        resultado!.TotalItems.Should().Be(5);
+        resultado.Items.Select(x => x.Numero).Should().Equal(
+            "OS-20260410-EM-EXECUCAO-ANTIGA",
+            "OS-20260412-EM-EXECUCAO-NOVA",
+            "OS-20260401-AGUARDANDO-APROVACAO",
+            "OS-20260330-EM-DIAGNOSTICO",
+            "OS-20260329-RECEBIDA");
+        resultado.Items.Should().OnlyContain(x =>
+            x.Status != nameof(StatusOrdemDeServico.Finalizada) &&
+            x.Status != nameof(StatusOrdemDeServico.Entregue) &&
+            x.Status != nameof(StatusOrdemDeServico.Cancelada));
+    }
+
+    [Fact]
     public async Task RemoverItens_DevePermitirSomenteQuandoOsEstiverEmDiagnostico()
     {
         var ordemCriada = await CriarOrdemAsync();
@@ -369,5 +399,45 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var ordem = await response.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         ordem.Should().NotBeNull();
         return ordem!;
+    }
+
+    private void SeedOrdensParaListagem()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
+        context.OrdensDeServico.AddRange(
+            CriarOrdemParaListagem("OS-20260412-EM-EXECUCAO-NOVA", "COD-LIST-001", StatusOrdemDeServico.EmExecucao, new DateTime(2026, 4, 12, 8, 0, 0)),
+            CriarOrdemParaListagem("OS-20260410-EM-EXECUCAO-ANTIGA", "COD-LIST-002", StatusOrdemDeServico.EmExecucao, new DateTime(2026, 4, 10, 8, 0, 0)),
+            CriarOrdemParaListagem("OS-20260401-AGUARDANDO-APROVACAO", "COD-LIST-003", StatusOrdemDeServico.AguardandoAprovacao, new DateTime(2026, 4, 1, 8, 0, 0)),
+            CriarOrdemParaListagem("OS-20260330-EM-DIAGNOSTICO", "COD-LIST-004", StatusOrdemDeServico.EmDiagnostico, new DateTime(2026, 3, 30, 8, 0, 0)),
+            CriarOrdemParaListagem("OS-20260329-RECEBIDA", "COD-LIST-005", StatusOrdemDeServico.Recebida, new DateTime(2026, 3, 29, 8, 0, 0)),
+            CriarOrdemParaListagem("OS-20260328-FINALIZADA", "COD-LIST-006", StatusOrdemDeServico.Finalizada, new DateTime(2026, 3, 28, 8, 0, 0)),
+            CriarOrdemParaListagem("OS-20260327-ENTREGUE", "COD-LIST-007", StatusOrdemDeServico.Entregue, new DateTime(2026, 3, 27, 8, 0, 0)),
+            CriarOrdemParaListagem("OS-20260326-CANCELADA", "COD-LIST-008", StatusOrdemDeServico.Cancelada, new DateTime(2026, 3, 26, 8, 0, 0)));
+        context.SaveChanges();
+    }
+
+    private static OrdemDeServico CriarOrdemParaListagem(
+        string numero,
+        string codigoAcompanhamento,
+        StatusOrdemDeServico status,
+        DateTime dataAbertura)
+    {
+        return OrdemDeServico.Restaurar(
+            numero,
+            codigoAcompanhamento,
+            $"hash-{codigoAcompanhamento}",
+            CustomWebApplicationFactory.PessoaFisicaClienteId,
+            CustomWebApplicationFactory.VeiculoExistenteId,
+            "Ordem criada para teste de listagem.",
+            null,
+            null,
+            status,
+            dataAbertura,
+            status >= StatusOrdemDeServico.AguardandoAprovacao ? dataAbertura.AddHours(1) : null,
+            status == StatusOrdemDeServico.Finalizada || status == StatusOrdemDeServico.Entregue ? dataAbertura.AddHours(2) : null,
+            status == StatusOrdemDeServico.Entregue ? dataAbertura.AddHours(3) : null,
+            status == StatusOrdemDeServico.Entregue ? dataAbertura.AddHours(4) : null,
+            100m);
     }
 }
