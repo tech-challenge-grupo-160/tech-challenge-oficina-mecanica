@@ -160,6 +160,28 @@ public class OrdemDeServico
             $"Servico adicionado ao orcamento: {servico.Nome}.");
     }
 
+    public OrdemDeServicoEventoDominio AdicionarServicoNaAberturaComEvento(Servico servico)
+    {
+        if (Status != StatusOrdemDeServico.Recebida)
+        {
+            throw new InvalidOperationException("So e possivel adicionar servicos na abertura quando a ordem estiver recebida.");
+        }
+
+        if (Servicos.Any(x => x.ServicoId == servico.Id))
+        {
+            throw new InvalidOperationException("O servico informado ja foi adicionado a ordem de servico.");
+        }
+
+        Servicos.Add(OrdemDeServicoServico.Criar(Id, servico.Id, servico.Preco, servico.TempoEstimado));
+        RecalcularTotal();
+
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.ServicoAdicionado,
+            Status,
+            Status,
+            $"Servico adicionado na abertura: {servico.Nome}.");
+    }
+
     public void RemoverServico(int servicoId)
     {
         if (Status != StatusOrdemDeServico.EmDiagnostico)
@@ -222,6 +244,37 @@ public class OrdemDeServico
             Status,
             Status,
             $"Peca adicionada ao orcamento: {peca.Nome}. Quantidade: {quantidade}.");
+    }
+
+    public OrdemDeServicoEventoDominio AdicionarPecaNaAberturaComEvento(Peca peca, int quantidade)
+    {
+        if (Status != StatusOrdemDeServico.Recebida)
+        {
+            throw new InvalidOperationException("So e possivel adicionar pecas na abertura quando a ordem estiver recebida.");
+        }
+
+        if (quantidade <= 0)
+        {
+            throw new InvalidOperationException("A quantidade da peca deve ser maior que zero.");
+        }
+
+        var itemExistente = Pecas.FirstOrDefault(item => item.PecaId == peca.Id);
+        if (itemExistente == null)
+        {
+            Pecas.Add(OrdemDeServicoPeca.Criar(Id, peca.Id, quantidade, peca.Preco));
+        }
+        else
+        {
+            itemExistente.SomarQuantidade(quantidade, peca.Preco);
+        }
+
+        RecalcularTotal();
+
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.PecaAdicionada,
+            Status,
+            Status,
+            $"Peca adicionada na abertura: {peca.Nome}. Quantidade: {quantidade}.");
     }
 
     public void RemoverPeca(int pecaId)

@@ -32,11 +32,6 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var iniciarDiagnostico = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
         iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var adicionarServico = await _client.PostAsJsonAsync(
-            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
-            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
-        adicionarServico.StatusCode.Should().Be(HttpStatusCode.OK);
-
         var adicionarPeca = await _client.PostAsJsonAsync(
             $"/api/v1/ordens-servico/{ordemCriada.Id}/pecas",
             new { pecaId = CustomWebApplicationFactory.PecaExistenteId, quantidade = 1 });
@@ -107,6 +102,9 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var iniciarDiagnostico = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
         iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.OK);
 
+        var removerServico = await _client.DeleteAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/servicos/{CustomWebApplicationFactory.ServicoExistenteId}");
+        removerServico.StatusCode.Should().Be(HttpStatusCode.OK);
+
         var finalizarDiagnostico = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar-diagnostico", null);
 
         finalizarDiagnostico.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -124,7 +122,12 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
             clienteId = CustomWebApplicationFactory.PessoaFisicaClienteId,
             veiculoId = CustomWebApplicationFactory.VeiculoExistenteId,
             descricaoSolicitacao = "Nova tentativa para o mesmo cliente e veiculo.",
-            observacoesRecepcao = "Nao deve permitir duplicidade."
+            observacoesRecepcao = "Nao deve permitir duplicidade.",
+            servicos = new[]
+            {
+                new { servicoId = CustomWebApplicationFactory.ServicoExistenteId }
+            },
+            pecas = Array.Empty<object>()
         };
 
         var response = await _client.PostAsJsonAsync("/api/v1/ordens-servico", payload);
@@ -135,14 +138,80 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
     }
 
     [Fact]
+    public async Task CriarOrdem_DevePermitirNovaOsParaMesmoClienteEVeiculoQuandoAnteriorEstiverCancelada()
+    {
+        var ordemCancelada = await CriarOrdemAsync();
+
+        var cancelar = await _client.PatchAsJsonAsync(
+            $"/api/v1/ordens-servico/{ordemCancelada.Id}/cancelar",
+            new { motivoCancelamento = "Cliente desistiu do atendimento." });
+        cancelar.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var novaOrdem = await CriarOrdemAsync();
+
+        novaOrdem.Id.Should().NotBe(ordemCancelada.Id);
+        novaOrdem.Status.Should().Be(nameof(StatusOrdemDeServico.Recebida));
+        novaOrdem.ClienteId.Should().Be(ordemCancelada.ClienteId);
+        novaOrdem.VeiculoId.Should().Be(ordemCancelada.VeiculoId);
+    }
+
+    [Fact]
+    public async Task CriarOrdem_DevePermitirNovaOsParaMesmoClienteEVeiculoQuandoAnteriorEstiverFinalizada()
+    {
+        var ordemFinalizada = await CriarOrdemAsync();
+
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemFinalizada.Id}/iniciar-diagnostico", null);
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemFinalizada.Id}/finalizar-diagnostico", null);
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemFinalizada.Id}/aprovar", null);
+        var finalizar = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemFinalizada.Id}/finalizar", null);
+        finalizar.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var novaOrdem = await CriarOrdemAsync();
+
+        novaOrdem.Id.Should().NotBe(ordemFinalizada.Id);
+        novaOrdem.Status.Should().Be(nameof(StatusOrdemDeServico.Recebida));
+        novaOrdem.ClienteId.Should().Be(ordemFinalizada.ClienteId);
+        novaOrdem.VeiculoId.Should().Be(ordemFinalizada.VeiculoId);
+    }
+
+    [Fact]
+    public async Task CriarOrdem_DevePermitirInformarServicosEPecasNaAbertura()
+    {
+        var payload = new
+        {
+            clienteId = CustomWebApplicationFactory.PessoaFisicaClienteId,
+            veiculoId = CustomWebApplicationFactory.VeiculoExistenteId,
+            descricaoSolicitacao = "Troca de pneus dianteiros.",
+            observacoesRecepcao = "Cliente solicitou dois pneus da frente.",
+            servicos = new[]
+            {
+                new { servicoId = CustomWebApplicationFactory.ServicoExistenteId }
+            },
+            pecas = new[]
+            {
+                new { pecaId = CustomWebApplicationFactory.PecaExistenteId, quantidade = 2 }
+            }
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/ordens-servico", payload);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var ordem = await response.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
+        ordem.Should().NotBeNull();
+        ordem!.Status.Should().Be(nameof(StatusOrdemDeServico.Recebida));
+        ordem.Servicos.Should().ContainSingle(x => x.ServicoId == CustomWebApplicationFactory.ServicoExistenteId);
+        ordem.Pecas.Should().ContainSingle(x =>
+            x.PecaId == CustomWebApplicationFactory.PecaExistenteId &&
+            x.Quantidade == 2);
+        ordem.ValorTotal.Should().Be(240m);
+    }
+
+    [Fact]
     public async Task Entregar_DeveRetornarBadRequestQuandoPagamentoNaoTiverSidoRegistrado()
     {
         var ordemCriada = await CriarOrdemAsync();
 
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
-        await _client.PostAsJsonAsync(
-            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
-            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar-diagnostico", null);
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/aprovar", null);
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar", null);
@@ -160,9 +229,6 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var ordemCriada = await CriarOrdemAsync();
 
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
-        await _client.PostAsJsonAsync(
-            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
-            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar-diagnostico", null);
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/aprovar", null);
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar", null);
@@ -183,11 +249,6 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
     public async Task ObterEstimativaTempo_DeveRetornarTempoEstimadoComBaseNosServicosDaOs()
     {
         var ordemCriada = await CriarOrdemAsync();
-
-        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
-        await _client.PostAsJsonAsync(
-            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
-            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
 
         var response = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/estimativa-tempo-servico");
 
@@ -210,9 +271,6 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var ordemCriada = await CriarOrdemAsync();
 
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
-        await _client.PostAsJsonAsync(
-            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
-            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar-diagnostico", null);
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/aprovar", null);
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar", null);
@@ -238,9 +296,6 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var ordemCriada = await CriarOrdemAsync();
 
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
-        await _client.PostAsJsonAsync(
-            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
-            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
         await _client.PostAsJsonAsync(
             $"/api/v1/ordens-servico/{ordemCriada.Id}/pecas",
             new { pecaId = CustomWebApplicationFactory.PecaExistenteId, quantidade = 101 });
@@ -338,9 +393,6 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.OK);
 
         await _client.PostAsJsonAsync(
-            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
-            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
-        await _client.PostAsJsonAsync(
             $"/api/v1/ordens-servico/{ordemCriada.Id}/pecas",
             new { pecaId = CustomWebApplicationFactory.PecaExistenteId, quantidade = 1 });
 
@@ -369,11 +421,6 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var iniciarDiagnostico = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
         iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var primeiraInclusao = await _client.PostAsJsonAsync(
-            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
-            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
-        primeiraInclusao.StatusCode.Should().Be(HttpStatusCode.OK);
-
         var segundaInclusao = await _client.PostAsJsonAsync(
             $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
             new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
@@ -390,7 +437,12 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
             clienteId = CustomWebApplicationFactory.PessoaFisicaClienteId,
             veiculoId = CustomWebApplicationFactory.VeiculoExistenteId,
             descricaoSolicitacao = "Cliente relatou barulho ao frear e puxando para a direita.",
-            observacoesRecepcao = "Problema ocorre em baixa velocidade."
+            observacoesRecepcao = "Problema ocorre em baixa velocidade.",
+            servicos = new[]
+            {
+                new { servicoId = CustomWebApplicationFactory.ServicoExistenteId }
+            },
+            pecas = Array.Empty<object>()
         };
 
         var response = await _client.PostAsJsonAsync("/api/v1/ordens-servico", payload);
@@ -398,7 +450,9 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
 
         var ordem = await response.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         ordem.Should().NotBeNull();
-        return ordem!;
+        ordem!.Servicos.Should().ContainSingle(x => x.ServicoId == CustomWebApplicationFactory.ServicoExistenteId);
+        ordem.Pecas.Should().BeEmpty();
+        return ordem;
     }
 
     private void SeedOrdensParaListagem()
