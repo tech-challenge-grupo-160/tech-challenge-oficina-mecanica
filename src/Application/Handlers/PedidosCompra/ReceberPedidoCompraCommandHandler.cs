@@ -1,4 +1,5 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.PedidosCompra;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;

@@ -1,4 +1,5 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Clientes;
@@ -30,7 +31,7 @@ public sealed class ObterClientePorDocumentoQueryHandler : IRequestHandler<Obter
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(Handle), "Normalizando documento para consulta");
-            var documento = Documento.Parse(query.CpfCnpj).Valor;
+            var documento = Documento.Parse(query.CpfCnpj);
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(Handle), "Consultando cliente por documento");
             var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);

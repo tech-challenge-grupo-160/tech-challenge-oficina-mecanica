@@ -1,4 +1,5 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Veiculos;
@@ -23,7 +24,7 @@ public sealed class ListarVeiculosPorDocumentoClienteQueryHandler : IRequestHand
 
     public async Task<IEnumerable<VeiculoResult>> Handle(ListarVeiculosPorDocumentoClienteQuery query, CancellationToken cancellationToken)
     {
-        var documento = Documento.Parse(query.CpfCnpj).Valor;
+        var documento = Documento.Parse(query.CpfCnpj);
         var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
         if (cliente == null)
         {

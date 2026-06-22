@@ -96,7 +96,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 "Vanessa Luna Duarte",
                 Documento.Parse("476.548.668-01"),
                 Telefone.Parse("15984608796"),
-                "vanessa_luna_duarte@maissaude.adm.br",
+                Email.Parse("vanessa_luna_duarte@maissaude.adm.br"),
                 DateTimeHelper.UTCBrazilNow()),
             PessoaFisicaClienteId);
 
@@ -106,7 +106,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 "Betina e Fernanda Contabil Ltda",
                 Documento.Parse("60.617.051/0001-99"),
                 Telefone.Parse("16985344781"),
-                "ouvidoria@betinaefernandacontabilltda.com.br",
+                Email.Parse("ouvidoria@betinaefernandacontabilltda.com.br"),
                 DateTimeHelper.UTCBrazilNow()),
             PessoaJuridicaClienteId);
 

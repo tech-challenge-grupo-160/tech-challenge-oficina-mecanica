@@ -12,7 +12,7 @@ public static class ClienteMock
         string telefone = "11988887777",
         string email = "cliente@teste.com")
     {
-        return Cliente.Criar(nome, Documento.Parse(cpfCnpj), Telefone.Parse(telefone), email, DateTime.UtcNow)
+        return Cliente.Criar(nome, Documento.Parse(cpfCnpj), Telefone.Parse(telefone), Email.Parse(email), DateTime.UtcNow)
             .WithId(id);
     }
 }

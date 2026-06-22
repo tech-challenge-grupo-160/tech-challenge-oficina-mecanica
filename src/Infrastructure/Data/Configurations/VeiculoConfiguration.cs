@@ -1,4 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -14,7 +15,12 @@ public sealed class VeiculoConfiguration : IEntityTypeConfiguration<Veiculo>
         entity.Property(e => e.Id)
             .ValueGeneratedOnAdd()
             .HasIdentityOptions(startValue: 1000);
-        entity.Property(e => e.Placa).IsRequired().HasMaxLength(10);
+        entity.Property(e => e.Placa)
+            .HasConversion(
+                vo => vo.Valor,
+                str => PlacaVeiculo.FromDatabase(str))
+            .IsRequired()
+            .HasMaxLength(10);
         entity.Property(e => e.Marca).IsRequired().HasMaxLength(100);
         entity.Property(e => e.Modelo).IsRequired().HasMaxLength(100);
 

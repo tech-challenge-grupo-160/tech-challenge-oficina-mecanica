@@ -25,6 +25,11 @@ public readonly record struct PlacaVeiculo
         return new PlacaVeiculo(normalizada);
     }
 
+    internal static PlacaVeiculo FromDatabase(string valor)
+    {
+        return new PlacaVeiculo(valor);
+    }
+
     public static bool IsValid(string? valor)
     {
         var normalizada = RemoverSeparadores(valor).ToUpperInvariant();

@@ -22,7 +22,7 @@ public sealed class AtualizarClienteCommandValidator : AbstractValidator<Atualiz
 
         RuleFor(x => x.Email)
             .NotEmpty().WithMessage("E-mail e obrigatorio.")
-            .EmailAddress().WithMessage("E-mail invalido.")
+            .Must(Email.IsValid).WithMessage("E-mail invalido.")
             .MaximumLength(255);
     }
 }

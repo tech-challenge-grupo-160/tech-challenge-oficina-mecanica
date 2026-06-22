@@ -9,7 +9,7 @@ public class Veiculo
     }
 
     public int Id { get; private set; }
-    public string Placa { get; private set; } = null!;
+    public PlacaVeiculo Placa { get; private set; }
     public string Marca { get; private set; } = null!;
     public string Modelo { get; private set; } = null!;
     public int Ano { get; private set; }
@@ -24,7 +24,7 @@ public class Veiculo
 
         return new Veiculo
         {
-            Placa = placa.Valor,
+            Placa = placa,
             Marca = marca.Trim(),
             Modelo = modelo.Trim(),
             Ano = ano,

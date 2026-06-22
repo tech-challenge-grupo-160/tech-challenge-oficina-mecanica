@@ -1,9 +1,11 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Handlers.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Commands;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Repositories;
@@ -47,7 +49,7 @@ public class ClienteHandlersTests
             CancellationToken.None);
 
         resultado.Nome.Should().Be(cliente.Nome);
-        resultado.CpfCnpj.Should().Be(cliente.CpfCnpj);
+        resultado.CpfCnpj.Should().Be(cliente.CpfCnpj.Valor);
     }
 
     [Fact]
@@ -67,14 +69,14 @@ public class ClienteHandlersTests
             new ObterClientePorDocumentoQuery { CpfCnpj = "60.617.051/0001-99" },
             CancellationToken.None);
 
-        resultado.CpfCnpj.Should().Be(cliente.CpfCnpj);
+        resultado.CpfCnpj.Should().Be(cliente.CpfCnpj.Valor);
     }
 
     [Fact]
     public async Task ObterClientePorDocumento_DeveLancarExcecaoQuandoNaoExistir()
     {
         _clienteRepositoryMock
-            .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ObterPorCpfCnpjAsync(Documento.Parse("47654866801"), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Cliente?)null);
 
         var handler = new ObterClientePorDocumentoQueryHandler(
@@ -98,7 +100,7 @@ public class ClienteHandlersTests
             telefone: "11999999999");
 
         _clienteRepositoryMock
-            .Setup(x => x.ObterPorCpfCnpjAsync("52998224725", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ObterPorCpfCnpjAsync(Documento.Parse("52998224725"), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Cliente?)null);
 
         _clienteRepositoryMock
@@ -126,7 +128,7 @@ public class ClienteHandlersTests
             telefone: "11988887777");
 
         _clienteRepositoryMock
-            .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ObterPorCpfCnpjAsync(Documento.Parse("47654866801"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ClienteMock.Criar(1, "47654866801", "Cliente Existente"));
 
         var handler = new CriarClienteCommandHandler(
@@ -152,7 +154,7 @@ public class ClienteHandlersTests
         };
 
         _clienteRepositoryMock
-            .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ObterPorCpfCnpjAsync(Documento.Parse("47654866801"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(cliente);
         _clienteRepositoryMock
             .Setup(x => x.AtualizarAsync(It.IsAny<Cliente>(), It.IsAny<CancellationToken>()))
@@ -175,7 +177,7 @@ public class ClienteHandlersTests
         var cliente = ClienteMock.Criar(1, "47654866801", "Vanessa");
 
         _clienteRepositoryMock
-            .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ObterPorCpfCnpjAsync(Documento.Parse("47654866801"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(cliente);
         _veiculoRepositoryMock
             .Setup(x => x.ExistePorClienteAsync(cliente.Id, It.IsAny<CancellationToken>()))
@@ -201,7 +203,7 @@ public class ClienteHandlersTests
         var cliente = ClienteMock.Criar(1, "47654866801", "Vanessa");
 
         _clienteRepositoryMock
-            .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ObterPorCpfCnpjAsync(Documento.Parse("47654866801"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(cliente);
         _veiculoRepositoryMock
             .Setup(x => x.ExistePorClienteAsync(cliente.Id, It.IsAny<CancellationToken>()))
@@ -230,7 +232,7 @@ public class ClienteHandlersTests
         var cliente = ClienteMock.Criar(1, "47654866801", "Vanessa");
 
         _clienteRepositoryMock
-            .Setup(x => x.ObterPorCpfCnpjAsync("47654866801", It.IsAny<CancellationToken>()))
+            .Setup(x => x.ObterPorCpfCnpjAsync(Documento.Parse("47654866801"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(cliente);
         _veiculoRepositoryMock
             .Setup(x => x.ExistePorClienteAsync(cliente.Id, It.IsAny<CancellationToken>()))

@@ -16,7 +16,7 @@ public sealed class AtualizarClienteRequestValidator : AbstractValidator<Atualiz
             .NotEmpty().WithMessage("E-mail e obrigatorio.");
 
         RuleFor(x => x.Email)
-            .EmailAddress().WithMessage("E-mail invalido.")
+            .Must(Email.IsValid).WithMessage("E-mail invalido.")
             .When(x => !string.IsNullOrWhiteSpace(x.Email));
 
         RuleFor(x => x.Telefone)

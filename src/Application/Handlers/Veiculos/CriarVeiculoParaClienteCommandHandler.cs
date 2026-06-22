@@ -1,4 +1,5 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Veiculos;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -48,7 +49,7 @@ public sealed class CriarVeiculoParaClienteCommandHandler : IRequestHandler<Cria
 
     private async Task<Cliente> ObterClientePorDocumentoAsync(string cpfCnpj, CancellationToken cancellationToken)
     {
-        var documento = Documento.Parse(cpfCnpj).Valor;
+        var documento = Documento.Parse(cpfCnpj);
         var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
         if (cliente == null)
         {
@@ -67,7 +68,7 @@ public sealed class CriarVeiculoParaClienteCommandHandler : IRequestHandler<Cria
         CancellationToken cancellationToken)
     {
         var placa = PlacaVeiculo.Parse(placaInformada);
-        var veiculoExistente = await _veiculoRepository.ObterPorPlacaAsync(placa.Valor, cancellationToken);
+        var veiculoExistente = await _veiculoRepository.ObterPorPlacaAsync(placa, cancellationToken);
         if (veiculoExistente != null)
         {
             throw new ServiceValidationException("Veiculo com esta placa ja existe.");

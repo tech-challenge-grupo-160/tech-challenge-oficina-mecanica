@@ -1,4 +1,5 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.Clientes;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
@@ -30,15 +31,19 @@ public sealed class AtualizarClienteCommandHandler : IRequestHandler<AtualizarCl
         try
         {
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(Handle), "Normalizando documento e consultando cliente");
-            var documento = Documento.Parse(command.CpfCnpj).Valor;
+
+            var documento = Documento.Parse(command.CpfCnpj);
+            var email = Email.Parse(command.Email);
+            var telefone = Telefone.Parse(command.Telefone);
             var cliente = await _clienteRepository.ObterPorCpfCnpjAsync(documento, cancellationToken);
+
             if (cliente == null)
             {
                 _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(Handle), "Cliente nao encontrado para atualizacao");
                 throw new ServiceNotFoundException($"Cliente com CPF/CNPJ {command.CpfCnpj} nao encontrado.");
             }
 
-            cliente.AtualizarContato(command.Nome, Telefone.Parse(command.Telefone), command.Email);
+            cliente.AtualizarContato(command.Nome, telefone, email);
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(Handle), "Persistindo atualizacao do cliente");
             var clienteAtualizado = await _clienteRepository.AtualizarAsync(cliente, cancellationToken);
