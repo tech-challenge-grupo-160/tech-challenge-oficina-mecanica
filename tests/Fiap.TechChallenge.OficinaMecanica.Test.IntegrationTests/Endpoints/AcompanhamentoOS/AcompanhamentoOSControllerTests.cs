@@ -80,10 +80,10 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
         acompanhamentoAposMudancaStatus.DataUltimaAtualizacao.Should().BeAfter(dataInicial);
         var dataAposMudancaStatus = acompanhamentoAposMudancaStatus.DataUltimaAtualizacao;
 
-        var adicionarServico = await _client.PostAsJsonAsync(
-            $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",
-            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
-        adicionarServico.StatusCode.Should().Be(HttpStatusCode.OK);
+        var adicionarPeca = await _client.PostAsJsonAsync(
+            $"/api/v1/ordens-servico/{ordemCriada.Id}/pecas",
+            new { pecaId = CustomWebApplicationFactory.PecaExistenteId, quantidade = 1 });
+        adicionarPeca.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var acompanhamentoAposEventoSemMudancaStatus = await ObterAcompanhamentoAsync(ordemCriada.CodigoAcompanhamento, ordemCriada.TokenAcompanhamento!);
         acompanhamentoAposEventoSemMudancaStatus.DataUltimaAtualizacao.Should().Be(dataAposMudancaStatus);
@@ -96,7 +96,12 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
             clienteId = CustomWebApplicationFactory.PessoaFisicaClienteId,
             veiculoId = CustomWebApplicationFactory.VeiculoExistenteId,
             descricaoSolicitacao = "Cliente relatou barulho na suspensao.",
-            observacoesRecepcao = "Validar alinhamento e folgas."
+            observacoesRecepcao = "Validar alinhamento e folgas.",
+            servicos = new[]
+            {
+                new { servicoId = CustomWebApplicationFactory.ServicoExistenteId }
+            },
+            pecas = Array.Empty<object>()
         };
 
         var response = await _client.PostAsJsonAsync("/api/v1/ordens-servico", payload);

@@ -112,6 +112,7 @@ public class OrdemDeServicoHandlersTests
         var dto = CriarOrdemDeServicoDtoMock.Criar(clienteId: 1, veiculoId: 10);
         var cliente = ClienteMock.Criar(id: 1);
         var veiculo = VeiculoMock.Criar(id: 10, clienteId: 1);
+        var servico = ServicoMock.Criar(id: 1000, preco: 150m);
 
         _clienteRepositoryMock
             .Setup(x => x.ObterPorIdAsync(dto.ClienteId, It.IsAny<CancellationToken>()))
@@ -122,6 +123,9 @@ public class OrdemDeServicoHandlersTests
         _ordemRepositoryMock
             .Setup(x => x.ExisteOrdemAtivaPorClienteEVeiculoAsync(dto.ClienteId, dto.VeiculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+        _servicoRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(servico.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(servico);
         _ordemRepositoryMock
             .Setup(x => x.CriarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico ordem, CancellationToken _) =>
@@ -136,7 +140,8 @@ public class OrdemDeServicoHandlersTests
 
         resultado.Status.Should().Be(nameof(StatusOrdemDeServico.Recebida));
         resultado.Numero.Should().Be($"OS-{resultado.DataAbertura:yyyyMMdd}-3002");
-        resultado.ValorTotal.Should().Be(0);
+        resultado.ValorTotal.Should().Be(150m);
+        resultado.Servicos.Should().ContainSingle(x => x.ServicoId == servico.Id);
         _historicoRepositoryMock.Verify(
             x => x.CriarAsync(
                 It.Is<OrdemServicoHistorico>(h =>
@@ -146,6 +151,13 @@ public class OrdemDeServicoHandlersTests
                     h.StatusAnterior == null &&
                     h.StatusNovo == StatusOrdemDeServico.Recebida &&
                     h.TipoEvento == TipoEventoOrdemServico.OrdemCriada),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _historicoRepositoryMock.Verify(
+            x => x.CriarAsync(
+                It.Is<OrdemServicoHistorico>(h =>
+                    h.OrdemDeServicoId == 3002 &&
+                    h.TipoEvento == TipoEventoOrdemServico.ServicoAdicionado),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -622,13 +634,24 @@ public class OrdemDeServicoHandlersTests
                 _historicoService,
                 _notificacaoService,
                 _ordemRepository,
+                _pecaRepository,
+                _servicoRepository,
                 _veiculoRepository,
                 _loggerFactory).Handle(new CriarOrdemDeServicoCommand
             {
                 ClienteId = dto.ClienteId,
                 VeiculoId = dto.VeiculoId,
                 DescricaoSolicitacao = dto.DescricaoSolicitacao,
-                ObservacoesRecepcao = dto.ObservacoesRecepcao
+                ObservacoesRecepcao = dto.ObservacoesRecepcao,
+                Servicos = dto.Servicos.Select(servico => new CriarOrdemDeServicoServicoCommand
+                {
+                    ServicoId = servico.ServicoId
+                }).ToArray(),
+                Pecas = dto.Pecas.Select(peca => new CriarOrdemDeServicoPecaCommand
+                {
+                    PecaId = peca.PecaId,
+                    Quantidade = peca.Quantidade
+                }).ToArray()
             }, cancellationToken);
         }
 

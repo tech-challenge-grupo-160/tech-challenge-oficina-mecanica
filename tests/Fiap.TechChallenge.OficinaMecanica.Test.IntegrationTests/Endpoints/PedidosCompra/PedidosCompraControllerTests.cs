@@ -81,11 +81,6 @@ public class PedidosCompraControllerTests : IClassFixture<CustomWebApplicationFa
         var iniciar = await _client.PatchAsync($"/api/v1/ordens-servico/{ordem!.Id}/iniciar-diagnostico", null);
         iniciar.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var adicionarServico = await _client.PostAsJsonAsync(
-            $"/api/v1/ordens-servico/{ordem.Id}/servicos",
-            new { servicoId = CustomWebApplicationFactory.ServicoExistenteId });
-        adicionarServico.StatusCode.Should().Be(HttpStatusCode.OK);
-
         var adicionarPeca = await _client.PostAsJsonAsync(
             $"/api/v1/ordens-servico/{ordem.Id}/pecas",
             new { pecaId = CustomWebApplicationFactory.PecaExistenteId, quantidade = 101 });
@@ -111,7 +106,12 @@ public class PedidosCompraControllerTests : IClassFixture<CustomWebApplicationFa
             clienteId,
             veiculoId,
             descricaoSolicitacao,
-            observacoesRecepcao = "Pedido para gerar compra."
+            observacoesRecepcao = "Pedido para gerar compra.",
+            servicos = new[]
+            {
+                new { servicoId = CustomWebApplicationFactory.ServicoExistenteId }
+            },
+            pecas = Array.Empty<object>()
         };
 
         var criarResponse = await _client.PostAsJsonAsync("/api/v1/ordens-servico", payload);
