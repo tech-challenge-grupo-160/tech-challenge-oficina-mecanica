@@ -17,7 +17,16 @@ public static class OrdemDeServicoApiMapper
             ClienteId = request.ClienteId,
             VeiculoId = request.VeiculoId,
             DescricaoSolicitacao = request.DescricaoSolicitacao,
-            ObservacoesRecepcao = request.ObservacoesRecepcao
+            ObservacoesRecepcao = request.ObservacoesRecepcao,
+            Servicos = (request.Servicos ?? Array.Empty<CriarOrdemDeServicoServicoRequest>()).Select(servico => new CriarOrdemDeServicoServicoCommand
+            {
+                ServicoId = servico.ServicoId
+            }).ToArray(),
+            Pecas = (request.Pecas ?? Array.Empty<CriarOrdemDeServicoPecaRequest>()).Select(peca => new CriarOrdemDeServicoPecaCommand
+            {
+                PecaId = peca.PecaId,
+                Quantidade = peca.Quantidade
+            }).ToArray()
         };
     }
 
