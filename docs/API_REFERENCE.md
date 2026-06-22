@@ -189,7 +189,37 @@ PATCH  /pedidos-compra/{id}/receber
   "clienteId": 1000,
   "veiculoId": 1000,
   "descricaoSolicitacao": "Cliente relatou ruido ao frear.",
-  "observacoesRecepcao": "Problema ocorre em baixa velocidade."
+  "observacoesRecepcao": "Problema ocorre em baixa velocidade.",
+  "servicos": [
+    {
+      "servicoId": 1000
+    }
+  ],
+  "pecas": []
+}
+```
+
+`servicos` e obrigatorio e deve conter ao menos um item. `pecas` e opcional e pode ser enviado como array vazio quando as pecas ainda nao foram definidas.
+
+Exemplo com pecas informadas na abertura:
+
+```json
+{
+  "clienteId": 1000,
+  "veiculoId": 1000,
+  "descricaoSolicitacao": "Troca de pneus dianteiros.",
+  "observacoesRecepcao": "Cliente solicitou dois pneus da frente.",
+  "servicos": [
+    {
+      "servicoId": 1000
+    }
+  ],
+  "pecas": [
+    {
+      "pecaId": 1000,
+      "quantidade": 2
+    }
+  ]
 }
 ```
 
