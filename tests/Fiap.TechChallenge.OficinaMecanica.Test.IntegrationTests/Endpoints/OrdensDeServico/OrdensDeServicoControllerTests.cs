@@ -138,6 +138,43 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
     }
 
     [Fact]
+    public async Task CriarOrdem_DevePermitirNovaOsParaMesmoClienteEVeiculoQuandoAnteriorEstiverCancelada()
+    {
+        var ordemCancelada = await CriarOrdemAsync();
+
+        var cancelar = await _client.PatchAsJsonAsync(
+            $"/api/v1/ordens-servico/{ordemCancelada.Id}/cancelar",
+            new { motivoCancelamento = "Cliente desistiu do atendimento." });
+        cancelar.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var novaOrdem = await CriarOrdemAsync();
+
+        novaOrdem.Id.Should().NotBe(ordemCancelada.Id);
+        novaOrdem.Status.Should().Be(nameof(StatusOrdemDeServico.Recebida));
+        novaOrdem.ClienteId.Should().Be(ordemCancelada.ClienteId);
+        novaOrdem.VeiculoId.Should().Be(ordemCancelada.VeiculoId);
+    }
+
+    [Fact]
+    public async Task CriarOrdem_DevePermitirNovaOsParaMesmoClienteEVeiculoQuandoAnteriorEstiverFinalizada()
+    {
+        var ordemFinalizada = await CriarOrdemAsync();
+
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemFinalizada.Id}/iniciar-diagnostico", null);
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemFinalizada.Id}/finalizar-diagnostico", null);
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemFinalizada.Id}/aprovar", null);
+        var finalizar = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemFinalizada.Id}/finalizar", null);
+        finalizar.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var novaOrdem = await CriarOrdemAsync();
+
+        novaOrdem.Id.Should().NotBe(ordemFinalizada.Id);
+        novaOrdem.Status.Should().Be(nameof(StatusOrdemDeServico.Recebida));
+        novaOrdem.ClienteId.Should().Be(ordemFinalizada.ClienteId);
+        novaOrdem.VeiculoId.Should().Be(ordemFinalizada.VeiculoId);
+    }
+
+    [Fact]
     public async Task CriarOrdem_DevePermitirInformarServicosEPecasNaAbertura()
     {
         var payload = new
