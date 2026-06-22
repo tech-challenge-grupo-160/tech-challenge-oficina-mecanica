@@ -22,21 +22,21 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
                 str => Documento.FromDatabase(str))
             .IsRequired()
             .HasMaxLength(20);
-        
+
         entity.Property(e => e.Telefone)
             .HasConversion(
-                vo => vo.Valor, 
+                vo => vo.Valor,
                 str => Telefone.FromDatabase(str))
             .IsRequired()
             .HasMaxLength(20);
-        
+
         entity.Property(e => e.Email)
             .HasConversion(
                 vo => vo.Valor,
                 str => Email.FromDatabase(str))
             .IsRequired()
             .HasMaxLength(255);
-        
+
         entity.Property(e => e.DataCadastro).HasColumnType("timestamp without time zone");
 
         entity.HasIndex(e => e.CpfCnpj).IsUnique();
