@@ -71,18 +71,24 @@ public class ClienteRepository : IClienteRepository
 
     private IQueryable<Cliente> AplicarFiltros(string? nome, string? cpfCnpj)
     {
-        var query = _context.Clientes.AsQueryable();
+        IQueryable<Cliente> query;
+
+        if (!string.IsNullOrWhiteSpace(cpfCnpj))
+        {
+            var documentoNormalizado = cpfCnpj.Trim();
+            var documentoLike = $"%{documentoNormalizado}%";
+            query = _context.Clientes.FromSqlInterpolated(
+                $"""SELECT * FROM "Cliente" WHERE "CpfCnpj" LIKE {documentoLike}""");
+        }
+        else
+        {
+            query = _context.Clientes;
+        }
 
         if (!string.IsNullOrWhiteSpace(nome))
         {
             var nomeNormalizado = nome.Trim().ToLower();
             query = query.Where(c => c.Nome.ToLower().Contains(nomeNormalizado));
-        }
-
-        if (!string.IsNullOrWhiteSpace(cpfCnpj))
-        {
-            var documentoNormalizado = cpfCnpj.Trim();
-            query = query.Where(c => c.CpfCnpj.Valor.Contains(documentoNormalizado));
         }
 
         return query;
