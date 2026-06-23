@@ -60,7 +60,7 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
         return await _context.OrdensDeServico.AnyAsync(
             o => o.ClienteId == clienteId &&
                  o.VeiculoId == veiculoId &&
-                 o.Status != StatusOrdemDeServico.Finalizada &&
+                 o.Status != StatusOrdemDeServico.Entregue &&
                  o.Status != StatusOrdemDeServico.Cancelada,
             cancellationToken);
     }
