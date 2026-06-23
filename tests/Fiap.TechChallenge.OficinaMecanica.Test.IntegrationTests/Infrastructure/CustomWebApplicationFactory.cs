@@ -11,8 +11,10 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
 
@@ -85,7 +87,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
                 ["Jwt:Issuer"] = "TestIssuer",
                 ["Jwt:Audience"] = "TestAudience",
                 ["Jwt:SecretKey"] = "TestSecretKey_Should_Be_Long_Enough_123",
-                ["ConnectionStrings:DefaultConnection"] = _postgresContainer.GetConnectionString()
+                ["ConnectionStrings:DefaultConnection"] = GetTestConnectionString()
             };
 
             config.AddInMemoryCollection(settings);
@@ -93,6 +95,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
         builder.ConfigureTestServices(services =>
         {
+            services.RemoveAll<DbContextOptions<OficinaDbContext>>();
+            services.RemoveAll<OficinaDbContext>();
+            services.AddDbContext<OficinaDbContext>(options =>
+                options.UseNpgsql(GetTestConnectionString()));
+
             services.AddAuthentication("Test")
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
 
@@ -182,6 +189,17 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             .WithUsername("postgres")
             .WithPassword(Guid.NewGuid().ToString("N"))
             .Build();
+    }
+
+    private string GetTestConnectionString()
+    {
+        var connectionString = new NpgsqlConnectionStringBuilder(
+            _postgresContainer.GetConnectionString())
+        {
+            Host = "127.0.0.1"
+        };
+
+        return connectionString.ConnectionString;
     }
 }
 
