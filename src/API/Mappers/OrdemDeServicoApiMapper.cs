@@ -39,6 +39,20 @@ public static class OrdemDeServicoApiMapper
         };
     }
 
+    public static ResponderOrdemDeServicoCommand ToCommand(
+        this ResponderOrdemDeServicoRequest request,
+        int id,
+        string trackingToken)
+    {
+        return new ResponderOrdemDeServicoCommand
+        {
+            Id = id,
+            TrackingToken = trackingToken,
+            Aprovado = request.Aprovado,
+            MotivoRecusa = request.MotivoRecusa
+        };
+    }
+
     public static AdicionarServicoAOrdemCommand ToCommand(this AdicionarServicoAOrdemRequest request, int id)
     {
         return new AdicionarServicoAOrdemCommand
