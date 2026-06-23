@@ -134,6 +134,23 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(ordem.ToResponse());
     }
 
+    [AllowAnonymous]
+    [HttpPost("{id}/ordem/resposta")]
+    public async Task<ActionResult<OrdemDeServicoResponse>> ResponderOrdem(
+        int id,
+        [FromHeader(Name = "X-Tracking-Token")] string? trackingToken,
+        [FromBody] ResponderOrdemDeServicoRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(trackingToken))
+        {
+            return BadRequest("Header X-Tracking-Token e obrigatorio.");
+        }
+
+        var ordem = await _mediator.Send(request.ToCommand(id, trackingToken), cancellationToken);
+        return Ok(ordem.ToResponse());
+    }
+
     [HttpPatch("{id}/liberar-execucao")]
     public async Task<ActionResult<OrdemDeServicoResponse>> LiberarExecucao(int id, CancellationToken cancellationToken)
     {

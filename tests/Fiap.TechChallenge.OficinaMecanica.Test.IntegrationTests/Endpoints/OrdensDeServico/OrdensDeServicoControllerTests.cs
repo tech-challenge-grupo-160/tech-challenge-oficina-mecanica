@@ -362,6 +362,55 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
     }
 
     [Fact]
+    public async Task ResponderOrdem_DeveAprovarOsComTokenDeAcompanhamento()
+    {
+        var ordemCriada = await CriarOrdemAsync();
+
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar-diagnostico", null);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/ordens-servico/{ordemCriada.Id}/ordem/resposta")
+        {
+            Content = JsonContent.Create(new { aprovado = true })
+        };
+        request.Headers.Add("X-Tracking-Token", ordemCriada.TokenAcompanhamento);
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var ordem = await response.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
+        ordem.Should().NotBeNull();
+        ordem!.Status.Should().Be(nameof(StatusOrdemDeServico.EmExecucao));
+    }
+
+    [Fact]
+    public async Task ResponderOrdem_DeveRecusarOsComTokenDeAcompanhamento()
+    {
+        var ordemCriada = await CriarOrdemAsync();
+
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar-diagnostico", null);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/ordens-servico/{ordemCriada.Id}/ordem/resposta")
+        {
+            Content = JsonContent.Create(new
+            {
+                aprovado = false,
+                motivoRecusa = "Cliente recusou a ordem de servico."
+            })
+        };
+        request.Headers.Add("X-Tracking-Token", ordemCriada.TokenAcompanhamento);
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var ordem = await response.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
+        ordem.Should().NotBeNull();
+        ordem!.Status.Should().Be(nameof(StatusOrdemDeServico.Cancelada));
+        ordem.MotivoCancelamento.Should().Be("Cliente recusou a ordem de servico.");
+    }
+
+    [Fact]
     public async Task Listar_DeveOrdenarPorStatusEDataMaisAntigaEOcultarFinalizadasEntreguesECanceladas()
     {
         SeedOrdensParaListagem();
