@@ -13,11 +13,13 @@ env:
   SOLUTION_FILE: 'Fiap.TechChallenge.OficinaMecanica.slnx'
   UNIT_TEST_PROJECT: 'tests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.csproj'
   INTEGRATION_TEST_PROJECT: 'tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.csproj'
+  POSTGRES_TEST_IMAGE: 'postgres:16-alpine'
 
 jobs:
   build-and-test:
     name: Build and Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -28,17 +30,43 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Show .NET info
+      - name: Show .NET information
         run: dotnet --info
 
-      - name: Restore
+      - name: Restore dependencies
         run: dotnet restore ${{ env.SOLUTION_FILE }}
 
-      - name: Build
-        run: dotnet build ${{ env.SOLUTION_FILE }} --configuration Release --no-restore -p:SonarQubeTargetsImported=true -m:1
+      - name: Build solution
+        run: >
+          dotnet build ${{ env.SOLUTION_FILE }}
+          --configuration Release
+          --no-restore
 
-      - name: Unit tests
-        run: dotnet test ${{ env.UNIT_TEST_PROJECT }} --configuration Release --no-build --verbosity normal
+      - name: Run unit tests
+        run: >
+          dotnet test ${{ env.UNIT_TEST_PROJECT }}
+          --configuration Release
+          --no-build
+          --no-restore
+          --verbosity normal
 
-      - name: Integration tests
-        run: dotnet test ${{ env.INTEGRATION_TEST_PROJECT }} --configuration Release --no-build --verbosity normal
+      - name: Verify Docker availability
+        run: docker info
+
+      - name: Pull PostgreSQL test image
+        run: docker pull ${{ env.POSTGRES_TEST_IMAGE }}
+
+      - name: Run integration tests with PostgreSQL
+        timeout-minutes: 10
+        run: >
+          dotnet test ${{ env.INTEGRATION_TEST_PROJECT }}
+          --configuration Release
+          --no-build
+          --no-restore
+          --verbosity normal
+
+      - name: Show Docker diagnostics on failure
+        if: failure()
+        run: |
+          docker ps -a
+          docker images

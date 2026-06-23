@@ -11,13 +11,14 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Testcontainers.PostgreSql;
+using Xunit;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Infrastructure;
 
-public class CustomWebApplicationFactory : WebApplicationFactory<Program>
+public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const int PessoaFisicaClienteId = 1;
     public const int PessoaJuridicaClienteId = 2;
@@ -27,18 +28,55 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     public const int PecaExistenteId = 1000;
     public const string UsuarioAutenticadoId = "integration-test-user-id";
     public const string UsuarioAutenticadoNome = "integration-test-user";
-    private readonly string _databaseName = $"OficinaInMemoryTests-{Guid.NewGuid()}";
+    private readonly PostgreSqlContainer _postgresContainer = CreatePostgreSqlContainer();
 
     public void ResetDatabase()
     {
         using var scope = Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
+
+        context.ChangeTracker.Clear();
+        context.Database.ExecuteSqlRaw("""
+            TRUNCATE TABLE
+                "MovimentacaoEstoque",
+                "PedidoCompra",
+                "NotificacaoCliente",
+                "OrdemServicoHistorico",
+                "OrdemServicoItemPeca",
+                "OrdemServicoItemServico",
+                "OrdemServico",
+                "Peca",
+                "Servico",
+                "Veiculo",
+                "Cliente",
+                "Usuario"
+            RESTART IDENTITY CASCADE;
+            """);
+
         SeedData(context);
+    }
+
+    async Task IAsyncLifetime.InitializeAsync()
+    {
+        await _postgresContainer.StartAsync();
+
+        using var client = CreateClient();
+        using var scope = Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
+
+        await context.Database.MigrateAsync();
+        ResetDatabase();
+    }
+
+    async Task IAsyncLifetime.DisposeAsync()
+    {
+        Dispose();
+        await _postgresContainer.DisposeAsync();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment("IntegrationTesting");
 
         builder.ConfigureAppConfiguration((_, config) =>
         {
@@ -47,7 +85,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["Jwt:Issuer"] = "TestIssuer",
                 ["Jwt:Audience"] = "TestAudience",
                 ["Jwt:SecretKey"] = "TestSecretKey_Should_Be_Long_Enough_123",
-                ["ConnectionStrings:DefaultConnection"] = "UseInMemory"
+                ["ConnectionStrings:DefaultConnection"] = _postgresContainer.GetConnectionString()
             };
 
             config.AddInMemoryCollection(settings);
@@ -55,10 +93,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
-            services.RemoveAll<DbContextOptions<OficinaDbContext>>();
-            services.RemoveAll<OficinaDbContext>();
-            services.AddDbContext<OficinaDbContext>(options => options.UseInMemoryDatabase(_databaseName));
-
             services.AddAuthentication("Test")
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
 
@@ -68,11 +102,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 options.DefaultChallengeScheme = "Test";
             });
 
-            using var scope = services.BuildServiceProvider().CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
-            context.Database.EnsureDeleted();
-            context.Database.EnsureCreated();
-            SeedData(context);
         });
     }
 
@@ -131,6 +160,12 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             PecaExistenteId);
 
         context.SaveChanges();
+        context.Database.ExecuteSqlRaw("""
+            SELECT setval(pg_get_serial_sequence('"Cliente"', 'Id'), MAX("Id"), true) FROM "Cliente";
+            SELECT setval(pg_get_serial_sequence('"Veiculo"', 'Id'), MAX("Id"), true) FROM "Veiculo";
+            SELECT setval(pg_get_serial_sequence('"Servico"', 'Id'), MAX("Id"), true) FROM "Servico";
+            SELECT setval(pg_get_serial_sequence('"Peca"', 'Id'), MAX("Id"), true) FROM "Peca";
+            """);
     }
 
     private static void AddWithId<TEntity>(OficinaDbContext context, TEntity entity, int id)
@@ -138,6 +173,15 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     {
         context.Add(entity);
         context.Entry(entity).Property("Id").CurrentValue = id;
+    }
+
+    private static PostgreSqlContainer CreatePostgreSqlContainer()
+    {
+        return new PostgreSqlBuilder("postgres:16-alpine")
+            .WithDatabase("oficina_mecanica_tests")
+            .WithUsername("postgres")
+            .WithPassword(Guid.NewGuid().ToString("N"))
+            .Build();
     }
 }
 
