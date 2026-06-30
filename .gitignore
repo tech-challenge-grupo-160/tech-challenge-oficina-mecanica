@@ -23,8 +23,6 @@ TestResults/
 .terraform/
 .terraform.lock.hcl
 
-terraform.tfvars
-
 *.tfplan
 crash.log
 override.tf
