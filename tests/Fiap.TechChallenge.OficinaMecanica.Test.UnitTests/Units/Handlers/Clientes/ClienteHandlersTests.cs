@@ -32,6 +32,26 @@ public class ClienteHandlersTests
     }
 
     [Fact]
+    public async Task ObterClientePorId_DeveRetornarResultQuandoClienteExistir()
+    {
+        var cliente = ClienteMock.Criar(id: 1, cpfCnpj: "47654866801", nome: "Cliente Teste");
+
+        _clienteRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(cliente.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cliente);
+
+        var handler = new ObterClientePorIdQueryHandler(_clienteRepositoryMock.Object);
+
+        var resultado = await handler.Handle(
+            new ObterClientePorIdQuery { Id = cliente.Id },
+            CancellationToken.None);
+
+        resultado.Id.Should().Be(cliente.Id);
+        resultado.Nome.Should().Be(cliente.Nome);
+        resultado.CpfCnpj.Should().Be(cliente.CpfCnpj.Valor);
+    }
+
+    [Fact]
     public async Task ObterClientePorDocumento_DeveRetornarResultQuandoClienteExistir()
     {
         var cliente = ClienteMock.Criar(id: 1, cpfCnpj: "47654866801", nome: "Cliente Teste");
