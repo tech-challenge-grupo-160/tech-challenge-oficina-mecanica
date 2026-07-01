@@ -13,6 +13,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 using FluentAssertions;
@@ -36,7 +37,7 @@ public class OrdemDeServicoHandlersTests
     private readonly Mock<IUsuarioAutenticadoService> _usuarioAutenticadoServiceMock;
     private readonly Mock<ITransactionManager> _transactionManagerMock;
     private readonly Mock<IClock> _clockMock;
-    private readonly TestableOrdemDeServicoHandler _service;
+    private readonly OrdemDeServicoHandlerHarness _handlers;
 
     public OrdemDeServicoHandlersTests()
     {
@@ -88,7 +89,7 @@ public class OrdemDeServicoHandlersTests
             historicoService,
             _clockMock.Object);
 
-        _service = new TestableOrdemDeServicoHandler(
+        _handlers = new OrdemDeServicoHandlerHarness(
             _ordemRepositoryMock.Object,
             _clienteRepositoryMock.Object,
             _veiculoRepositoryMock.Object,
@@ -136,7 +137,7 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.AtualizarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico ordem, CancellationToken _) => ordem);
 
-        var resultado = await _service.CriarOrdemDeServicoAsync(dto, CancellationToken.None);
+        var resultado = await _handlers.CriarOrdemDeServicoAsync(dto, CancellationToken.None);
 
         resultado.Status.Should().Be(nameof(StatusOrdemDeServico.Recebida));
         resultado.Numero.Should().Be($"OS-{resultado.DataAbertura:yyyyMMdd}-3002");
@@ -179,10 +180,173 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.ExisteOrdemAtivaPorClienteEVeiculoAsync(dto.ClienteId, dto.VeiculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var acao = () => _service.CriarOrdemDeServicoAsync(dto, CancellationToken.None);
+        var acao = () => _handlers.CriarOrdemDeServicoAsync(dto, CancellationToken.None);
 
         await acao.Should().ThrowAsync<ServiceValidationException>()
             .WithMessage("*ordem de servico ativa*");
+    }
+
+    [Fact]
+    public async Task ObterOrdemDeServicoPorIdAsync_DeveRetornarOrdemQuandoExistir()
+    {
+        var ordem = OrdemDeServicoMock.Criar(id: 3000, status: StatusOrdemDeServico.Recebida);
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+
+        var resultado = await _handlers.ObterPorIdAsync(ordem.Id, CancellationToken.None);
+
+        resultado.Id.Should().Be(ordem.Id);
+        resultado.Status.Should().Be(nameof(StatusOrdemDeServico.Recebida));
+    }
+
+    [Fact]
+    public async Task ListarOrdensDeServicoAsync_DeveRetornarResultadoPaginadoComFiltros()
+    {
+        var ordem = OrdemDeServicoMock.Criar(id: 3000, status: StatusOrdemDeServico.EmExecucao, numero: "OS-20260604-3000");
+        var inicio = new DateTime(2026, 6, 1);
+        var fim = new DateTime(2026, 6, 30);
+
+        _ordemRepositoryMock
+            .Setup(x => x.ContarAsync(1, StatusOrdemDeServico.EmExecucao, "OS-20260604", inicio, fim, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPaginadoAsync(1, 10, 1, StatusOrdemDeServico.EmExecucao, "OS-20260604", inicio, fim, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { ordem });
+
+        var resultado = await _handlers.ListarAsync(
+            new ListarOrdensDeServicoQuery
+            {
+                Page = 1,
+                PageSize = 10,
+                ClienteId = 1,
+                Status = "EmExecucao",
+                Numero = " OS-20260604 ",
+                DataAberturaInicio = inicio,
+                DataAberturaFim = fim
+            },
+            CancellationToken.None);
+
+        resultado.Items.Should().ContainSingle(x => x.Id == ordem.Id);
+        resultado.TotalItems.Should().Be(1);
+        resultado.TotalPages.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ListarOrdensDeServicoAsync_DeveLancarQuandoStatusForInvalido()
+    {
+        var acao = () => _handlers.ListarAsync(
+            new ListarOrdensDeServicoQuery
+            {
+                Page = 1,
+                PageSize = 10,
+                Status = "Invalido"
+            },
+            CancellationToken.None);
+
+        await acao.Should().ThrowAsync<ServiceValidationException>()
+            .WithMessage("Status invalido: Invalido");
+    }
+
+    [Fact]
+    public async Task ObterHistoricoAsync_DeveRetornarHistoricosDaOrdem()
+    {
+        var ordem = OrdemDeServicoMock.Criar(id: 3000);
+        var historicos = new[]
+        {
+            OrdemServicoHistorico.Registrar(
+                ordem.Id,
+                "1000",
+                "unit-test-user",
+                null,
+                StatusOrdemDeServico.Recebida,
+                TipoEventoOrdemServico.OrdemCriada,
+                "Ordem criada.",
+                new DateTime(2026, 6, 4, 10, 0, 0))
+        };
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+        _historicoRepositoryMock
+            .Setup(x => x.ObterPorOrdemDeServicoAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(historicos);
+
+        var resultado = await _handlers.ObterHistoricoAsync(ordem.Id, CancellationToken.None);
+
+        resultado.Should().ContainSingle(x =>
+            x.OrdemDeServicoId == ordem.Id &&
+            x.TipoEvento == nameof(TipoEventoOrdemServico.OrdemCriada));
+    }
+
+    [Fact]
+    public async Task ObterNotificacoesAsync_DeveRetornarNotificacoesDaOrdem()
+    {
+        var ordem = OrdemDeServicoMock.Criar(id: 3000);
+        var notificacoes = new[]
+        {
+            NotificacaoCliente.Criar(
+                ordem.Id,
+                new DateTime(2026, 6, 4, 10, 0, 0),
+                CanalNotificacaoCliente.WhatsApp,
+                TipoNotificacaoCliente.OrcamentoDisponivel,
+                "Orcamento disponivel.",
+                true)
+        };
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+        _notificacaoClienteRepositoryMock
+            .Setup(x => x.ObterPorOrdemDeServicoAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(notificacoes);
+
+        var resultado = await _handlers.ObterNotificacoesAsync(ordem.Id, CancellationToken.None);
+
+        resultado.Should().ContainSingle(x =>
+            x.OrdemDeServicoId == ordem.Id &&
+            x.TipoNotificacao == nameof(TipoNotificacaoCliente.OrcamentoDisponivel) &&
+            x.Recebida);
+    }
+
+    [Fact]
+    public async Task ObterMovimentacoesEstoqueAsync_DeveAgruparMovimentacoesPorPecaDaOrdem()
+    {
+        var ordem = OrdemDeServicoMock.Criar(id: 3000);
+        ordem.Pecas.Add(OrdemDeServicoPeca.Criar(ordem.Id, 1000, 2, 45m));
+        var peca = PecaMock.Criar(id: 1000, nome: "Pastilha", quantidadeEstoque: 8);
+        var movimentacoes = new[]
+        {
+            MovimentacaoEstoque.Registrar(
+                peca.Id,
+                ordem.Id,
+                null,
+                TipoMovimentacaoEstoque.BaixaParaOrdemDeServico,
+                2,
+                10,
+                8,
+                "Baixa para OS.",
+                new DateTime(2026, 6, 4, 10, 0, 0))
+        };
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+        _movimentacaoEstoqueRepositoryMock
+            .Setup(x => x.ObterPorOrdemDeServicoAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(movimentacoes);
+        _pecaRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(peca.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(peca);
+
+        var resultado = await _handlers.ObterMovimentacoesEstoqueAsync(ordem.Id, CancellationToken.None);
+
+        resultado.Should().ContainSingle(x =>
+            x.PecaId == peca.Id &&
+            x.NomePeca == "Pastilha" &&
+            x.QuantidadeNaOrdem == 2 &&
+            x.TotalMovimentacoes == 1);
     }
 
     [Fact]
@@ -194,7 +358,7 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ordem);
 
-        var acao = () => _service.FinalizarDiagnosticoAsync(ordem.Id, CancellationToken.None);
+        var acao = () => _handlers.FinalizarDiagnosticoAsync(ordem.Id, CancellationToken.None);
 
         await acao.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*ao menos um servico*");
@@ -210,7 +374,7 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ordem);
 
-        var acao = () => _service.FinalizarDiagnosticoAsync(ordem.Id, CancellationToken.None);
+        var acao = () => _handlers.FinalizarDiagnosticoAsync(ordem.Id, CancellationToken.None);
 
         await acao.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*nao pode ser zerado*");
@@ -242,14 +406,14 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.CriarAsync(It.IsAny<MovimentacaoEstoque>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((MovimentacaoEstoque movimentacao, CancellationToken _) => movimentacao);
 
-        var emDiagnostico = await _service.IniciarDiagnosticoAsync(ordem.Id, CancellationToken.None);
-        var comServico = await _service.AdicionarServicoAsync(ordem.Id, new AdicionarServicoAOrdemDto { ServicoId = servico.Id }, CancellationToken.None);
-        var comPeca = await _service.AdicionarPecaAsync(ordem.Id, new AdicionarPecaAOrdemDto { PecaId = peca.Id, Quantidade = 1 }, CancellationToken.None);
-        var aguardandoAprovacao = await _service.FinalizarDiagnosticoAsync(ordem.Id, CancellationToken.None);
-        var emExecucao = await _service.AprovarAsync(ordem.Id, CancellationToken.None);
-        var finalizada = await _service.FinalizarAsync(ordem.Id, CancellationToken.None);
-        var pagamentoRegistrado = await _service.RegistrarPagamentoAsync(ordem.Id, CancellationToken.None);
-        var entregue = await _service.EntregarAsync(ordem.Id, CancellationToken.None);
+        var emDiagnostico = await _handlers.IniciarDiagnosticoAsync(ordem.Id, CancellationToken.None);
+        var comServico = await _handlers.AdicionarServicoAsync(ordem.Id, new AdicionarServicoAOrdemDto { ServicoId = servico.Id }, CancellationToken.None);
+        var comPeca = await _handlers.AdicionarPecaAsync(ordem.Id, new AdicionarPecaAOrdemDto { PecaId = peca.Id, Quantidade = 1 }, CancellationToken.None);
+        var aguardandoAprovacao = await _handlers.FinalizarDiagnosticoAsync(ordem.Id, CancellationToken.None);
+        var emExecucao = await _handlers.AprovarAsync(ordem.Id, CancellationToken.None);
+        var finalizada = await _handlers.FinalizarAsync(ordem.Id, CancellationToken.None);
+        var pagamentoRegistrado = await _handlers.RegistrarPagamentoAsync(ordem.Id, CancellationToken.None);
+        var entregue = await _handlers.EntregarAsync(ordem.Id, CancellationToken.None);
 
         emDiagnostico.Status.Should().Be(nameof(StatusOrdemDeServico.EmDiagnostico));
         comServico.ValorTotal.Should().Be(150m);
@@ -296,10 +460,77 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ordem);
 
-        var acao = () => _service.EntregarAsync(ordem.Id, CancellationToken.None);
+        var acao = () => _handlers.EntregarAsync(ordem.Id, CancellationToken.None);
 
         await acao.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*apos o pagamento*");
+    }
+
+    [Fact]
+    public async Task CancelarAsync_DeveCancelarOrdemERegistrarHistorico()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Recebida);
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+        _ordemRepositoryMock
+            .Setup(x => x.AtualizarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OrdemDeServico item, CancellationToken _) => item);
+
+        var resultado = await _handlers.CancelarAsync(
+            new CancelarOrdemDeServicoCommand
+            {
+                Id = ordem.Id,
+                MotivoCancelamento = "Cliente desistiu."
+            },
+            CancellationToken.None);
+
+        resultado.Status.Should().Be(nameof(StatusOrdemDeServico.Cancelada));
+        _historicoRepositoryMock.Verify(
+            x => x.CriarAsync(
+                It.Is<OrdemServicoHistorico>(h =>
+                    h.OrdemDeServicoId == ordem.Id &&
+                    h.TipoEvento == TipoEventoOrdemServico.OrdemCancelada),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ResponderAsync_DeveCancelarQuandoClienteRecusarOrcamento()
+    {
+        const string token = "token-publico";
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoAprovacao);
+        ordem.SetPrivateProperty(nameof(OrdemDeServico.TokenAcompanhamentoHash), StringHelper.ToSha256Hash(token));
+
+        _transactionManagerMock
+            .Setup(x => x.ExecuteAsync(It.IsAny<Func<CancellationToken, Task<OrdemDeServico>>>(), It.IsAny<CancellationToken>()))
+            .Returns((Func<CancellationToken, Task<OrdemDeServico>> action, CancellationToken ct) => action(ct));
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+        _ordemRepositoryMock
+            .Setup(x => x.AtualizarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((OrdemDeServico item, CancellationToken _) => item);
+
+        var resultado = await _handlers.ResponderAsync(
+            new ResponderOrdemDeServicoCommand
+            {
+                Id = ordem.Id,
+                TrackingToken = token,
+                Aprovado = false,
+                MotivoRecusa = "Orcamento recusado."
+            },
+            CancellationToken.None);
+
+        resultado.Status.Should().Be(nameof(StatusOrdemDeServico.Cancelada));
+        _historicoRepositoryMock.Verify(
+            x => x.CriarAsync(
+                It.Is<OrdemServicoHistorico>(h =>
+                    h.OrdemDeServicoId == ordem.Id &&
+                    h.TipoEvento == TipoEventoOrdemServico.OrdemCancelada),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -315,7 +546,7 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ordem);
 
-        var resultado = await _service.ObterMonitoramentoAsync(ordem.Id, CancellationToken.None);
+        var resultado = await _handlers.ObterMonitoramentoAsync(ordem.Id, CancellationToken.None);
 
         resultado.EstaFinalizada.Should().BeTrue();
         resultado.DataFinalizacao.Should().Be(dataFinalizacao);
@@ -343,7 +574,7 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.ObterTodasAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { ordemFinalizadaRapida, ordemFinalizadaLenta, ordemAberta });
 
-        var resultado = await _service.ObterResumoMonitoramentoAsync(1, 2, CancellationToken.None);
+        var resultado = await _handlers.ObterResumoMonitoramentoAsync(1, 2, CancellationToken.None);
 
         resultado.TotalOrdens.Should().Be(3);
         resultado.TotalOrdensAbertas.Should().Be(1);
@@ -369,7 +600,7 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ordem);
 
-        var resultado = await _service.ObterEstimativaTempoAsync(ordem.Id, CancellationToken.None);
+        var resultado = await _handlers.ObterEstimativaTempoAsync(ordem.Id, CancellationToken.None);
 
         resultado.OrdemDeServicoId.Should().Be(ordem.Id);
         resultado.TotalServicos.Should().Be(2);
@@ -406,7 +637,7 @@ public class OrdemDeServicoHandlersTests
                 return pedido.WithId(50);
             });
 
-        var resultado = await _service.AprovarAsync(ordem.Id, CancellationToken.None);
+        var resultado = await _handlers.AprovarAsync(ordem.Id, CancellationToken.None);
 
         resultado.Status.Should().Be(nameof(StatusOrdemDeServico.AguardandoEstoque));
         _pedidoCompraRepositoryMock.Verify(x => x.CriarAsync(It.Is<PedidoCompra>(p =>
@@ -424,7 +655,7 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ordem);
 
-        var acao = () => _service.AprovarAsync(ordem.Id, CancellationToken.None);
+        var acao = () => _handlers.AprovarAsync(ordem.Id, CancellationToken.None);
 
         await acao.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*aguardando estoque*");
@@ -454,7 +685,7 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.AtualizarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico item, CancellationToken _) => item);
 
-        var resultado = await _service.LiberarExecucaoAsync(ordem.Id, CancellationToken.None);
+        var resultado = await _handlers.LiberarExecucaoAsync(ordem.Id, CancellationToken.None);
 
         resultado.Status.Should().Be(nameof(StatusOrdemDeServico.EmExecucao));
         peca.QuantidadeEstoque.Should().Be(0);
@@ -481,7 +712,7 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.ObterPorIdAsync(peca.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(peca);
 
-        var acao = () => _service.LiberarExecucaoAsync(ordem.Id, CancellationToken.None);
+        var acao = () => _handlers.LiberarExecucaoAsync(ordem.Id, CancellationToken.None);
 
         await acao.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Estoque indisponivel*");
@@ -497,7 +728,7 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ordem);
 
-        var acao = () => _service.AtualizarStatusAsync(
+        var acao = () => _handlers.AtualizarStatusAsync(
             ordem.Id,
             new AtualizarStatusOrdemDeServicoDto { NovoStatus = nameof(StatusOrdemDeServico.EmExecucao) },
             CancellationToken.None);
@@ -526,7 +757,7 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.AtualizarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico item, CancellationToken _) => item);
 
-        var resultado = await _service.RemoverServicoAsync(ordem.Id, servico.Id, CancellationToken.None);
+        var resultado = await _handlers.RemoverServicoAsync(ordem.Id, servico.Id, CancellationToken.None);
 
         resultado.Servicos.Should().BeEmpty();
         resultado.ValorTotal.Should().Be(0);
@@ -545,7 +776,7 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.ObterPorIdAsync(1000, It.IsAny<CancellationToken>()))
             .ReturnsAsync(PecaMock.Criar(id: 1000, preco: 45m, quantidadeEstoque: 5));
 
-        var acao = () => _service.RemoverPecaAsync(ordem.Id, 1000, CancellationToken.None);
+        var acao = () => _handlers.RemoverPecaAsync(ordem.Id, 1000, CancellationToken.None);
 
         await acao.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*remover pecas durante o diagnostico*");
@@ -564,7 +795,7 @@ public class OrdemDeServicoHandlersTests
         _servicoRepositoryMock
             .Setup(x => x.ObterPorIdAsync(servico.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(servico);
-        var acao = () => _service.AdicionarServicoAsync(
+        var acao = () => _handlers.AdicionarServicoAsync(
             ordem.Id,
             new AdicionarServicoAOrdemDto { ServicoId = servico.Id },
             CancellationToken.None);
@@ -573,7 +804,7 @@ public class OrdemDeServicoHandlersTests
             .WithMessage("*ja foi adicionado*");
     }
 
-    private sealed class TestableOrdemDeServicoHandler
+    private sealed class OrdemDeServicoHandlerHarness
     {
         private readonly IOrdemDeServicoRepository _ordemRepository;
         private readonly IClienteRepository _clienteRepository;
@@ -591,7 +822,7 @@ public class OrdemDeServicoHandlersTests
         private readonly OrdemDeServicoNotificacaoService _notificacaoService;
         private readonly OrdemDeServicoEstoqueService _estoqueService;
 
-        public TestableOrdemDeServicoHandler(
+        public OrdemDeServicoHandlerHarness(
             IOrdemDeServicoRepository ordemRepository,
             IClienteRepository clienteRepository,
             IVeiculoRepository veiculoRepository,
@@ -653,6 +884,45 @@ public class OrdemDeServicoHandlersTests
                     Quantidade = peca.Quantidade
                 }).ToArray()
             }, cancellationToken);
+        }
+
+        public Task<OrdemDeServicoResult> ObterPorIdAsync(int id, CancellationToken cancellationToken)
+        {
+            return new ObterOrdemDeServicoPorIdQueryHandler(
+                _ordemRepository,
+                _loggerFactory).Handle(new ObterOrdemDeServicoPorIdQuery { Id = id }, cancellationToken);
+        }
+
+        public Task<PagedResultDto<OrdemDeServicoResult>> ListarAsync(ListarOrdensDeServicoQuery query, CancellationToken cancellationToken)
+        {
+            return new ListarOrdensDeServicoQueryHandler(
+                _ordemRepository,
+                _loggerFactory).Handle(query, cancellationToken);
+        }
+
+        public Task<IEnumerable<OrdemServicoHistoricoResult>> ObterHistoricoAsync(int id, CancellationToken cancellationToken)
+        {
+            return new ObterHistoricoOrdemDeServicoQueryHandler(
+                _historicoRepository,
+                _ordemRepository,
+                _loggerFactory).Handle(new ObterHistoricoOrdemDeServicoQuery { Id = id }, cancellationToken);
+        }
+
+        public Task<IEnumerable<NotificacaoClienteResult>> ObterNotificacoesAsync(int id, CancellationToken cancellationToken)
+        {
+            return new ObterNotificacoesOrdemDeServicoQueryHandler(
+                _notificacaoClienteRepository,
+                _ordemRepository,
+                _loggerFactory).Handle(new ObterNotificacoesOrdemDeServicoQuery { Id = id }, cancellationToken);
+        }
+
+        public Task<IEnumerable<MovimentacoesEstoquePorPecaResult>> ObterMovimentacoesEstoqueAsync(int id, CancellationToken cancellationToken)
+        {
+            return new ObterMovimentacoesEstoqueOrdemDeServicoQueryHandler(
+                _movimentacaoEstoqueRepository,
+                _ordemRepository,
+                _pecaRepository,
+                _loggerFactory).Handle(new ObterMovimentacoesEstoqueOrdemDeServicoQuery { Id = id }, cancellationToken);
         }
 
         public Task<OrdemDeServicoResult> FinalizarDiagnosticoAsync(int id, CancellationToken cancellationToken)
@@ -746,6 +1016,24 @@ public class OrdemDeServicoHandlersTests
                 _historicoService,
                 _ordemRepository,
                 _loggerFactory).Handle(new EntregarOrdemDeServicoCommand { Id = id }, cancellationToken);
+        }
+
+        public Task<OrdemDeServicoResult> CancelarAsync(CancelarOrdemDeServicoCommand command, CancellationToken cancellationToken)
+        {
+            return new CancelarOrdemDeServicoCommandHandler(
+                _historicoService,
+                _ordemRepository,
+                _loggerFactory).Handle(command, cancellationToken);
+        }
+
+        public Task<OrdemDeServicoResult> ResponderAsync(ResponderOrdemDeServicoCommand command, CancellationToken cancellationToken)
+        {
+            return new ResponderOrdemDeServicoCommandHandler(
+                _estoqueService,
+                _historicoService,
+                _ordemRepository,
+                _transactionManager,
+                _loggerFactory).Handle(command, cancellationToken);
         }
 
         public Task<MonitoramentoOrdemDeServicoResult> ObterMonitoramentoAsync(int id, CancellationToken cancellationToken)

@@ -119,6 +119,35 @@ public class PedidoCompraHandlersTests
     }
 
     [Fact]
+    public async Task ListarPedidosCompraPorOrdem_DeveRetornarPedidosDaOrdem()
+    {
+        var pedidos = new[]
+        {
+            PedidoCompra.Criar(3001, 1000, 2, new DateTime(2026, 4, 23, 10, 0, 0), "Pedido 1")
+                .WithId(1)
+        };
+        pedidos[0].VincularPeca(PecaMock.Criar(id: 1000, nome: "Filtro de oleo"));
+
+        _pedidoCompraRepositoryMock
+            .Setup(x => x.ObterPorOrdemDeServicoAsync(3001, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pedidos);
+
+        var handler = new ListarPedidosCompraPorOrdemQueryHandler(
+            _pedidoCompraRepositoryMock.Object,
+            NullLoggerFactory.Instance);
+
+        var resultado = await handler.Handle(
+            new ListarPedidosCompraPorOrdemQuery { OrdemDeServicoId = 3001 },
+            CancellationToken.None);
+
+        resultado.Should().ContainSingle(x =>
+            x.Id == 1 &&
+            x.OrdemDeServicoId == 3001 &&
+            x.PecaId == 1000 &&
+            x.NomePeca == "Filtro de oleo");
+    }
+
+    [Fact]
     public async Task ReceberPedidoCompra_DeveAtualizarPedidoPecaEMovimentacaoEstoque()
     {
         var pedido = PedidoCompra.Criar(3001, 1000, 5, new DateTime(2026, 6, 4, 9, 0, 0), "Pedido")
