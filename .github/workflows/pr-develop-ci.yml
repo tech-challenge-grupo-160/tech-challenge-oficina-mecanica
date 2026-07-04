@@ -16,6 +16,7 @@ env:
   DOTNET_VERSION: '10.0.x'
   BUILD_CONFIGURATION: 'Release'
   SOLUTION_FILE: 'Fiap.TechChallenge.OficinaMecanica.slnx'
+  COVERAGE_SETTINGS: 'coverlet.runsettings'
   UNIT_TEST_PROJECT: 'tests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.csproj'
   INTEGRATION_TEST_PROJECT: 'tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.csproj'
   POSTGRES_TEST_IMAGE: 'postgres:16-alpine'
@@ -78,6 +79,8 @@ jobs:
           --no-build
           --no-restore
           --verbosity normal
+          --collect:"XPlat Code Coverage"
+          --settings ${{ env.COVERAGE_SETTINGS }}
           --logger "trx;LogFileName=unit-tests.trx"
           --results-directory TestResults
 
@@ -87,6 +90,14 @@ jobs:
         with:
           name: unit-test-results
           path: TestResults/*.trx
+          if-no-files-found: error
+
+      - name: Upload unit coverage results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-coverage-results
+          path: TestResults/**/coverage.cobertura.xml
           if-no-files-found: error
 
   integration-tests:
@@ -127,6 +138,8 @@ jobs:
           --no-build
           --no-restore
           --verbosity normal
+          --collect:"XPlat Code Coverage"
+          --settings ${{ env.COVERAGE_SETTINGS }}
           --logger "trx;LogFileName=integration-tests.trx"
           --results-directory TestResults
 
@@ -142,4 +155,12 @@ jobs:
         with:
           name: integration-test-results
           path: TestResults/*.trx
+          if-no-files-found: error
+
+      - name: Upload integration coverage results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-coverage-results
+          path: TestResults/**/coverage.cobertura.xml
           if-no-files-found: error
