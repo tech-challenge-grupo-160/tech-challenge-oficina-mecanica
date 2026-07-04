@@ -4,22 +4,27 @@ on:
   pull_request:
     branches:
       - develop
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
-  DOTNET_VERSION: '10.0.300'
+  DOTNET_VERSION: '10.0.x'
+  BUILD_CONFIGURATION: 'Release'
   SOLUTION_FILE: 'Fiap.TechChallenge.OficinaMecanica.slnx'
   UNIT_TEST_PROJECT: 'tests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.csproj'
   INTEGRATION_TEST_PROJECT: 'tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.csproj'
   POSTGRES_TEST_IMAGE: 'postgres:16-alpine'
 
 jobs:
-  build-and-test:
-    name: Build and Tests
+  build:
+    name: Build
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -39,16 +44,74 @@ jobs:
       - name: Build solution
         run: >
           dotnet build ${{ env.SOLUTION_FILE }}
-          --configuration Release
+          --configuration ${{ env.BUILD_CONFIGURATION }}
+          --no-restore
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Build solution
+        run: >
+          dotnet build ${{ env.SOLUTION_FILE }}
+          --configuration ${{ env.BUILD_CONFIGURATION }}
           --no-restore
 
       - name: Run unit tests
         run: >
           dotnet test ${{ env.UNIT_TEST_PROJECT }}
-          --configuration Release
+          --configuration ${{ env.BUILD_CONFIGURATION }}
           --no-build
           --no-restore
           --verbosity normal
+          --logger "trx;LogFileName=unit-tests.trx"
+          --results-directory TestResults
+
+      - name: Upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: TestResults/*.trx
+          if-no-files-found: error
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Build solution
+        run: >
+          dotnet build ${{ env.SOLUTION_FILE }}
+          --configuration ${{ env.BUILD_CONFIGURATION }}
+          --no-restore
 
       - name: Verify Docker availability
         run: docker info
@@ -60,13 +123,23 @@ jobs:
         timeout-minutes: 10
         run: >
           dotnet test ${{ env.INTEGRATION_TEST_PROJECT }}
-          --configuration Release
+          --configuration ${{ env.BUILD_CONFIGURATION }}
           --no-build
           --no-restore
           --verbosity normal
+          --logger "trx;LogFileName=integration-tests.trx"
+          --results-directory TestResults
 
       - name: Show Docker diagnostics on failure
         if: failure()
         run: |
           docker ps -a
           docker images
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: TestResults/*.trx
+          if-no-files-found: error
