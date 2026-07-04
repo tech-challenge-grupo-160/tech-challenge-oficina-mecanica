@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Security;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -28,6 +29,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     public const int SegundoVeiculoExistenteId = 2;
     public const int ServicoExistenteId = 1000;
     public const int PecaExistenteId = 1000;
+    public const string UsuarioLogin = "admin.integration";
+    public const string UsuarioSenha = "Senha@123";
     public const string UsuarioAutenticadoId = "integration-test-user-id";
     public const string UsuarioAutenticadoNome = "integration-test-user";
     private readonly PostgreSqlContainer _postgresContainer = CreatePostgreSqlContainer();
@@ -124,7 +127,17 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         context.Servicos.RemoveRange(context.Servicos);
         context.Veiculos.RemoveRange(context.Veiculos);
         context.Clientes.RemoveRange(context.Clientes);
+        context.Usuarios.RemoveRange(context.Usuarios);
         context.SaveChanges();
+
+        AddWithId(
+            context,
+            Usuario.Criar(
+                "Administrador Integracao",
+                UsuarioLogin,
+                new BCryptPasswordHasher().Hash(UsuarioSenha),
+                "Administrador"),
+            1000);
 
         AddWithId(
             context,
@@ -172,6 +185,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             SELECT setval(pg_get_serial_sequence('"Veiculo"', 'Id'), MAX("Id"), true) FROM "Veiculo";
             SELECT setval(pg_get_serial_sequence('"Servico"', 'Id'), MAX("Id"), true) FROM "Servico";
             SELECT setval(pg_get_serial_sequence('"Peca"', 'Id'), MAX("Id"), true) FROM "Peca";
+            SELECT setval(pg_get_serial_sequence('"Usuario"', 'Id'), MAX("Id"), true) FROM "Usuario";
             """);
     }
 
