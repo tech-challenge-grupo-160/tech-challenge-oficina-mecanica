@@ -118,7 +118,6 @@ jobs:
             --title "$TITLE" \
             --body "${{ steps.content.outputs.body }}" \
             --base "$BASE" \
-            --head "$BRANCH" \
-            --label "${{ steps.target.outputs.branch == 'release/**' && 'release' || steps.target.outputs.branch }}"
+            --head "$BRANCH" 
 
           echo "PR criado: '$BRANCH' → '$BASE'"

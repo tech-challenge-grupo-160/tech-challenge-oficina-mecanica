@@ -22,6 +22,6 @@ jobs:
 
   create-pr:
     name: Create PR
-    uses: ./.github/workflows/create-pr.yml
+    uses: ./.github/workflows/_reusable-create-pr.yml
 
 
