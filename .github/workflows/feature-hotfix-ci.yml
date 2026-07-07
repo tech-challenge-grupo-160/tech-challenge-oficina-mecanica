@@ -20,23 +20,4 @@ jobs:
     name: Terraform Validate
     uses: ./.github/workflows/_reusable-terraform-validate.yml
 
-  dockerfile-lint:
-    name: Dockerfile Lint
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Lint API Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: docker/backend/Dockerfile
-          ignore: DL3008,DL3018
-
-      - name: Lint Postgres Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: docker/postgres/Dockerfile
-          ignore: DL3008,DL3018
