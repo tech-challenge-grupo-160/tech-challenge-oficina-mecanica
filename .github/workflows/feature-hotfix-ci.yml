@@ -36,23 +36,3 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Branch: $BRANCH → Version: $VERSION"
 
-  docker-build-push:
-    name: Docker Build & Push
-    needs: [build-and-test, terraform-validate, extract-version]
-    uses: ./.github/workflows/_reusable-docker-build-push.yml
-    with:
-      image-tag: rc-${{ needs.extract-version.outputs.version }}-${{ github.sha }}
-      push: true
-
-  deploy-staging:
-    name: Deploy — Staging
-    needs: [docker-build-push, extract-version]
-    uses: ./.github/workflows/_reusable-k8s-deploy.yml
-    with:
-      environment: staging
-      image-tag: rc-${{ needs.extract-version.outputs.version }}-${{ github.sha }}
-      namespace: oficina-mecanica
-    secrets:
-      KUBECONFIG_B64: ${{ secrets.STAGING_KUBECONFIG_B64 }}
-
-
