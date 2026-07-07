@@ -10,7 +10,6 @@ permissions:
   packages: write   # push no GHCR
 
 jobs:
-  # ── CI ────────────────────────────────────────────────────────────
   build-and-test:
     name: Build and Tests
     uses: ./.github/workflows/_reusable-build-test.yml

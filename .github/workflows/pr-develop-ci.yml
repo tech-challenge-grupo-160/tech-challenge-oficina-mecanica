@@ -164,3 +164,7 @@ jobs:
           name: integration-coverage-results
           path: TestResults/**/coverage.cobertura.xml
           if-no-files-found: error
+
+  create-pr:
+    name: Create PR
+    uses: ./.github/workflows/create-pr.yml
