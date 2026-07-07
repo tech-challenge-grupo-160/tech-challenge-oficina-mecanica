@@ -53,7 +53,3 @@ jobs:
       namespace: oficina-mecanica
     secrets:
       KUBECONFIG_B64: ${{ secrets.STAGING_KUBECONFIG_B64 }}
-
-  create-pr:
-    name: Create PR
-    uses: ./.github/workflows/_reusable-create-pr.yml

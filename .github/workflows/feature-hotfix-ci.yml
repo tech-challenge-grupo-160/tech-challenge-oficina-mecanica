@@ -20,8 +20,4 @@ jobs:
     name: Terraform Validate
     uses: ./.github/workflows/_reusable-terraform-validate.yml
 
-  create-pr:
-    name: Create PR
-    uses: ./.github/workflows/_reusable-create-pr.yml
-
 
