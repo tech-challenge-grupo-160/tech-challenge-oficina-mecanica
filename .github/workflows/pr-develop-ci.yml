@@ -165,18 +165,3 @@ jobs:
           name: integration-coverage-results
           path: TestResults/**/coverage.cobertura.xml
           if-no-files-found: error
-
-    extract-version:
-    name: Extract Version
-    runs-on: ubuntu-24.04
-    outputs:
-      version: ${{ steps.ver.outputs.version }}
-
-    steps:
-      - name: Extract version from branch name
-        id: ver
-        run: |
-          BRANCH="${{ github.ref_name }}"
-          VERSION="${BRANCH#release/}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Branch: $BRANCH → Version: $VERSION"
