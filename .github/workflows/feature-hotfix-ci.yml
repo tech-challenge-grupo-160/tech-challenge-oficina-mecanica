@@ -20,7 +20,7 @@ jobs:
     name: Terraform Validate
     uses: ./.github/workflows/_reusable-terraform-validate.yml
 
-    extract-version:
+  extract-version:
     name: Extract Version
     runs-on: ubuntu-24.04
     outputs:
