@@ -164,3 +164,37 @@ jobs:
           name: integration-coverage-results
           path: TestResults/**/coverage.cobertura.xml
           if-no-files-found: error
+
+    extract-version:
+    name: Extract Version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+
+    steps:
+      - name: Extract version from branch name
+        id: ver
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          VERSION="${BRANCH#release/}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Branch: $BRANCH → Version: $VERSION"
+
+  docker-build-push:
+    name: Docker Build & Push
+    needs: [build-and-test, terraform-validate, extract-version]
+    uses: ./.github/workflows/_reusable-docker-build-push.yml
+    with:
+      image-tag: rc-${{ needs.extract-version.outputs.version }}-${{ github.sha }}
+      push: true
+
+  deploy-staging:
+    name: Deploy — Staging
+    needs: [docker-build-push, extract-version]
+    uses: ./.github/workflows/_reusable-k8s-deploy.yml
+    with:
+      environment: staging
+      image-tag: rc-${{ needs.extract-version.outputs.version }}-${{ github.sha }}
+      namespace: oficina-mecanica
+    secrets:
+      KUBECONFIG_B64: ${{ secrets.STAGING_KUBECONFIG_B64 }}
