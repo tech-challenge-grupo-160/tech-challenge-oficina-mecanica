@@ -1,0 +1,145 @@
+name: Reusable — Kubernetes Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Nome do ambiente (dev, staging, prod)'
+        required: true
+        type: string
+      image-tag:
+        description: 'Tag da imagem Docker a ser deployada'
+        required: true
+        type: string
+      namespace:
+        required: false
+        type: string
+        default: 'oficina-mecanica'
+    secrets:
+      KUBECONFIG_B64:
+        description: 'kubeconfig em base64 (kubectl base64 -w0 ~/.kube/config)'
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy — ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: ${{ inputs.environment }}   
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Restaura o kubeconfig a partir do Secret do repositório.
+      # Para gerar o valor do secret:
+      #   Windows: [Convert]::ToBase64String([IO.File]::ReadAllBytes("$HOME\.kube\config"))
+      #   Linux:   base64 -w0 ~/.kube/config
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Verify cluster connection
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Apply Namespace
+        run: kubectl apply -f k8s/namespace.yaml
+
+      - name: Deploy Postgres — ConfigMap
+        run: kubectl apply -f k8s/postgres/configmap.yaml
+
+      - name: Deploy Postgres — PVC
+        run: kubectl apply -f k8s/postgres/pvc.yaml
+
+      - name: Deploy Postgres — Deployment
+        run: kubectl apply -f k8s/postgres/deployment.yaml
+
+      - name: Deploy Postgres — Service
+        run: kubectl apply -f k8s/postgres/service.yaml
+
+      - name: Wait for Postgres to be Ready
+        run: |
+          echo "Aguardando Postgres ficar pronto..."
+          kubectl rollout status deployment/postgres \
+            -n ${{ inputs.namespace }} \
+            --timeout=120s
+
+          echo "Verificando conectividade do banco..."
+          kubectl wait pod \
+            -n ${{ inputs.namespace }} \
+            -l app=postgres \
+            --for=condition=Ready \
+            --timeout=120s
+
+      - name: Deploy API — ConfigMap
+        run: kubectl apply -f k8s/api/configmap.yaml
+
+      - name: Update API image tag
+        run: |
+          IMAGE="ghcr.io/${{ github.repository_owner }}/fiap-techchallenge-oficina-mecanica-api:${{ inputs.image-tag }}"
+          echo "Deployando imagem: $IMAGE"
+          kubectl set image deployment/oficina-mecanica-api \
+            api=$IMAGE \
+            -n ${{ inputs.namespace }}
+
+      - name: Deploy API — Deployment
+        run: kubectl apply -f k8s/api/deployment.yaml
+
+      - name: Deploy API — Service
+        run: kubectl apply -f k8s/api/service.yaml
+
+      - name: Deploy API — HPA
+        run: kubectl apply -f k8s/api/hpa.yaml
+
+      - name: Wait for API rollout
+        run: |
+          kubectl rollout status deployment/oficina-mecanica-api \
+            -n ${{ inputs.namespace }} \
+            --timeout=180s
+
+      - name: Health check
+        run: |
+          kubectl port-forward \
+            -n ${{ inputs.namespace }} \
+            svc/oficina-mecanica-api 8080:80 &
+          PF_PID=$!
+
+          sleep 5
+
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check OK (HTTP $STATUS)"
+              kill $PF_PID 2>/dev/null || true
+              exit 0
+            fi
+            echo "Tentativa $i/12 — HTTP $STATUS. Aguardando..."
+            sleep 5
+          done
+
+          echo "Health check falhou após 12 tentativas"
+          kill $PF_PID 2>/dev/null || true
+          exit 1
+
+      - name: Show diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== Pods ==="
+          kubectl get pods -n ${{ inputs.namespace }} -o wide
+
+          echo "=== Events ==="
+          kubectl get events -n ${{ inputs.namespace }} --sort-by='.lastTimestamp' | tail -20
+
+          echo "=== API logs ==="
+          kubectl logs -n ${{ inputs.namespace }} \
+            -l app=oficina-mecanica-api \
+            --tail=50 || true
+
+          echo "=== Postgres logs ==="
+          kubectl logs -n ${{ inputs.namespace }} \
+            -l app=postgres \
+            --tail=20 || true
