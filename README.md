@@ -1,6 +1,6 @@
 # Sistema de Gestão de Oficina Mecânica
 
-API REST para operação de oficina mecânica com foco em clientes, veículos, catálogo de serviços e peças, autenticação JWT e fluxo completo de ordens de serviço.
+API REST para operação de oficina mecânica com foco em clientes, veículos, catálogo de serviços e peças, autenticação JWT e fluxo completo de ordens de serviço. 
 
 ## Visão geral
 
