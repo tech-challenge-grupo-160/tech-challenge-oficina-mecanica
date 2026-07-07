@@ -1,0 +1,132 @@
+name: Main — CI + Deploy Prod
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write   # criação de GitHub Release
+  packages: write   # push no GHCR
+
+jobs:
+  build-and-test:
+    name: Build and Tests
+    uses: ./.github/workflows/_reusable-build-test.yml
+    with:
+      run-integration-tests: true
+
+  terraform-validate:
+    name: Terraform Validate
+    uses: ./.github/workflows/_reusable-terraform-validate.yml
+
+  extract-version:
+    name: Extract Version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      tag: ${{ steps.ver.outputs.tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read version from .csproj
+        id: ver
+        run: |
+          CSPROJ=$(find . -name "*.csproj" -not -path "*/test*" -not -path "*/Test*" | head -1)
+          VERSION=$(grep -oP '(?<=<Version>)[^<]+' "$CSPROJ" || echo "1.0.0")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Versão detectada: $VERSION"
+
+  docker-build-push:
+    name: Docker Build & Push
+    needs: [build-and-test, terraform-validate, extract-version]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (versioned + latest)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/fiap-techchallenge-oficina-mecanica-api:${{ needs.extract-version.outputs.tag }}
+            ghcr.io/${{ github.repository_owner }}/fiap-techchallenge-oficina-mecanica-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-prod:
+    name: Deploy — Prod
+    needs: [docker-build-push, extract-version]
+    uses: ./.github/workflows/_reusable-k8s-deploy.yml
+    with:
+      environment: prod
+      image-tag: ${{ needs.extract-version.outputs.tag }}
+      namespace: oficina-mecanica
+    secrets:
+      KUBECONFIG_B64: ${{ secrets.PROD_KUBECONFIG_B64 }}
+
+  create-release:
+    name: Create GitHub Release
+    needs: [deploy-prod, extract-version]
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            CHANGELOG=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges | head -20)
+          fi
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.extract-version.outputs.tag }}
+          name: Release ${{ needs.extract-version.outputs.tag }}
+          body: |
+            ## O que mudou
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## Imagem Docker
+
+            ```
+            ghcr.io/${{ github.repository_owner }}/fiap-techchallenge-oficina-mecanica-api:${{ needs.extract-version.outputs.tag }}
+            ```
+
+            ## Deploy
+
+            - ✅ Ambiente: Produção
+            - 🕐 Data: ${{ github.event.head_commit.timestamp }}
+            - 🔗 Commit: ${{ github.sha }}
+          draft: false
+          prerelease: false

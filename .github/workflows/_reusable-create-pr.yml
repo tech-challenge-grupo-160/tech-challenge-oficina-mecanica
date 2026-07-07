@@ -1,0 +1,123 @@
+name: Create Pull Request
+
+# Abre PR automaticamente quando uma branch de trabalho
+# recebe push pela primeira vez (ou a qualquer push).
+#
+# Regras de destino (base):
+#   feature/**  → develop
+#   hotfix/**   → develop  (e depois main manualmente)
+#   release/**  → main
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'hotfix/**'
+      - 'release/**'
+
+permissions:
+  contents: read
+  pull-requests: write  
+
+jobs:
+  open-pr:
+    name: Open Pull Request
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve target branch
+        id: target
+        run: |
+          BRANCH="${{ github.ref_name }}"
+
+          if [[ "$BRANCH" == feature/* ]]; then
+            BASE="develop"
+          elif [[ "$BRANCH" == hotfix/* ]]; then
+            BASE="develop"
+          elif [[ "$BRANCH" == release/* ]]; then
+            BASE="main"
+          else
+            echo "Branch sem regra de PR definida: $BRANCH"
+            exit 0
+          fi
+
+          echo "base=$BASE" >> $GITHUB_OUTPUT
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "Branch '$BRANCH' → PR para '$BASE'"
+
+      - name: Generate PR content
+        id: content
+        run: |
+          BRANCH="${{ steps.target.outputs.branch }}"
+
+          # Título: remove o prefixo e troca hífens/underscores por espaços
+          PREFIX=$(echo "$BRANCH" | cut -d/ -f1)
+          SLUG=$(echo "$BRANCH" | cut -d/ -f2-)
+          TITLE_BODY=$(echo "$SLUG" | sed 's/[-_]/ /g' | sed 's/\b./\u&/g')
+
+          TITLE="$ [$LABEL] $TITLE_BODY"
+
+          # Lista os commits da branch que ainda não estão na base
+          COMMITS=$(git log origin/${{ steps.target.outputs.base }}..HEAD \
+            --pretty=format:"- %s" \
+            --no-merges 2>/dev/null | head -20 || echo "- Commits não disponíveis")
+
+          BODY="## Descrição
+          <!-- Descreva o que esta branch implementa ou corrige -->
+
+          ## Tipo de mudança
+          - [$( [ "$PREFIX" = "feature" ] && echo "x" || echo " " )] ✨ Nova funcionalidade
+          - [$( [ "$PREFIX" = "hotfix" ] && echo "x" || echo " " )] 🔥 Correção de bug
+          - [$( [ "$PREFIX" = "release" ] && echo "x" || echo " " )] 🚀 Release
+
+          ## Commits incluídos
+          $COMMITS
+
+          ## Checklist
+          - [ ] Testes unitários passando
+          - [ ] Testes de integração passando
+          - [ ] Sem warnings de build
+          - [ ] Documentação atualizada (se aplicável)
+
+          ---
+          *PR criado automaticamente pelo GitHub Actions*"
+
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+
+          # Body multilinha precisa do delimitador EOF
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # Abre o PR — se já existir um PR aberto para essa branch,
+      # o step é ignorado sem erro (--fill + gh verifica duplicata).
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ steps.target.outputs.branch }}"
+          BASE="${{ steps.target.outputs.base }}"
+          TITLE="${{ steps.content.outputs.title }}"
+
+          # Verifica se já existe um PR aberto para esta branch
+          EXISTING=$(gh pr list \
+            --head "$BRANCH" \
+            --base "$BASE" \
+            --state open \
+            --json number \
+            --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "$EXISTING" ]; then
+            echo "PR #$EXISTING já existe para '$BRANCH' → '$BASE'. Nenhuma ação necessária."
+            exit 0
+          fi
+
+          gh pr create \
+            --title "$TITLE" \
+            --body "${{ steps.content.outputs.body }}" \
+            --base "$BASE" \
+            --head "$BRANCH" 
+
+          echo "PR criado: '$BRANCH' → '$BASE'"

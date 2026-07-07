@@ -1,0 +1,38 @@
+name: Feature / Hotfix CI
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'hotfix/**'
+
+permissions:
+  contents: read
+  packages: write  
+
+jobs:
+  build-and-test:
+    name: Build and Tests
+    uses: ./.github/workflows/_reusable-build-test.yml
+    with:
+      run-integration-tests: true
+
+  terraform-validate:
+    name: Terraform Validate
+    uses: ./.github/workflows/_reusable-terraform-validate.yml
+
+  extract-version:
+    name: Extract Version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+
+    steps:
+      - name: Extract version from branch name
+        id: ver
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          VERSION="${BRANCH#release/}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Branch: $BRANCH → Version: $VERSION"
+
