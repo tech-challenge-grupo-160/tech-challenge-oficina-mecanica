@@ -93,15 +93,13 @@ jobs:
 
       - name: Authenticate GitHub CLI
         env:
-          GH_TOKEN: ${{ secrets.TECH_CHALLENGE_SECRET }}
+          GH_TOKEN_TOKEN: ${{ secrets.TECH_CHALLENGE_SECRET }}
         run: |
-          echo "$GH_TOKEN" | gh auth login --with-token
+          echo "$GH_TOKEN_TOKEN" | gh auth login --with-token
 
       # Abre o PR — se já existir um PR aberto para essa branch,
       # o step é ignorado sem erro (--fill + gh verifica duplicata).
       - name: Create Pull Request
-        env:
-          GH_TOKEN: ${{ secrets.TECH_CHALLENGE_SECRET }}
         run: |
           BRANCH="${{ steps.target.outputs.branch }}"
           BASE="${{ steps.target.outputs.base }}"
