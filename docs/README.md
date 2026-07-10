@@ -24,7 +24,7 @@ Organização em camadas, responsabilidades de cada módulo e fluxo principal da
 
 Rotas, autenticação, payloads principais, fluxo da OS, monitoramento e tratamento de erros.
  
-### [Infraestrutura](docs/INFRAESTRUTURA.md)
+### [Infraestrutura](INFRAESTRUTURA.md)
 
 Infra do projeto, como executar terraform, explicação k8s e docker.
 

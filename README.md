@@ -46,7 +46,7 @@ Endpoints padrão:
 
 ### Execução local
 
-Acesse a documentação em 
+Acesse a documentação em [docs/SETUP.md](docs/SETUP.md).
 
 ## Autenticação
 
