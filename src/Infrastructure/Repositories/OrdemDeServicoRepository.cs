@@ -1,7 +1,8 @@
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Microsoft.EntityFrameworkCore;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
-using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
@@ -59,8 +60,8 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
         return await _context.OrdensDeServico.AnyAsync(
             o => o.ClienteId == clienteId &&
                  o.VeiculoId == veiculoId &&
-                 o.Status != StatusOrdemDeServico.Cancelada &&
-                 o.Status != StatusOrdemDeServico.Entregue,
+                 o.Status != StatusOrdemDeServico.Entregue &&
+                 o.Status != StatusOrdemDeServico.Cancelada,
             cancellationToken);
     }
 
@@ -102,8 +103,12 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
                 dataAberturaFim)
             .Include(o => o.Servicos)
             .Include(o => o.Pecas)
-            .OrderByDescending(o => o.DataAbertura)
-            .ThenByDescending(o => o.Id)
+            .OrderBy(o => o.Status == StatusOrdemDeServico.EmExecucao ? 0 :
+                o.Status == StatusOrdemDeServico.AguardandoAprovacao ? 1 :
+                o.Status == StatusOrdemDeServico.EmDiagnostico ? 2 :
+                o.Status == StatusOrdemDeServico.Recebida ? 3 : 4)
+            .ThenBy(o => o.DataAbertura)
+            .ThenBy(o => o.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize);
 
@@ -146,6 +151,11 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
         DateTime? dataAberturaInicio,
         DateTime? dataAberturaFim)
     {
+        query = query.Where(o =>
+            o.Status != StatusOrdemDeServico.Finalizada &&
+            o.Status != StatusOrdemDeServico.Entregue &&
+            o.Status != StatusOrdemDeServico.Cancelada);
+
         if (clienteId.HasValue)
         {
             query = query.Where(o => o.ClienteId == clienteId.Value);

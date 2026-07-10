@@ -1,6 +1,8 @@
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Microsoft.EntityFrameworkCore;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
-using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
@@ -19,7 +21,7 @@ public class ClienteRepository : IClienteRepository
         return await _context.Clientes.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
     }
 
-    public async Task<Cliente?> ObterPorCpfCnpjAsync(string cpfCnpj, CancellationToken cancellationToken)
+    public async Task<Cliente?> ObterPorCpfCnpjAsync(Documento cpfCnpj, CancellationToken cancellationToken)
     {
         return await _context.Clientes.FirstOrDefaultAsync(c => c.CpfCnpj == cpfCnpj, cancellationToken);
     }
@@ -69,18 +71,24 @@ public class ClienteRepository : IClienteRepository
 
     private IQueryable<Cliente> AplicarFiltros(string? nome, string? cpfCnpj)
     {
-        var query = _context.Clientes.AsQueryable();
+        IQueryable<Cliente> query;
+
+        if (!string.IsNullOrWhiteSpace(cpfCnpj))
+        {
+            var documentoNormalizado = cpfCnpj.Trim();
+            var documentoLike = $"%{documentoNormalizado}%";
+            query = _context.Clientes.FromSqlInterpolated(
+                $"""SELECT * FROM "Cliente" WHERE "CpfCnpj" LIKE {documentoLike}""");
+        }
+        else
+        {
+            query = _context.Clientes;
+        }
 
         if (!string.IsNullOrWhiteSpace(nome))
         {
             var nomeNormalizado = nome.Trim().ToLower();
             query = query.Where(c => c.Nome.ToLower().Contains(nomeNormalizado));
-        }
-
-        if (!string.IsNullOrWhiteSpace(cpfCnpj))
-        {
-            var documentoNormalizado = cpfCnpj.Trim();
-            query = query.Where(c => c.CpfCnpj.Contains(documentoNormalizado));
         }
 
         return query;

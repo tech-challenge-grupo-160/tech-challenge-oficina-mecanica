@@ -1,6 +1,8 @@
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Microsoft.EntityFrameworkCore;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
-using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
+using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
@@ -27,7 +29,7 @@ public class VeiculoRepository : IVeiculoRepository
         return await _context.Veiculos.FirstOrDefaultAsync(v => v.Id == id, cancellationToken);
     }
 
-    public async Task<Veiculo?> ObterPorPlacaAsync(string placa, CancellationToken cancellationToken)
+    public async Task<Veiculo?> ObterPorPlacaAsync(PlacaVeiculo placa, CancellationToken cancellationToken)
     {
         return await _context.Veiculos.FirstOrDefaultAsync(v => v.Placa == placa, cancellationToken);
     }

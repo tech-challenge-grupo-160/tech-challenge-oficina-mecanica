@@ -20,6 +20,11 @@ public readonly record struct Documento
         return new Documento(normalizado);
     }
 
+    internal static Documento FromDatabase(string valor)
+    {
+        return new Documento(valor);
+    }
+
     public static bool IsValid(string? valor)
     {
         try

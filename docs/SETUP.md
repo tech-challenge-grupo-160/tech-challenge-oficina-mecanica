@@ -79,13 +79,17 @@ dotnet user-secrets set "Jwt:Audience" "Fiap.TechChallenge.OficinaMecanica"
 
 ```bash
 dotnet restore
-dotnet run --project Fiap.TechChallenge.OficinaMecanica.Api.csproj
+dotnet run --project src/API/Fiap.TechChallenge.OficinaMecanica.Api.csproj
 ```
 
 Observações:
 
 - fora do Docker, a aplicação também executa `MigrateAndSeedAsync` quando o ambiente estiver em `Development`;
 - o Swagger é habilitado apenas nesse ambiente.
+
+## Collection Postman
+
+O diretorio `docs/postman/` contem uma collection e um environment prontos para importar no Postman. Consulte [docs/postman/README.md](postman/README.md) para instrucoes de importacao, configuracao de autenticacao e fluxo recomendado de testes.
 
 ## Testes
 
@@ -96,8 +100,8 @@ dotnet test
 Para rodar suites separadas:
 
 ```bash
-dotnet test Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.csproj
-dotnet test Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.csproj
+dotnet test tests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.csproj
+dotnet test tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.csproj
 ```
 
 ## Operação básica

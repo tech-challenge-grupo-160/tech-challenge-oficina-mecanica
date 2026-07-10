@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore.Storage;
+using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Fiap.TechChallenge.OficinaMecanica.Application.Services;
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
 
 public class EfTransactionManager : ITransactionManager
 {

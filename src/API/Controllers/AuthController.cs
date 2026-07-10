@@ -1,5 +1,7 @@
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
-using Fiap.TechChallenge.OficinaMecanica.Application.Services;
+using Fiap.TechChallenge.OficinaMecanica.API.Mappers;
+using Fiap.TechChallenge.OficinaMecanica.API.Requests.Auth;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.Auth;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,18 +11,18 @@ namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 [Route("api/v1/auth")]
 public class AuthController : ControllerBase
 {
-    private readonly IAuthApplicationService _authService;
+    private readonly IMediator _mediator;
 
-    public AuthController(IAuthApplicationService authService)
+    public AuthController(IMediator mediator)
     {
-        _authService = authService;
+        _mediator = mediator;
     }
 
     [AllowAnonymous]
     [HttpPost("login")]
-    public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginRequestDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
-        var result = await _authService.LoginAsync(dto, cancellationToken);
-        return Ok(result);
+        var result = await _mediator.Send(request.ToCommand(), cancellationToken);
+        return Ok(result.ToResponse());
     }
 }
