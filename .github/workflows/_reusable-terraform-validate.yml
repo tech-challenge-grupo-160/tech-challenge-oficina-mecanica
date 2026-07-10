@@ -11,10 +11,6 @@ on:
         required: false
         type: string
         default: 'infra'
-      create-pr:
-        required: false
-        type: boolean
-        default: false
 
 jobs:
   terraform-validate:
@@ -47,80 +43,3 @@ jobs:
         if: failure()
         working-directory: ${{ inputs.terraform-dir }}
         run: terraform fmt -recursive -diff
-
-      - name: Determine PR branch and base
-        if: ${{ inputs.create-pr }}
-        id: pr-target
-        run: |
-          BRANCH="${GITHUB_REF#refs/heads/}"
-
-          if [[ "$BRANCH" == feature/* ]]; then
-            BASE="develop"
-          elif [[ "$BRANCH" == hotfix/* ]]; then
-            BASE="develop"
-          elif [[ "$BRANCH" == release/* ]]; then
-            BASE="main"
-          else
-            echo "Branch sem regra de PR definida: $BRANCH"
-            exit 0
-          fi
-
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-          echo "base=$BASE" >> $GITHUB_OUTPUT
-
-      - name: Authenticate GitHub CLI
-        if: ${{ inputs.create-pr }}
-        env:
-          GH_CLI_TOKEN: ${{ secrets.TECH_CHALLENGE_SECRET }}
-        run: |
-          echo "$GH_CLI_TOKEN" | gh auth login --with-token
-
-      - name: Create Pull Request
-        if: ${{ inputs.create-pr }}
-        run: |
-          BRANCH="${{ steps.pr-target.outputs.branch }}"
-          BASE="${{ steps.pr-target.outputs.base }}"
-
-          COMMIT_SUMMARY=$(git log -1 --pretty=format:'%s' || echo "commit")
-          if [[ -z "$COMMIT_SUMMARY" ]]; then
-            COMMIT_SUMMARY="commit"
-          fi
-
-          TITLE="PR para $BASE + $COMMIT_SUMMARY"
-
-          COMMITS=$(git log origin/$BASE..HEAD \
-            --pretty=format:"- %s" \
-            --no-merges 2>/dev/null | head -20 || echo "- Commits não disponíveis")
-
-          BODY="## Descrição
-          <!-- Descreva o que esta branch implementa ou corrige -->
-
-          ## Commits incluídos
-          $COMMITS
-
-          ## Checklist
-          - [ ] Testes unitários passando
-          - [ ] Testes de integração passando
-          - [ ] Sem warnings de build
-          - [ ] Documentação atualizada (se aplicável)
-
-          ---
-          *PR criado automaticamente pelo GitHub Actions*"
-
-          EXISTING=$(gh pr list \
-            --head "$BRANCH" \
-            --base "$BASE" \
-            --state open \
-            --json number \
-            --jq '.[0].number' 2>/dev/null || echo "")
-
-          if [ -n "$EXISTING" ]; then
-            echo "PR #$EXISTING já existe para '$BRANCH' → '$BASE'. Nenhuma ação necessária."
-            exit 0
-          fi
-
-          gh pr create \
-            --title "$TITLE" \
-            --body "$BODY" \
-            --base "$BASE" \
-            --head "$BRANCH"
