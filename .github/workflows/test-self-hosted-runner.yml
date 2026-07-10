@@ -1,0 +1,49 @@
+name: Test Self Hosted Runner
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/test-self-hosted-runner.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test-runner:
+    name: Validate local self-hosted runner
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show runner context
+        shell: powershell
+        run: |
+          Write-Host "Machine: $env:COMPUTERNAME"
+          Write-Host "User: $env:USERNAME"
+          Write-Host "Workspace: $env:GITHUB_WORKSPACE"
+          Write-Host "Runner name: $env:RUNNER_NAME"
+          Write-Host "Runner OS: $env:RUNNER_OS"
+
+      - name: Validate required tools
+        shell: powershell
+        run: |
+          git --version
+          docker --version
+          docker info
+          terraform version
+          kind version
+          kubectl version --client
+
+      - name: Validate repository files
+        shell: powershell
+        run: |
+          Test-Path "Fiap.TechChallenge.OficinaMecanica.slnx"
+          Test-Path "docker/backend/Dockerfile"
+          Test-Path "infra/main.tf"
+          Test-Path "k8s/kustomization.yaml"
