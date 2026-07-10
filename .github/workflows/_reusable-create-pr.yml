@@ -107,7 +107,6 @@ jobs:
         run: |
           BRANCH="${{ steps.target.outputs.branch }}"
           BASE="${{ steps.target.outputs.base }}"
-          TITLE="${{ steps.content.outputs.title }}"
 
           # Verifica se já existe um PR aberto para esta branch
           EXISTING=$(gh pr list \
@@ -123,7 +122,6 @@ jobs:
           fi
 
           gh pr create \
-            --title "$TITLE" \
             --body "${{ steps.content.outputs.body }}" \
             --base "$BASE" \
             --head "$BRANCH" 
