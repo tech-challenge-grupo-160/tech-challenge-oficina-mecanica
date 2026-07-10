@@ -47,6 +47,10 @@ jobs:
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
           echo "Branch '$BRANCH' → PR para '$BASE'"
 
+      - name: Fetch base branch
+        run: |
+          git fetch origin ${{ steps.target.outputs.base }} --depth=1
+
       - name: Generate PR content
         id: content
         run: |
