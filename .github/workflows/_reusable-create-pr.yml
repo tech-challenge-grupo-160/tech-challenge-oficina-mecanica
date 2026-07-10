@@ -91,6 +91,12 @@ jobs:
           echo "$BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: Authenticate GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.TECH_CHALLENGE_SECRET }}
+        run: |
+          echo "$GH_TOKEN" | gh auth login --with-token
+
       # Abre o PR — se já existir um PR aberto para essa branch,
       # o step é ignorado sem erro (--fill + gh verifica duplicata).
       - name: Create Pull Request
