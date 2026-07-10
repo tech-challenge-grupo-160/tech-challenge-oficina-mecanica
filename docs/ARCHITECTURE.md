@@ -28,6 +28,40 @@ Shared
   Helpers e utilitarios compartilhados sem dependencia das camadas externas.
 ```
 
+## Diagrama de camadas
+
+```mermaid
+graph TB
+    subgraph Externo
+        HTTP["Cliente HTTP / Swagger"]
+        DB["PostgreSQL 16"]
+    end
+
+    subgraph "src/"
+        API["API<br/><small>Controllers, Requests, Responses<br/>Mappers, Filters, Bootstrap</small>"]
+        APP["Application<br/><small>Commands, Queries, Handlers<br/>Validators, Results, Services</small>"]
+        DOM["Domain<br/><small>Entities, Value Objects<br/>Enums, Repository Contracts</small>"]
+        INFRA["Infrastructure<br/><small>EF Core, Repositories<br/>Migrations, JWT, Clock</small>"]
+        SHARED["Shared<br/><small>Helpers, Log Templates</small>"]
+    end
+
+    HTTP -->|"HTTP Request"| API
+    API -->|"IMediator.Send()"| APP
+    APP -->|"Entities / Contracts"| DOM
+    INFRA -->|"Implements"| APP
+    INFRA -->|"Implements"| DOM
+    INFRA -->|"EF Core"| DB
+    API -.->|"Composition Root"| INFRA
+    APP -.->|"Helpers"| SHARED
+    API -.->|"Helpers"| SHARED
+
+    style DOM fill:#4a9eff,color:#fff
+    style APP fill:#34d399,color:#fff
+    style API fill:#f59e0b,color:#fff
+    style INFRA fill:#a78bfa,color:#fff
+    style SHARED fill:#94a3b8,color:#fff
+```
+
 ## Dependencias entre projetos
 
 ```text
@@ -205,18 +239,27 @@ Para operacoes sem corpo de retorno, o projeto usa `Unit`, por exemplo `DeletarC
 
 O fluxo padrao implementado e:
 
-```text
-HTTP Request
-  -> Controller
-  -> API Mapper
-  -> Command ou Query da Application
-  -> IMediator.Send(...)
-  -> ValidationBehavior<TRequest, TResponse>
-  -> Handler da Application
-  -> Domain / Repositories / Services de apoio
-  -> Result da Application
-  -> API Mapper
-  -> HTTP Response
+```mermaid
+sequenceDiagram
+    participant C as Cliente HTTP
+    participant CT as Controller
+    participant M as IMediator
+    participant VB as ValidationBehavior
+    participant H as Handler
+    participant D as Domain / Repository
+
+    C->>CT: HTTP Request
+    CT->>CT: API Mapper (Request → Command/Query)
+    CT->>M: Send(command/query)
+    M->>VB: Pipeline
+    VB->>VB: Executa validators
+    VB->>H: Handle()
+    H->>D: Entidades, Repositories, Services
+    D-->>H: Dados persistidos/consultados
+    H-->>M: Result
+    M-->>CT: Result
+    CT->>CT: API Mapper (Result → Response)
+    CT-->>C: HTTP Response
 ```
 
 Exemplo com criacao de cliente:
@@ -277,20 +320,158 @@ builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
 `OrdemDeServico` e o agregado central. Ele concentra fluxo de status, composicao de orcamento, validacoes operacionais e bloqueio por falta de estoque.
 
-Fluxo implementado:
+### Maquina de estados da OS
 
-```text
-Recebida -> EmDiagnostico -> AguardandoAprovacao -> EmExecucao -> Finalizada -> Entregue
-                                   \-> AguardandoEstoque -> EmExecucao
+```mermaid
+stateDiagram-v2
+    [*] --> Recebida : Criar OS
+    Recebida --> EmDiagnostico : Iniciar diagnostico
+    EmDiagnostico --> AguardandoAprovacao : Finalizar diagnostico
+    AguardandoAprovacao --> EmExecucao : Aprovar (estoque OK)
+    AguardandoAprovacao --> AguardandoEstoque : Aprovar (falta estoque)
+    AguardandoEstoque --> EmExecucao : Liberar execucao
+    EmExecucao --> Finalizada : Finalizar servico
+    Finalizada --> Finalizada : Registrar pagamento
+    Finalizada --> Entregue : Entregar veiculo
+    Entregue --> [*]
+
+    Recebida --> Cancelada : Cancelar
+    EmDiagnostico --> Cancelada : Cancelar
+    AguardandoAprovacao --> Cancelada : Cancelar
+    AguardandoEstoque --> Cancelada : Cancelar
+    Cancelada --> [*]
 ```
 
-Regras relevantes:
+### Regras de composicao do orcamento
 
 - servicos so podem ser adicionados ou removidos em `EmDiagnostico`;
 - pecas podem ser adicionadas em `EmDiagnostico`, `AguardandoAprovacao` e `AguardandoEstoque`;
 - pecas so podem ser removidas em `EmDiagnostico`;
 - a transicao para `EmExecucao` depende de validacao de estoque com sucesso;
 - se faltar estoque, a OS vai para `AguardandoEstoque` e pode gerar pedido de compra.
+
+## Modelo de entidades
+
+```mermaid
+erDiagram
+    Cliente ||--o{ Veiculo : possui
+    Cliente ||--o{ OrdemDeServico : solicita
+    Veiculo ||--o{ OrdemDeServico : vinculada
+
+    OrdemDeServico ||--o{ OrdemDeServicoServico : contem
+    OrdemDeServico ||--o{ OrdemDeServicoPeca : contem
+    OrdemDeServico ||--o{ OrdemServicoHistorico : registra
+    OrdemDeServico ||--o{ NotificacaoCliente : notifica
+    OrdemDeServico ||--o{ PedidoCompra : gera
+
+    Servico ||--o{ OrdemDeServicoServico : referenciado
+    Peca ||--o{ OrdemDeServicoPeca : referenciada
+    Peca ||--o{ PedidoCompra : solicitada
+    Peca ||--o{ MovimentacaoEstoque : movimenta
+
+    Cliente {
+        int Id PK
+        string Nome
+        Documento CpfCnpj
+        Telefone Telefone
+        Email Email
+        DateTime DataCadastro
+    }
+
+    Veiculo {
+        int Id PK
+        int ClienteId FK
+        PlacaVeiculo Placa
+        string Marca
+        string Modelo
+        int Ano
+    }
+
+    OrdemDeServico {
+        int Id PK
+        string Numero
+        string CodigoAcompanhamento
+        int ClienteId FK
+        int VeiculoId FK
+        string DescricaoSolicitacao
+        StatusOrdemDeServico Status
+        decimal ValorTotal
+        DateTime DataAbertura
+    }
+
+    Servico {
+        int Id PK
+        string Nome
+        string Descricao
+        decimal Preco
+        int TempoEstimado
+    }
+
+    Peca {
+        int Id PK
+        string Nome
+        string Marca
+        string Modelo
+        decimal Preco
+        int QuantidadeEstoque
+    }
+
+    OrdemDeServicoServico {
+        int OrdemDeServicoId FK
+        int ServicoId FK
+        decimal Preco
+        int TempoEstimado
+    }
+
+    OrdemDeServicoPeca {
+        int OrdemDeServicoId FK
+        int PecaId FK
+        int Quantidade
+        decimal Preco
+    }
+
+    OrdemServicoHistorico {
+        int Id PK
+        int OrdemDeServicoId FK
+        string TipoEvento
+        string Descricao
+        DateTime DataEvento
+    }
+
+    NotificacaoCliente {
+        int Id PK
+        int OrdemDeServicoId FK
+        string Canal
+        string TipoNotificacao
+        string Mensagem
+        DateTime DataNotificacao
+    }
+
+    PedidoCompra {
+        int Id PK
+        int OrdemDeServicoId FK
+        int PecaId FK
+        int QuantidadeSolicitada
+        int QuantidadeRecebida
+        string Status
+    }
+
+    MovimentacaoEstoque {
+        int Id PK
+        int PecaId FK
+        int OrdemDeServicoId FK
+        string TipoMovimentacao
+        int Quantidade
+        DateTime DataMovimentacao
+    }
+
+    Usuario {
+        int Id PK
+        string Username
+        string SenhaHash
+        string Role
+    }
+```
 
 ## Persistencia
 
@@ -320,7 +501,7 @@ Autenticacao:
 Estado atual da autorizacao:
 
 - protegidos: `Clientes`, `Veiculos`, `Servicos`, `Pecas`, `OrdensDeServico`, `PedidosCompra`;
-- publicos: `Auth` e acompanhamento publico de OS em `AcompanhamentoOS`.
+- publicos: `Auth`, acompanhamento publico de OS e resposta de OS pelo cliente (ambos requerem `X-Tracking-Token`).
 
 ## Observabilidade
 
