@@ -95,7 +95,7 @@ jobs:
       # o step é ignorado sem erro (--fill + gh verifica duplicata).
       - name: Create Pull Request
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.TECH_CHALLENGE_SECRET }}
         run: |
           BRANCH="${{ steps.target.outputs.branch }}"
           BASE="${{ steps.target.outputs.base }}"
