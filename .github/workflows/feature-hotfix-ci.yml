@@ -21,3 +21,18 @@ jobs:
     name: Terraform Validate
     uses: ./.github/workflows/_reusable-terraform-validate.yml
 
+  extract-version:
+    name: Extract Version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+
+    steps:
+      - name: Extract version from branch name
+        id: ver
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          VERSION="${BRANCH#feature/}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Branch: $BRANCH → Version: $VERSION"
+
