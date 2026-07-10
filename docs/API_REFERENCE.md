@@ -44,6 +44,13 @@ Resposta `200 OK`:
 }
 ```
 
+Erros possiveis:
+
+| Status | Cenario |
+|---|---|
+| `401` | Usuario ou senha invalidos |
+| `400` | Campos `usuario` ou `senha` vazios (FluentValidation) |
+
 Uso do token:
 
 ```http
@@ -75,7 +82,7 @@ O filtro global traduz excecoes em respostas padronizadas:
 |---|---|
 | `ServiceNotFoundException` | `404 Not Found` |
 | `KeyNotFoundException` | `404 Not Found` |
-| `ServiceValidationException` | `422 Unprocessable Entity` |
+| `ServiceValidationException` | `400 Bad Request` |
 | `InvalidOperationException` | `400 Bad Request` |
 | `ArgumentException` | `400 Bad Request` |
 | `UnauthorizedAccessException` | `401 Unauthorized` |
@@ -151,6 +158,20 @@ Resposta `201 Created`:
 }
 ```
 
+#### Erros por endpoint
+
+| Endpoint | Status | Cenario |
+|---|---|---|
+| `POST /clientes` | `400` | CPF/CNPJ ja cadastrado |
+| `POST /clientes` | `400` | CPF/CNPJ, telefone ou e-mail invalido (Value Object) |
+| `POST /clientes` | `400` | Campos obrigatorios ausentes (FluentValidation) |
+| `GET /clientes/documento/{cpfCnpj}` | `400` | CPF/CNPJ com formato invalido |
+| `PUT /clientes/documento/{cpfCnpj}` | `404` | Cliente nao encontrado |
+| `PUT /clientes/documento/{cpfCnpj}` | `400` | Telefone ou e-mail invalido (Value Object) |
+| `DELETE /clientes/documento/{cpfCnpj}` | `404` | Cliente nao encontrado |
+| `DELETE /clientes/documento/{cpfCnpj}` | `400` | Existem veiculos vinculados ao cliente |
+| `DELETE /clientes/documento/{cpfCnpj}` | `400` | Existem ordens de servico vinculadas |
+
 ### Veiculos
 
 | Metodo | Rota | Autenticacao | Descricao |
@@ -190,6 +211,18 @@ Resposta `201 Created`:
 }
 ```
 
+#### Erros por endpoint
+
+| Endpoint | Status | Cenario |
+|---|---|---|
+| `POST /veiculos` | `404` | Cliente com CPF/CNPJ informado nao encontrado |
+| `POST /veiculos` | `400` | Placa ja cadastrada |
+| `POST /veiculos` | `400` | Placa ou CPF/CNPJ com formato invalido (Value Object) |
+| `POST /veiculos` | `400` | Campos obrigatorios ausentes (FluentValidation) |
+| `PUT /veiculos/{id}` | `404` | Veiculo nao encontrado |
+| `DELETE /veiculos/{id}` | `404` | Veiculo nao encontrado |
+| `DELETE /veiculos/{id}` | `400` | Existem ordens de servico ativas vinculadas ao veiculo |
+
 ### Servicos
 
 | Metodo | Rota | Autenticacao | Descricao |
@@ -224,6 +257,15 @@ Resposta `201 Created`:
   "tempoEstimado": 30
 }
 ```
+
+#### Erros por endpoint
+
+| Endpoint | Status | Cenario |
+|---|---|---|
+| `POST /servicos` | `400` | Campos obrigatorios ausentes ou invalidos (FluentValidation) |
+| `PUT /servicos/{id}` | `404` | Servico nao encontrado |
+| `DELETE /servicos/{id}` | `404` | Servico nao encontrado |
+| `DELETE /servicos/{id}` | `400` | Existem ordens de servico ativas vinculadas ao servico |
 
 ### Pecas
 
@@ -261,6 +303,15 @@ Resposta `201 Created`:
   "quantidadeEstoque": 10
 }
 ```
+
+#### Erros por endpoint
+
+| Endpoint | Status | Cenario |
+|---|---|---|
+| `POST /pecas` | `400` | Campos obrigatorios ausentes ou invalidos (FluentValidation) |
+| `PUT /pecas/{id}` | `404` | Peca nao encontrada |
+| `DELETE /pecas/{id}` | `404` | Peca nao encontrada |
+| `DELETE /pecas/{id}` | `400` | Existem ordens de servico ativas vinculadas a peca |
 
 ### Ordens de servico
 
@@ -571,6 +622,63 @@ Resposta `200 OK`:
 ]
 ```
 
+#### Erros por endpoint
+
+**CRUD e listagem**
+
+| Endpoint | Status | Cenario |
+|---|---|---|
+| `POST /ordens-servico` | `404` | Cliente, veiculo, servico ou peca nao encontrado |
+| `POST /ordens-servico` | `400` | Veiculo nao pertence ao cliente informado |
+| `POST /ordens-servico` | `400` | Ja existe OS ativa para este cliente e veiculo |
+| `POST /ordens-servico` | `400` | Campos obrigatorios ausentes (FluentValidation) |
+| `GET /ordens-servico/{id}` | `404` | Ordem de servico nao encontrada |
+
+**Fluxo de status**
+
+| Endpoint | Status | Cenario |
+|---|---|---|
+| `PATCH .../iniciar-diagnostico` | `404` | OS nao encontrada |
+| `PATCH .../iniciar-diagnostico` | `400` | Status atual nao permite iniciar diagnostico (requer `Recebida`) |
+| `PATCH .../finalizar-diagnostico` | `404` | OS nao encontrada |
+| `PATCH .../finalizar-diagnostico` | `400` | Status atual nao e `EmDiagnostico` |
+| `PATCH .../finalizar-diagnostico` | `400` | OS sem servicos ou orcamento zerado |
+| `PATCH .../aprovar` | `404` | OS nao encontrada |
+| `PATCH .../aprovar` | `400` | Status atual nao e `AguardandoAprovacao` |
+| `PATCH .../aprovar` | `400` | OS esta em `AguardandoEstoque` — use `/liberar-execucao` |
+| `PATCH .../liberar-execucao` | `404` | OS nao encontrada |
+| `PATCH .../liberar-execucao` | `400` | Status atual nao e `AguardandoEstoque` |
+| `PATCH .../liberar-execucao` | `400` | Estoque ainda insuficiente para as pecas da OS |
+| `PATCH .../finalizar` | `404` | OS nao encontrada |
+| `PATCH .../finalizar` | `400` | Status atual nao permite finalizacao (requer `EmExecucao`) |
+| `PATCH .../registrar-pagamento` | `404` | OS nao encontrada |
+| `PATCH .../registrar-pagamento` | `400` | OS nao esta no status `Finalizada` |
+| `PATCH .../entregar` | `404` | OS nao encontrada |
+| `PATCH .../entregar` | `400` | Status atual nao permite entrega (requer `Finalizada` com pagamento) |
+| `PATCH .../cancelar` | `404` | OS nao encontrada |
+| `PATCH .../cancelar` | `400` | Status atual nao permite cancelamento |
+
+**Composicao do orcamento**
+
+| Endpoint | Status | Cenario |
+|---|---|---|
+| `POST .../servicos` | `404` | OS ou servico nao encontrado |
+| `POST .../servicos` | `400` | Servico ja adicionado a esta OS |
+| `POST .../servicos` | `400` | Status atual nao permite adicionar servico (requer `EmDiagnostico`) |
+| `DELETE .../servicos/{servicoId}` | `404` | OS nao encontrada |
+| `DELETE .../servicos/{servicoId}` | `400` | Status atual nao permite remover servico (requer `EmDiagnostico`) |
+| `POST .../pecas` | `404` | OS ou peca nao encontrada |
+| `POST .../pecas` | `400` | Status atual nao permite adicionar peca |
+| `DELETE .../pecas/{pecaId}` | `404` | OS nao encontrada |
+| `DELETE .../pecas/{pecaId}` | `400` | Status atual nao permite remover peca (requer `EmDiagnostico`) |
+
+**Endpoint publico de resposta**
+
+| Endpoint | Status | Cenario |
+|---|---|---|
+| `POST .../ordem/resposta` | `404` | OS nao encontrada ou token de acompanhamento invalido |
+| `POST .../ordem/resposta` | `400` | OS nao esta em `AguardandoAprovacao` |
+
 ### Acompanhamento publico
 
 | Metodo | Rota | Autenticacao | Descricao |
@@ -597,6 +705,13 @@ Resposta `200 OK`:
   "dataConclusao": null
 }
 ```
+
+#### Erros por endpoint
+
+| Endpoint | Status | Cenario |
+|---|---|---|
+| `GET /acompanhamento-os/{codigo}` | `404` | Codigo de acompanhamento nao encontrado |
+| `GET /acompanhamento-os/{codigo}` | `404` | Token de acompanhamento invalido |
 
 ### Pedidos de compra
 
@@ -648,6 +763,17 @@ Request:
   "quantidadeRecebida": 4
 }
 ```
+
+#### Erros por endpoint
+
+| Endpoint | Status | Cenario |
+|---|---|---|
+| `POST /pedidos-compra` | `404` | Ordem de servico nao encontrada |
+| `POST /pedidos-compra` | `404` | Peca nao encontrada |
+| `POST /pedidos-compra` | `400` | Campos obrigatorios ausentes (FluentValidation) |
+| `PATCH /pedidos-compra/{id}/receber` | `404` | Pedido de compra nao encontrado |
+| `PATCH /pedidos-compra/{id}/receber` | `404` | Peca vinculada ao pedido nao encontrada |
+| `PATCH /pedidos-compra/{id}/receber` | `400` | Campos obrigatorios ausentes (FluentValidation) |
 
 ---
 
