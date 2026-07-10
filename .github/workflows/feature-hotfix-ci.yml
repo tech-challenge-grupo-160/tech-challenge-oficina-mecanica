@@ -20,4 +20,6 @@ jobs:
   terraform-validate:
     name: Terraform Validate
     uses: ./.github/workflows/_reusable-terraform-validate.yml
+    with:
+      create-pr: true
 
