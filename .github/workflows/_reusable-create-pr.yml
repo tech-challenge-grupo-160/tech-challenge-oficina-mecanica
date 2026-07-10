@@ -57,7 +57,11 @@ jobs:
           SLUG=$(echo "$BRANCH" | cut -d/ -f2-)
           TITLE_BODY=$(echo "$SLUG" | sed 's/[-_]/ /g' | sed 's/\b./\u&/g')
 
-          TITLE="$ [$LABEL] $TITLE_BODY"
+          if [[ -n "${LABEL:-}" ]]; then
+            TITLE="[$LABEL] $TITLE_BODY"
+          else
+            TITLE="$TITLE_BODY"
+          fi
 
           # Lista os commits da branch que ainda não estão na base
           COMMITS=$(git log origin/${{ steps.target.outputs.base }}..HEAD \
