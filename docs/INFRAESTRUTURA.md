@@ -21,13 +21,16 @@ O fluxo de implantação segue estes passos:
 
 ```text
 infra/
-├── main.tf                  # Criação do cluster kind, namespace e metrics-server
-├── variables.tf             # Variáveis configuráveis (nome, portas, réplicas)
-├── versions.tf              # Providers e versões mínimas exigidas
-├── outputs.tf               # Valores exportados após o apply
+├── main.tf                   # Criação do cluster kind, namespace e metrics-server
+├── variables.tf              # Variáveis configuráveis (nome, portas, réplicas)
+├── versions.tf               # Providers e versões mínimas exigidas
+├── outputs.tf                # Valores exportados após o apply
 ├── inventories/
-│   └── dev/terraform.tfvars  # Configuração do ambiente de desenvolvimento
-└── .gitignore               # Exclui state e credenciais do Git
+│   ├── dev/terraform.tfvars  # Configuração do ambiente de desenvolvimento
+│   ├── hom/terraform.tfvars  # Configuração do ambiente de homologação
+│   └── prod/terraform.tfvars # Configuração do ambiente de produção
+└── .gitignore                # Exclui state e credenciais do Git
+
 k8s/
 ├── kustomization.yaml
 ├── namespace.yaml
@@ -43,6 +46,7 @@ k8s/
     ├── pvc.yaml
     ├── deployment.yaml
     └── service.yaml
+
 docker/
 ├── backend/
 │   └── Dockerfile
@@ -50,15 +54,7 @@ docker/
     └── Dockerfile
 ```
 
-## Infraestrutura do projeto
-
-A infraestrutura do projeto está dividida em três camadas:
-
-- `infra/`: provisiona o cluster Kind local e os recursos do Kubernetes necessários ao ambiente.
-- `k8s/`: agrupa os manifests Kubernetes usados para implantar a API e o PostgreSQL no cluster.
-- `docker/`: contém os Dockerfiles para a API e o container PostgreSQL estendido.
-
-### Kubernetes
+## Kubernetes
 
 O `kustomization.yaml` orquestra os recursos abaixo, criando-os no namespace `oficina-mecanica`:
 
@@ -72,7 +68,7 @@ O `HorizontalPodAutoscaler` da API escala entre `2` e `10` réplicas com base em
 
 O PostgreSQL utiliza uma estratégia `Recreate` no deployment para evitar múltiplos pods escrevendo no mesmo volume simultaneamente. O banco monta um `PersistentVolumeClaim` de `5Gi` em `/var/lib/postgresql/data`.
 
-### Docker
+## Docker
 
 O `docker/backend/Dockerfile` builda a aplicação .NET:
 
@@ -86,10 +82,12 @@ O `docker/postgres/Dockerfile` estende a imagem `postgres:16` e instala o `pgage
 
 ## Pré-requisitos
 
-Você precisa de **três ferramentas** instaladas no Windows :
+Você precisa de **três ferramentas** instaladas:
 
 ### 1. Docker Desktop
+
 Já deve estar instalado (`docker-compose`). Confirme com:
+
 ```bash
 docker --version
 ```
@@ -98,12 +96,14 @@ docker --version
 
 Baixe o instalador para Windows em: https://developer.hashicorp.com/terraform/install
 
-Ou instale via **winget** :
+Ou instale via **winget**:
+
 ```powershell
 winget install HashiCorp.Terraform
 ```
 
 Confirme:
+
 ```bash
 terraform --version
 # Deve mostrar >= 1.6.0
@@ -114,64 +114,81 @@ terraform --version
 Baixe o binário para Windows em: https://kind.sigs.k8s.io/docs/user/quick-start/#installing-from-release-binaries
 
 Ou instale via **winget**:
+
 ```powershell
 winget install Kubernetes.kind
 ```
 
 Confirme:
+
 ```bash
 kind --version
 ```
----
 
 ## Como executar
 
-**Instale**
+### 1. Instalar dependências
 
+```powershell
 winget install HashiCorp.Terraform
-
 winget install Kubernetes.kind
+```
 
-**Acesse a pasta infra/ do projeto**
+### 2. Provisionar o cluster com Terraform
+
+```bash
 cd infra
-
 terraform init
-
 terraform apply -var-file="inventories/dev/terraform.tfvars"
+```
 
-**Volte para a raiz do projeto**
+### 3. Construir a imagem Docker da API
+
+```bash
 cd ..
-
 docker build -f docker/backend/Dockerfile -t oficina-mecanica-api:local .
+```
 
-**Em seguida:**
+### 4. Carregar a imagem no cluster Kind
 
+```bash
 kind load docker-image oficina-mecanica-api:local --name oficina-mecanica
+```
 
-**Aplicar o kubernets**
+### 5. Aplicar os manifests Kubernetes
 
+```bash
 kubectl apply -k k8s/
-
 kubectl rollout restart deployment/oficina-mecanica-api -n oficina-mecanica
+```
 
-**Espere até ficar running**
+### 6. Aguardar os pods ficarem prontos
 
+```bash
 kubectl get pods -n oficina-mecanica -w
+```
 
-**Expor endpoint se maquina windows**
+### 7. Expor a API (necessário no Windows)
 
+```bash
 kubectl port-forward -n oficina-mecanica svc/oficina-mecanica-api 8080:80
+```
 
-Esses são os endpoints disponiveis
-http://localhost:8080/health    # health check
+### Endpoints disponíveis
 
-http://localhost:8080/swagger   # documentacao
+- Health check: `http://localhost:8080/health`
+- Swagger: `http://localhost:8080/swagger`
+- Login:
 
-POST http://localhost:8080/api/v1/auth/login
-  body: { "username": "admin", "password": "admin123" }
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+```
 
-**Para destruir**
+## Como destruir
 
+```bash
 cd infra
-
 terraform destroy -var-file="inventories/dev/terraform.tfvars"
+```
