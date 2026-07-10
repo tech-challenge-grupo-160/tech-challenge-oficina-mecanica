@@ -55,17 +55,14 @@ jobs:
         id: content
         run: |
           BRANCH="${{ steps.target.outputs.branch }}"
+          BASE="${{ steps.target.outputs.base }}"
 
-          # Título: remove o prefixo e troca hífens/underscores por espaços
-          PREFIX=$(echo "$BRANCH" | cut -d/ -f1)
-          SLUG=$(echo "$BRANCH" | cut -d/ -f2-)
-          TITLE_BODY=$(echo "$SLUG" | sed 's/[-_]/ /g' | sed 's/\b./\u&/g')
-
-          if [[ -n "${LABEL:-}" ]]; then
-            TITLE="[$LABEL] $TITLE_BODY"
-          else
-            TITLE="$TITLE_BODY"
+          COMMIT_SUMMARY=$(git log -1 --pretty=format:'%s' || echo "commit")
+          if [[ -z "$COMMIT_SUMMARY" ]]; then
+            COMMIT_SUMMARY="commit"
           fi
+
+          TITLE="PR para $BASE + $COMMIT_SUMMARY"
 
           # Lista os commits da branch que ainda não estão na base
           COMMITS=$(git log origin/${{ steps.target.outputs.base }}..HEAD \
@@ -126,7 +123,8 @@ jobs:
           fi
 
           gh pr create \
-            --fill \
+            --title "$TITLE" \
+            --body "${{ steps.content.outputs.body }}" \
             --base "$BASE" \
             --head "$BRANCH"
 
