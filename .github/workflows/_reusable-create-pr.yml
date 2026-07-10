@@ -122,8 +122,8 @@ jobs:
           fi
 
           gh pr create \
-            --body "${{ steps.content.outputs.body }}" \
+            --fill \
             --base "$BASE" \
-            --head "$BRANCH" 
+            --head "$BRANCH"
 
           echo "PR criado: '$BRANCH' → '$BASE'"
