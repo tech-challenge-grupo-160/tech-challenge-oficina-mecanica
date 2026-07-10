@@ -571,8 +571,14 @@ public class OrdemDeServicoHandlersTests
         ordemAberta.SetPrivateProperty(nameof(OrdemDeServico.DataFinalizacao), null);
 
         _ordemRepositoryMock
-            .Setup(x => x.ObterTodasAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { ordemFinalizadaRapida, ordemFinalizadaLenta, ordemAberta });
+            .Setup(x => x.ContarParaMonitoramentoAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync((3, 1, 2));
+        _ordemRepositoryMock
+            .Setup(x => x.ObterTempoMedioFinalizacaoMinutosAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(180);
+        _ordemRepositoryMock
+            .Setup(x => x.ObterParaMonitoramentoAsync(1, 2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<OrdemDeServico> { ordemFinalizadaRapida, ordemFinalizadaLenta });
 
         var resultado = await _handlers.ObterResumoMonitoramentoAsync(1, 2, CancellationToken.None);
 

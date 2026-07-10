@@ -16,13 +16,32 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<OrdemDeServico>> ObterTodasAsync(CancellationToken cancellationToken)
+    public async Task<(int Total, int Abertas, int Finalizadas)> ContarParaMonitoramentoAsync(CancellationToken cancellationToken)
+    {
+        var total = await _context.OrdensDeServico.CountAsync(cancellationToken);
+        var finalizadas = await _context.OrdensDeServico
+            .CountAsync(o => o.DataFinalizacao != null, cancellationToken);
+        return (total, total - finalizadas, finalizadas);
+    }
+
+    public async Task<int?> ObterTempoMedioFinalizacaoMinutosAsync(CancellationToken cancellationToken)
+    {
+        var media = await _context.OrdensDeServico
+            .Where(o => o.DataFinalizacao != null)
+            .Select(o => (double?)(o.DataFinalizacao!.Value - o.DataAbertura).TotalMinutes)
+            .AverageAsync(cancellationToken);
+
+        return media.HasValue ? (int)Math.Round(media.Value) : null;
+    }
+
+    public async Task<IReadOnlyList<OrdemDeServico>> ObterParaMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico
-            .Include(o => o.Servicos)
-            .Include(o => o.Pecas)
+            .AsNoTracking()
             .OrderByDescending(o => o.DataAbertura)
             .ThenByDescending(o => o.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(cancellationToken);
     }
 
