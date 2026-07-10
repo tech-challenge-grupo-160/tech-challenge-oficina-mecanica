@@ -1,0 +1,166 @@
+name: Master CI CD Local
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  BUILD_CONFIGURATION: 'Release'
+  SOLUTION_FILE: 'Fiap.TechChallenge.OficinaMecanica.slnx'
+  UNIT_TEST_PROJECT: 'tests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.csproj'
+  INTEGRATION_TEST_PROJECT: 'tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.csproj'
+  POSTGRES_TEST_IMAGE: 'postgres:16-alpine'
+  API_IMAGE: 'oficina-mecanica-api:local'
+  KIND_CLUSTER: 'oficina-mecanica'
+  K8S_NAMESPACE: 'oficina-mecanica'
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Build solution
+        run: >
+          dotnet build ${{ env.SOLUTION_FILE }}
+          --configuration ${{ env.BUILD_CONFIGURATION }}
+          --no-restore
+
+      - name: Run unit tests
+        run: >
+          dotnet test ${{ env.UNIT_TEST_PROJECT }}
+          --configuration ${{ env.BUILD_CONFIGURATION }}
+          --no-build
+          --no-restore
+          --verbosity normal
+
+      - name: Verify Docker availability
+        run: docker info
+
+      - name: Pull PostgreSQL test image
+        run: docker pull ${{ env.POSTGRES_TEST_IMAGE }}
+
+      - name: Run integration tests
+        timeout-minutes: 10
+        run: >
+          dotnet test ${{ env.INTEGRATION_TEST_PROJECT }}
+          --configuration ${{ env.BUILD_CONFIGURATION }}
+          --no-build
+          --no-restore
+          --verbosity normal
+
+      - name: Docker build validation
+        run: docker build -f docker/backend/Dockerfile -t ${{ env.API_IMAGE }} .
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.9.0'
+
+      - name: Terraform fmt check
+        working-directory: infra
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init without backend
+        working-directory: infra
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        working-directory: infra
+        run: terraform validate
+
+      - name: Kustomize render validation
+        run: kubectl kustomize k8s
+
+  cd-local:
+    name: CD local self-hosted
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: ci
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate local tools
+        shell: powershell
+        run: |
+          docker info
+          terraform version
+          kind version
+          kubectl version --client
+
+      - name: Terraform apply local infrastructure
+        shell: powershell
+        working-directory: infra
+        run: terraform apply -auto-approve -var-file="inventories/dev/terraform.tfvars"
+
+      - name: Build local API image
+        shell: powershell
+        run: docker build -f docker/backend/Dockerfile -t $env:API_IMAGE .
+
+      - name: Load API image into Kind
+        shell: powershell
+        run: kind load docker-image $env:API_IMAGE --name $env:KIND_CLUSTER
+
+      - name: Apply Kubernetes manifests
+        shell: powershell
+        run: kubectl apply -k k8s
+
+      - name: Restart API deployment
+        shell: powershell
+        run: kubectl rollout restart deployment/oficina-mecanica-api -n $env:K8S_NAMESPACE
+
+      - name: Wait for API rollout
+        shell: powershell
+        run: kubectl rollout status deployment/oficina-mecanica-api -n $env:K8S_NAMESPACE --timeout=180s
+
+      - name: Show Kubernetes resources
+        shell: powershell
+        run: kubectl get all -n $env:K8S_NAMESPACE
+
+      - name: Health check through port-forward
+        shell: powershell
+        run: |
+          $job = Start-Job -ScriptBlock { kubectl port-forward -n $env:K8S_NAMESPACE svc/oficina-mecanica-api 8080:80 }
+          Start-Sleep -Seconds 8
+          try {
+            for ($i = 1; $i -le 12; $i++) {
+              try {
+                $response = Invoke-WebRequest -Uri 'http://localhost:8080/health' -UseBasicParsing -TimeoutSec 5
+                if ($response.StatusCode -eq 200) {
+                  Write-Host 'Health check OK'
+                  exit 0
+                }
+              } catch {
+                Write-Host "Tentativa $i/12 aguardando health check..."
+                Start-Sleep -Seconds 5
+              }
+            }
+            throw 'Health check falhou.'
+          } finally {
+            Stop-Job $job -ErrorAction SilentlyContinue
+            Remove-Job $job -ErrorAction SilentlyContinue
+          }

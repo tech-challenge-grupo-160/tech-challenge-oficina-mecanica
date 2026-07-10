@@ -4,14 +4,10 @@ on:
   pull_request:
     branches:
       - develop
-  push:
-    branches:
-      - develop
   workflow_dispatch:
 
 permissions:
   contents: read
-  packages: write  
 
 env:
   DOTNET_VERSION: '10.0.x'
@@ -23,10 +19,10 @@ env:
   POSTGRES_TEST_IMAGE: 'postgres:16-alpine'
 
 jobs:
-  build:
-    name: Build
+  ci:
+    name: Build and tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -49,30 +45,6 @@ jobs:
           --configuration ${{ env.BUILD_CONFIGURATION }}
           --no-restore
 
-  unit-tests:
-    name: Unit Tests
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    needs: build
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Restore dependencies
-        run: dotnet restore ${{ env.SOLUTION_FILE }}
-
-      - name: Build solution
-        run: >
-          dotnet build ${{ env.SOLUTION_FILE }}
-          --configuration ${{ env.BUILD_CONFIGURATION }}
-          --no-restore
-
       - name: Run unit tests
         run: >
           dotnet test ${{ env.UNIT_TEST_PROJECT }}
@@ -85,53 +57,13 @@ jobs:
           --logger "trx;LogFileName=unit-tests.trx"
           --results-directory TestResults
 
-      - name: Upload unit test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-results
-          path: TestResults/*.trx
-          if-no-files-found: error
-
-      - name: Upload unit coverage results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-coverage-results
-          path: TestResults/**/coverage.cobertura.xml
-          if-no-files-found: error
-
-  integration-tests:
-    name: Integration Tests
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    needs: build
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Restore dependencies
-        run: dotnet restore ${{ env.SOLUTION_FILE }}
-
-      - name: Build solution
-        run: >
-          dotnet build ${{ env.SOLUTION_FILE }}
-          --configuration ${{ env.BUILD_CONFIGURATION }}
-          --no-restore
-
       - name: Verify Docker availability
         run: docker info
 
       - name: Pull PostgreSQL test image
         run: docker pull ${{ env.POSTGRES_TEST_IMAGE }}
 
-      - name: Run integration tests with PostgreSQL
+      - name: Run integration tests
         timeout-minutes: 10
         run: >
           dotnet test ${{ env.INTEGRATION_TEST_PROJECT }}
@@ -150,18 +82,18 @@ jobs:
           docker ps -a
           docker images
 
-      - name: Upload integration test results
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: integration-test-results
+          name: test-results
           path: TestResults/*.trx
           if-no-files-found: error
 
-      - name: Upload integration coverage results
+      - name: Upload coverage results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: integration-coverage-results
+          name: coverage-results
           path: TestResults/**/coverage.cobertura.xml
           if-no-files-found: error
