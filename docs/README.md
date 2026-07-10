@@ -8,6 +8,7 @@ Este diretório reúne a documentação viva do projeto, alinhada ao código atu
 2. [Setup e operação](SETUP.md)
 3. [Arquitetura](ARCHITECTURE.md)
 4. [Referência da API](API_REFERENCE.md)
+5. [Infraestrutura](docs/INFRAESTRUTURA.md)
 
 ## Conteúdo
 
@@ -22,6 +23,10 @@ Organização em camadas, responsabilidades de cada módulo e fluxo principal da
 ### [API_REFERENCE.md](API_REFERENCE.md)
 
 Rotas, autenticação, payloads principais, fluxo da OS, monitoramento e tratamento de erros.
+ 
+### [Infraestrutura](docs/INFRAESTRUTURA.md)
+
+Infra do projeto, como executar terraform, explicação k8s e docker.
 
 ## Convenções
 
