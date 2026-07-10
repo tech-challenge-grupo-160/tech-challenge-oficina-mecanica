@@ -203,7 +203,7 @@ public class OrdemDeServico
     {
         RemoverServico(servicoId);
         return new OrdemDeServicoEventoDominio(
-            TipoEventoOrdemServico.ServicoAdicionado,
+            TipoEventoOrdemServico.ServicoRemovido,
             Status,
             Status,
             $"Servico removido do orcamento: {nomeServico}.");
@@ -298,7 +298,7 @@ public class OrdemDeServico
     {
         RemoverPeca(pecaId);
         return new OrdemDeServicoEventoDominio(
-            TipoEventoOrdemServico.PecaAdicionada,
+            TipoEventoOrdemServico.PecaRemovida,
             Status,
             Status,
             $"Peca removida do orcamento: {nomePeca}.");
