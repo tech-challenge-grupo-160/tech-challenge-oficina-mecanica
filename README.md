@@ -46,10 +46,7 @@ Endpoints padrão:
 
 ### Execução local
 
-```bash
-dotnet restore
-dotnet run --project src/API/Fiap.TechChallenge.OficinaMecanica.Api.csproj
-```
+Acesse a documentação em 
 
 ## Autenticação
 
@@ -69,6 +66,7 @@ Seed de desenvolvimento:
 - [Índice da documentação](docs/README.md)
 - [Setup e operação](docs/SETUP.md)
 - [Arquitetura](docs/ARCHITECTURE.md)
+- [Infraestrutura](docs/INFRAESTRUTURA.md)
 - [Referência da API](docs/API_REFERENCE.md)
 
 ## Estrutura do repositório
