@@ -21,7 +21,8 @@ env:
   POSTGRES_TEST_IMAGE: 'postgres:16-alpine'
   API_IMAGE: 'oficina-mecanica-api:local'
   KIND_CLUSTER: 'oficina-mecanica'
-  K8S_NAMESPACE: 'oficina-mecanica'
+  K8S_NAMESPACE: 'oficina-mecanica-homolog'
+  TF_STATE_ROOT: 'D:\terraform-state\oficina-mecanica'
 
 jobs:
   ci:
@@ -112,10 +113,17 @@ jobs:
           kind version
           kubectl version --client
 
+      - name: Terraform init local state
+        shell: powershell
+        working-directory: infra
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:TF_STATE_ROOT | Out-Null
+          terraform init -reconfigure -backend-config="path=$env:TF_STATE_ROOT\homolog.tfstate"
+
       - name: Terraform apply local infrastructure
         shell: powershell
         working-directory: infra
-        run: terraform apply -auto-approve -var-file="inventories/dev/terraform.tfvars"
+        run: terraform apply -auto-approve -var-file="inventories/hom/terraform.tfvars"
 
       - name: Build local API image
         shell: powershell
@@ -127,7 +135,9 @@ jobs:
 
       - name: Apply Kubernetes manifests
         shell: powershell
-        run: kubectl apply -k k8s
+        run: |
+          (Get-Content k8s/kustomization.yaml) -replace '^namespace:.*', "namespace: $env:K8S_NAMESPACE" | Set-Content k8s/kustomization.yaml
+          kubectl apply -k k8s
 
       - name: Restart API deployment
         shell: powershell
@@ -144,7 +154,11 @@ jobs:
       - name: Health check through port-forward
         shell: powershell
         run: |
-          $job = Start-Job -ScriptBlock { kubectl port-forward -n $env:K8S_NAMESPACE svc/oficina-mecanica-api 8080:80 }
+          $namespace = $env:K8S_NAMESPACE
+          $job = Start-Job -ArgumentList $namespace -ScriptBlock {
+            param($namespace)
+            kubectl port-forward -n $namespace svc/oficina-mecanica-api 8080:80
+          }
           Start-Sleep -Seconds 8
           try {
             for ($i = 1; $i -le 12; $i++) {
