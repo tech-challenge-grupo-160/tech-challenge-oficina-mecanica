@@ -58,22 +58,33 @@ jobs:
         id: content
         run: |
           BRANCH="${{ steps.target.outputs.branch }}"
-          BASE="${{ steps.target.outputs.base }}"
 
-          # Título padrão usando base + último commit
-          COMMIT_SUMMARY=$(git log -1 --pretty=format:'%s' || echo "commit")
-          if [[ -z "$COMMIT_SUMMARY" ]]; then
-            COMMIT_SUMMARY="commit"
-          fi
-          TITLE="PR para $BASE + $COMMIT_SUMMARY"
+          # Título: remove o prefixo e troca hífens/underscores por espaços
+          PREFIX=$(echo "$BRANCH" | cut -d/ -f1)
+          SLUG=$(echo "$BRANCH" | cut -d/ -f2-)
+          TITLE_BODY=$(echo "$SLUG" | sed 's/[-_]/ /g' | sed 's/\b./\u&/g')
+
+          case "$PREFIX" in
+            feature) EMOJI="✨"; LABEL="feature" ;;
+            hotfix)  EMOJI="🔥"; LABEL="hotfix"  ;;
+            release) EMOJI="🚀"; LABEL="release" ;;
+            *)       EMOJI="🔧"; LABEL="chore"   ;;
+          esac
+
+          TITLE="$EMOJI [$LABEL] $TITLE_BODY"
 
           # Lista os commits da branch que ainda não estão na base
-          COMMITS=$(git log origin/$BASE..HEAD \
+          COMMITS=$(git log origin/${{ steps.target.outputs.base }}..HEAD \
             --pretty=format:"- %s" \
             --no-merges 2>/dev/null | head -20 || echo "- Commits não disponíveis")
 
           BODY="## Descrição
           <!-- Descreva o que esta branch implementa ou corrige -->
+
+          ## Tipo de mudança
+          - [$( [ "$PREFIX" = "feature" ] && echo "x" || echo " " )] ✨ Nova funcionalidade
+          - [$( [ "$PREFIX" = "hotfix" ] && echo "x" || echo " " )] 🔥 Correção de bug
+          - [$( [ "$PREFIX" = "release" ] && echo "x" || echo " " )] 🚀 Release
 
           ## Commits incluídos
           $COMMITS
@@ -88,15 +99,17 @@ jobs:
           *PR criado automaticamente pelo GitHub Actions*"
 
           echo "title=$TITLE" >> $GITHUB_OUTPUT
+
+          # Body multilinha precisa do delimitador EOF
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Authenticate GitHub CLI
         env:
-          GH_TOKEN: ${{ secrets.TECH_CHALLENGE_SECRET }}
+          GH_CLI_TOKEN: ${{ secrets.TECH_CHALLENGE_SECRET }}
         run: |
-          echo "$GH_TOKEN" | gh auth login --with-token
+          echo "$GH_CLI_TOKEN" | gh auth login --with-token
 
       - name: Create Pull Request
         run: |
