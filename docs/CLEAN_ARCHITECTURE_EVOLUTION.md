@@ -1,33 +1,59 @@
 # Evolucao para Clean Architecture com CQRS e MediatR
 
+Ultima atualizacao: 2026-07-10
+
 Este documento descreve o estado atual da migracao arquitetural do projeto. A base ja esta organizada em Clean Architecture com CQRS e MediatR: controllers enviam Commands e Queries por `IMediator`, handlers executam os casos de uso, validators rodam no pipeline do MediatR e a Infrastructure implementa detalhes tecnicos.
 
 O objetivo daqui em diante e manter a documentacao sincronizada com o codigo e orientar a continuidade da migracao sem reintroduzir services grandes, dependencias HTTP na Application ou acesso direto a infraestrutura pelos controllers.
+
+## Historico da migracao
+
+| Data | Marco | PR/Commit |
+|---|---|---|
+| 2026-06-04 | Separacao em projetos Clean Architecture (API, Application, Domain, Infrastructure, Shared) | #47 |
+| 2026-06-05 | Separacao de DTOs e interfaces de services na Application | #49, #50 |
+| 2026-06-08 | Integracao MediatR 12.5.0 + ValidationBehavior com FluentValidation | #99, #100 |
+| 2026-06-08 | Separacao de mapeamentos EF Core em `IEntityTypeConfiguration<T>` | #101 |
+| 2026-06-08 | Migracao piloto: Clientes para CQRS com MediatR | #102 |
+| 2026-06-08 | Migracao: Veiculos para CQRS | #103 |
+| 2026-06-09 | Migracao: Pecas e Servicos para CQRS | #104, #105 |
+| 2026-06-10 | Migracao: Pedidos de Compra para CQRS | #107 |
+| 2026-06-10 | Migracao: Ordens de Servico para CQRS | #151 |
+| 2026-06-11 | Extracao de geracao JWT para `ITokenGenerator` / `JwtTokenGenerator` | #152 |
+| 2026-06-12 | Extracao do bootstrap da API em extensoes dedicadas | #153 |
+| 2026-06-13 | Migracao: AcompanhamentoOS para CQRS | #154 |
+| 2026-06-13 | Padronizacao de erros com ProblemDetails | #158 |
+| 2026-06-15 | Troca de hash MD5 para BCrypt na autenticacao | #163 |
+| 2026-06-15 | Remocao da dependencia `Microsoft.AspNetCore.App` da camada Application | #164 |
+| 2026-06-21 | Fortalecimento de Value Objects em Cliente e Veiculo | #167 |
+| 2026-07-01 | Atualizacao de testes unitarios e de integracao para handlers MediatR | #182, #184 |
+| 2026-07-04 | Pipeline CI com build, testes unitarios e integracao separados + cobertura | #190, #192 |
 
 ## Estado atual da migracao
 
 Concluido:
 
-- `Program.cs` delega registros para `AddApiServices`, `AddApplication` e `AddInfrastructure`.
-- Controllers dependem de `IMediator`, nao de handlers concretos.
-- Casos de uso estao separados em `Commands`, `Queries` e `Handlers`.
-- Commands e Queries implementam `IRequest<TResponse>`.
-- Handlers implementam `IRequestHandler<TRequest,TResponse>`.
-- Results ficam na Application.
-- Responses ficam na API.
-- Mappers da API convertem `Request -> Command/Query` e `Result -> Response`.
-- `ValidationBehavior<TRequest,TResponse>` executa validators da Application antes dos handlers.
-- Mapeamentos EF estao separados em `Infrastructure/Data/Configurations`.
-- JWT esta abstraido por `ITokenGenerator` e implementado em `JwtTokenGenerator`.
-- `IClock` esta abstraido na Application e implementado em `BrazilClock`.
+- [x] `Program.cs` delega registros para `AddApiServices`, `AddApplication` e `AddInfrastructure`.
+- [x] Controllers dependem de `IMediator`, nao de handlers concretos.
+- [x] Casos de uso estao separados em `Commands`, `Queries` e `Handlers`.
+- [x] Commands e Queries implementam `IRequest<TResponse>`.
+- [x] Handlers implementam `IRequestHandler<TRequest,TResponse>`.
+- [x] Results ficam na Application.
+- [x] Responses ficam na API.
+- [x] Mappers da API convertem `Request -> Command/Query` e `Result -> Response`.
+- [x] `ValidationBehavior<TRequest,TResponse>` executa validators da Application antes dos handlers.
+- [x] Mapeamentos EF estao separados em `Infrastructure/Data/Configurations`.
+- [x] JWT esta abstraido por `ITokenGenerator` e implementado em `JwtTokenGenerator`.
+- [x] `IClock` esta abstraido na Application e implementado em `BrazilClock`.
+- [x] Dependencia `Microsoft.AspNetCore.App` removida da Application (concluido em 2026-06-15, PR #164).
+- [x] Value Objects fortalecidos em Cliente e Veiculo (concluido em 2026-06-21, PR #167).
 
 Pontos ainda aceitos no estado atual:
 
-- contratos de repositories permanecem em `Domain/Repositories`;
-- alguns servicos de apoio ainda existem em `Application/Services`, principalmente para coordenar regras de ordem de servico;
-- a Application referencia `Microsoft.AspNetCore.App` no projeto, embora os casos de uso devam continuar sem depender de tipos HTTP;
-- Commands e Queries usam o mesmo banco e o mesmo `OficinaDbContext`;
-- nao ha mensageria, event sourcing ou banco de leitura separado.
+- [ ] Contratos de repositories permanecem em `Domain/Repositories` — mover para `Application/Interfaces` e uma possibilidade futura, mas nao ha urgencia.
+- [ ] Alguns servicos de apoio ainda existem em `Application/Services`, principalmente para coordenar regras de ordem de servico.
+- [ ] Commands e Queries usam o mesmo banco e o mesmo `OficinaDbContext`.
+- [ ] Nao ha mensageria, event sourcing ou banco de leitura separado.
 
 ## Estrutura real
 
@@ -351,18 +377,14 @@ Infrastructure/Repositories/
 
 Essa estrutura e valida para a migracao atual. Se a equipe decidir mover contratos de repositorio para `Application/Interfaces` no futuro, a mudanca deve ser feita de forma planejada e atualizada nesta documentacao.
 
-## Ordem real para continuar a migracao
+## Proximos passos
 
-1. Manter todo endpoint novo usando `IMediator`.
-2. Criar Commands para escrita e Queries para leitura.
-3. Criar um Handler por caso de uso.
-4. Criar validator de Application para cada Command/Query que tenha entrada validavel.
-5. Manter regra de negocio em entidades/value objects sempre que ela for invariante do dominio.
-6. Usar services de apoio apenas quando houver coordenacao entre multiplos repositories ou regras transversais de um agregado.
-7. Retornar Results da Application e converter para Responses na API.
-8. Atualizar testes unitarios de handlers e testes de integracao de endpoints.
-9. Remover qualquer chamada direta de controller para repository, DbContext ou handler concreto caso apareca em codigo novo.
-10. Revisar a dependencia `Microsoft.AspNetCore.App` da Application em uma etapa futura, garantindo antes que nenhum caso de uso dependa de tipos HTTP.
+Itens pendentes, sem prazo definido. Devem ser avaliados conforme necessidade:
+
+1. Avaliar a movimentacao dos contratos de repositorio de `Domain/Repositories` para `Application/Interfaces`.
+2. Considerar CQRS completo (mensageria, banco de leitura separado) apenas se houver demanda concreta de escala ou relatorios pesados.
+3. Centralizar logging de excecoes em um behavior do MediatR em vez de try/catch repetitivo nos handlers.
+4. Adicionar rate limiting nos endpoints publicos (`AcompanhamentoOS`, resposta de OS).
 
 ## Regras para novas implementacoes
 
@@ -399,3 +421,4 @@ CQRS completo com projections, eventos, mensageria e banco separado so deve ser 
 - Commands, Queries, Handlers, Results e Responses estao nas pastas corretas.
 - Testes cobrem handlers novos ou alterados.
 - README e docs sao atualizados quando dependencias, execucao ou estrutura mudarem.
+- Este documento e atualizado quando houver mudanca na arquitetura ou nos itens pendentes.
