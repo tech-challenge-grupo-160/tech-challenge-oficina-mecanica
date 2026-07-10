@@ -105,12 +105,11 @@ jobs:
       # Abre o PR — se já existir um PR aberto para essa branch,
       # o step é ignorado sem erro.
       - name: Create Pull Request
-        env:
-          PR_TITLE: ${{ steps.content.outputs.title }}
-          PR_BODY: ${{ steps.content.outputs.body }}
         run: |
           BRANCH="${{ steps.target.outputs.branch }}"
           BASE="${{ steps.target.outputs.base }}"
+          PR_TITLE="${{ steps.content.outputs.title }}"
+          PR_BODY="${{ steps.content.outputs.body }}"
 
           echo "PR TITLE: $PR_TITLE"
 
