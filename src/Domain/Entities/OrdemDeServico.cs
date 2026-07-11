@@ -354,20 +354,12 @@ public class OrdemDeServico
 
     public void Cancelar(string motivoCancelamento)
     {
-        if (Status != StatusOrdemDeServico.Recebida &&
-            Status != StatusOrdemDeServico.EmDiagnostico &&
-            Status != StatusOrdemDeServico.AguardandoAprovacao &&
-            Status != StatusOrdemDeServico.AguardandoEstoque)
-        {
-            throw new InvalidOperationException("Nao e possivel cancelar a ordem de servico no status atual: " + Status);
-        }
-
         if (string.IsNullOrWhiteSpace(motivoCancelamento))
         {
             throw new InvalidOperationException("Motivo do cancelamento e obrigatorio.");
         }
 
-        Status = StatusOrdemDeServico.Cancelada;
+        AlterarStatus(StatusOrdemDeServico.Cancelada);
         MotivoCancelamento = motivoCancelamento.Trim();
     }
 
@@ -392,13 +384,7 @@ public class OrdemDeServico
 
     public void BloquearPorFaltaEstoque()
     {
-        if (Status != StatusOrdemDeServico.AguardandoAprovacao &&
-            Status != StatusOrdemDeServico.AguardandoEstoque)
-        {
-            throw new InvalidOperationException("So e possivel aguardar estoque quando a ordem estiver aguardando aprovacao ou ja aguardando estoque.");
-        }
-
-        Status = StatusOrdemDeServico.AguardandoEstoque;
+        AlterarStatus(StatusOrdemDeServico.AguardandoEstoque);
     }
 
     public OrdemDeServicoEventoDominio BloquearPorFaltaEstoqueComEvento(string descricaoFaltas)
@@ -414,13 +400,7 @@ public class OrdemDeServico
 
     public void LiberarExecucaoAposValidacaoEstoque()
     {
-        if (Status != StatusOrdemDeServico.AguardandoAprovacao &&
-            Status != StatusOrdemDeServico.AguardandoEstoque)
-        {
-            throw new InvalidOperationException("So e possivel iniciar execucao apos aprovacao e validacao do estoque.");
-        }
-
-        Status = StatusOrdemDeServico.EmExecucao;
+        AlterarStatus(StatusOrdemDeServico.EmExecucao);
     }
 
     public OrdemDeServicoEventoDominio LiberarExecucaoComEvento()
@@ -514,8 +494,15 @@ public class OrdemDeServico
             (StatusOrdemDeServico.Recebida, StatusOrdemDeServico.EmDiagnostico) => true,
             (StatusOrdemDeServico.EmDiagnostico, StatusOrdemDeServico.AguardandoAprovacao) => true,
             (StatusOrdemDeServico.AguardandoAprovacao, StatusOrdemDeServico.EmExecucao) => true,
+            (StatusOrdemDeServico.AguardandoAprovacao, StatusOrdemDeServico.AguardandoEstoque) => true,
+            (StatusOrdemDeServico.AguardandoEstoque, StatusOrdemDeServico.AguardandoEstoque) => true,
+            (StatusOrdemDeServico.AguardandoEstoque, StatusOrdemDeServico.EmExecucao) => true,
             (StatusOrdemDeServico.EmExecucao, StatusOrdemDeServico.Finalizada) => true,
             (StatusOrdemDeServico.Finalizada, StatusOrdemDeServico.Entregue) => true,
+            (StatusOrdemDeServico.Recebida, StatusOrdemDeServico.Cancelada) => true,
+            (StatusOrdemDeServico.EmDiagnostico, StatusOrdemDeServico.Cancelada) => true,
+            (StatusOrdemDeServico.AguardandoAprovacao, StatusOrdemDeServico.Cancelada) => true,
+            (StatusOrdemDeServico.AguardandoEstoque, StatusOrdemDeServico.Cancelada) => true,
             _ => false
         };
     }
