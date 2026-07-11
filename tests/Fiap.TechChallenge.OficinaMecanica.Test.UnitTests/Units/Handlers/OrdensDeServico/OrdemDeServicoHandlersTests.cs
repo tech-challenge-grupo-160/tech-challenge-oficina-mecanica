@@ -454,6 +454,38 @@ public class OrdemDeServicoHandlersTests
     }
 
     [Fact]
+    public async Task RegistrarPagamentoAsync_DeveLancarQuandoPagamentoJaRegistrado()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Finalizada);
+        ordem.SetPrivateProperty(nameof(OrdemDeServico.DataFinalizacao), DateTime.UtcNow);
+        ordem.SetPrivateProperty(nameof(OrdemDeServico.DataPagamento), DateTime.UtcNow);
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+
+        var acao = () => _handlers.RegistrarPagamentoAsync(ordem.Id, CancellationToken.None);
+
+        await acao.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Pagamento ja foi registrado*");
+    }
+
+    [Fact]
+    public async Task EntregarAsync_DeveLancarQuandoJaEntregue()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Entregue);
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+
+        var acao = () => _handlers.EntregarAsync(ordem.Id, CancellationToken.None);
+
+        await acao.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*ja foi entregue*");
+    }
+
+    [Fact]
     public async Task EntregarAsync_DeveLancarQuandoPagamentoNaoTiverSidoRegistrado()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Finalizada);
