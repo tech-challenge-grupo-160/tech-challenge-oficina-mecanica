@@ -1,9 +1,11 @@
+using System.Threading.RateLimiting;
 using Fiap.TechChallenge.OficinaMecanica.API.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.API.Requests.AcompanhamentoOS;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.AcompanhamentoOS;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
@@ -19,6 +21,7 @@ public class AcompanhamentoOSController : ControllerBase
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting("public")]
     [HttpGet("{codigo}")]
     public async Task<ActionResult<AcompanhamentoOrdemDeServicoResponse>> ObterStatus(
         string codigo,
