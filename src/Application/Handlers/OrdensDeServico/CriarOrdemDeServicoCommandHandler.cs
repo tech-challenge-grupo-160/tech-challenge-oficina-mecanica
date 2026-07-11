@@ -91,31 +91,35 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
                 throw new ServiceValidationException("Ja existe uma ordem de servico ativa para este cliente e veiculo.");
             }
 
-            var servicos = new List<Servico>();
-            foreach (var item in command.Servicos)
+            var servicoIds = command.Servicos.Select(s => s.ServicoId).ToList();
+            var servicosEncontrados = await _servicoRepository.ObterPorIdsAsync(servicoIds, cancellationToken);
+            var servicosDict = servicosEncontrados.ToDictionary(s => s.Id);
+            foreach (var id in servicoIds)
             {
-                var servico = await _servicoRepository.ObterPorIdAsync(item.ServicoId, cancellationToken);
-                if (servico == null)
+                if (!servicosDict.ContainsKey(id))
                 {
                     _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarOrdemDeServicoAsync), "Servico nao encontrado para abertura da OS");
-                    throw new ServiceNotFoundException($"Servico com ID {item.ServicoId} nao encontrado.");
+                    throw new ServiceNotFoundException($"Servico com ID {id} nao encontrado.");
                 }
-
-                servicos.Add(servico);
             }
 
-            var pecas = new List<(Peca Peca, int Quantidade)>();
-            foreach (var item in command.Pecas)
+            var servicos = servicoIds.Select(id => servicosDict[id]).ToList();
+
+            var pecaIds = command.Pecas.Select(p => p.PecaId).ToList();
+            var pecasEncontradas = pecaIds.Count > 0
+                ? await _pecaRepository.ObterPorIdsAsync(pecaIds, cancellationToken)
+                : [];
+            var pecasDict = pecasEncontradas.ToDictionary(p => p.Id);
+            foreach (var id in pecaIds)
             {
-                var peca = await _pecaRepository.ObterPorIdAsync(item.PecaId, cancellationToken);
-                if (peca == null)
+                if (!pecasDict.ContainsKey(id))
                 {
                     _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(CriarOrdemDeServicoAsync), "Peca nao encontrada para abertura da OS");
-                    throw new ServiceNotFoundException($"Peca com ID {item.PecaId} nao encontrada.");
+                    throw new ServiceNotFoundException($"Peca com ID {id} nao encontrada.");
                 }
-
-                pecas.Add((peca, item.Quantidade));
             }
+
+            var pecas = command.Pecas.Select(p => (Peca: pecasDict[p.PecaId], p.Quantidade)).ToList();
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarOrdemDeServicoAsync), "Persistindo ordem de servico em status Recebida");
             var (codigoAcompanhamento, tokenAcompanhamento, tokenAcompanhamentoHash) =

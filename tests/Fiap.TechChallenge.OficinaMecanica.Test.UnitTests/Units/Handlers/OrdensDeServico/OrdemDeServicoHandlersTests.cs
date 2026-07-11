@@ -125,8 +125,11 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.ExisteOrdemAtivaPorClienteEVeiculoAsync(dto.ClienteId, dto.VeiculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
         _servicoRepositoryMock
-            .Setup(x => x.ObterPorIdAsync(servico.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(servico);
+            .Setup(x => x.ObterPorIdsAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Servico> { servico });
+        _pecaRepositoryMock
+            .Setup(x => x.ObterPorIdsAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Peca>());
         _ordemRepositoryMock
             .Setup(x => x.CriarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico ordem, CancellationToken _) =>
