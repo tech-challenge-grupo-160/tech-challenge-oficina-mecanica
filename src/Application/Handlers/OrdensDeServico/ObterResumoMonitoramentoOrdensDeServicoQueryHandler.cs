@@ -40,33 +40,23 @@ public sealed class ObterResumoMonitoramentoOrdensDeServicoQueryHandler : IReque
     private async Task<ResumoMonitoramentoOrdensDeServicoResult> ObterResumoMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken)
     {
         var agora = _clock.Now;
-        var ordens = (await _ordemRepository.ObterTodasAsync(cancellationToken)).ToList();
-        var ordensMonitoradas = ordens
+
+        var (total, abertas, finalizadas) = await _ordemRepository.ContarParaMonitoramentoAsync(cancellationToken);
+        var tempoMedioFinalizacaoMinutos = await _ordemRepository.ObterTempoMedioFinalizacaoMinutosAsync(cancellationToken);
+
+        var ordensPagina = await _ordemRepository.ObterParaMonitoramentoAsync(page, pageSize, cancellationToken);
+        var ordensPaginadas = ordensPagina
             .Select(ordem => OrdemDeServicoMapper.ToMonitoramentoResult(ordem, agora))
-            .ToList();
-
-        var ordensFinalizadas = ordensMonitoradas
-            .Where(ordem => ordem.TempoFinalizacaoMinutos.HasValue)
-            .ToList();
-
-        var tempoMedioFinalizacaoMinutos = ordensFinalizadas.Count == 0
-            ? (int?)null
-            : (int)Math.Round(ordensFinalizadas.Average(ordem => ordem.TempoFinalizacaoMinutos!.Value));
-
-        var totalOrdens = ordensMonitoradas.Count;
-        var ordensPaginadas = ordensMonitoradas
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
             .ToList();
 
         return new ResumoMonitoramentoOrdensDeServicoResult
         {
-            TotalOrdens = totalOrdens,
-            TotalOrdensAbertas = ordensMonitoradas.Count(ordem => !ordem.EstaFinalizada),
-            TotalOrdensFinalizadas = ordensFinalizadas.Count,
+            TotalOrdens = total,
+            TotalOrdensAbertas = abertas,
+            TotalOrdensFinalizadas = finalizadas,
             Page = page,
             PageSize = pageSize,
-            TotalPages = totalOrdens == 0 ? 0 : (int)Math.Ceiling(totalOrdens / (double)pageSize),
+            TotalPages = total == 0 ? 0 : (int)Math.Ceiling(total / (double)pageSize),
             TempoMedioFinalizacaoMinutos = tempoMedioFinalizacaoMinutos,
             TempoMedioFinalizacaoHoras = tempoMedioFinalizacaoMinutos.HasValue
                 ? Math.Round(tempoMedioFinalizacaoMinutos.Value / 60d, 2)
