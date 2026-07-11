@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using Fiap.TechChallenge.OficinaMecanica.API.Filters;
 using Fiap.TechChallenge.OficinaMecanica.API.ProblemDetails;
 using Fiap.TechChallenge.OficinaMecanica.API.Services;
@@ -49,6 +50,20 @@ public static class ApiServicesBootstrap
                     .AllowAnyMethod()
                     .AllowAnyHeader();
             });
+        });
+
+        services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.AddPolicy("public", httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    }));
         });
 
         return services;

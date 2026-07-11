@@ -6,6 +6,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
@@ -135,6 +136,7 @@ public class OrdensDeServicoController : ControllerBase
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting("public")]
     [HttpPost("{id}/ordem/resposta")]
     public async Task<ActionResult<OrdemDeServicoResponse>> ResponderOrdem(
         int id,
