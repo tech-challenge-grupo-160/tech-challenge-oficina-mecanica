@@ -448,6 +448,11 @@ public class OrdemDeServico
             throw new InvalidOperationException("Nao e possivel registrar pagamento antes da finalizacao do servico.");
         }
 
+        if (DataPagamento.HasValue)
+        {
+            throw new InvalidOperationException("Pagamento ja foi registrado para esta ordem de servico.");
+        }
+
         DataPagamento = dataPagamento;
     }
 
@@ -463,6 +468,11 @@ public class OrdemDeServico
 
     public void Entregar(DateTime dataConclusao)
     {
+        if (Status == StatusOrdemDeServico.Entregue)
+        {
+            throw new InvalidOperationException("Veiculo ja foi entregue para esta ordem de servico.");
+        }
+
         if (Status != StatusOrdemDeServico.Finalizada)
         {
             throw new InvalidOperationException("So e possivel entregar quando a ordem estiver finalizada.");
