@@ -137,6 +137,11 @@ public static class OrdemDeServicoApiMapper
         return new EntregarOrdemDeServicoCommand { Id = id };
     }
 
+    public static AvancarStatusOrdemDeServicoCommand ToAvancarStatusOrdemDeServicoCommand(this string numero)
+    {
+        return new AvancarStatusOrdemDeServicoCommand { Numero = numero };
+    }
+
     public static RemoverServicoDaOrdemCommand ToRemoverServicoDaOrdemCommand(this int id, int servicoId)
     {
         return new RemoverServicoDaOrdemCommand

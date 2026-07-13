@@ -28,6 +28,14 @@ public class ServicoRepository : IServicoRepository
         return await _context.Servicos.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Servico>> ObterPorIdsAsync(IEnumerable<int> ids, CancellationToken cancellationToken)
+    {
+        var idList = ids.ToList();
+        return await _context.Servicos
+            .Where(s => idList.Contains(s.Id))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IEnumerable<Servico>> ObterTodosAsync(CancellationToken cancellationToken)
     {
         return await _context.Servicos.ToListAsync(cancellationToken);

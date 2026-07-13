@@ -5,7 +5,9 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
 
 public interface IOrdemDeServicoRepository
 {
-    Task<IEnumerable<OrdemDeServico>> ObterTodasAsync(CancellationToken cancellationToken);
+    Task<(int Total, int Abertas, int Finalizadas)> ContarParaMonitoramentoAsync(CancellationToken cancellationToken);
+    Task<int?> ObterTempoMedioFinalizacaoMinutosAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<OrdemDeServico>> ObterParaMonitoramentoAsync(int page, int pageSize, CancellationToken cancellationToken);
     Task<OrdemDeServico?> ObterPorIdAsync(int id, CancellationToken cancellationToken);
     Task<OrdemDeServico?> ObterPorNumeroAsync(string numero, CancellationToken cancellationToken);
     Task<OrdemDeServico?> ObterPorCodigoAcompanhamentoAsync(string codigoAcompanhamento, CancellationToken cancellationToken);

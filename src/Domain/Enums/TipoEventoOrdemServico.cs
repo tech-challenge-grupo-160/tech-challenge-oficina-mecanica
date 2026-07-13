@@ -16,5 +16,7 @@ public enum TipoEventoOrdemServico
     PedidoCompraGerado = 11,
     EstoqueBaixado = 12,
     PedidoCompraRecebido = 13,
-    EstoqueReposto = 14
+    EstoqueReposto = 14,
+    ServicoRemovido = 15,
+    PecaRemovida = 16
 }

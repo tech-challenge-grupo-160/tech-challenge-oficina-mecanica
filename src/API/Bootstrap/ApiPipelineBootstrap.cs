@@ -19,6 +19,7 @@ public static class ApiPipelineBootstrap
         app.UseCors("AllowAll");
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseRateLimiter();
         app.MapControllers();
         app.UseHealthChecks();
 

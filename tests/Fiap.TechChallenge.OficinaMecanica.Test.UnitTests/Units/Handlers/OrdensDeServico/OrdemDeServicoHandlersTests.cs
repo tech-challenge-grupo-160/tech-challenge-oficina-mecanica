@@ -125,8 +125,11 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.ExisteOrdemAtivaPorClienteEVeiculoAsync(dto.ClienteId, dto.VeiculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
         _servicoRepositoryMock
-            .Setup(x => x.ObterPorIdAsync(servico.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(servico);
+            .Setup(x => x.ObterPorIdsAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Servico> { servico });
+        _pecaRepositoryMock
+            .Setup(x => x.ObterPorIdsAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Peca>());
         _ordemRepositoryMock
             .Setup(x => x.CriarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico ordem, CancellationToken _) =>
@@ -451,6 +454,38 @@ public class OrdemDeServicoHandlersTests
     }
 
     [Fact]
+    public async Task RegistrarPagamentoAsync_DeveLancarQuandoPagamentoJaRegistrado()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Finalizada);
+        ordem.SetPrivateProperty(nameof(OrdemDeServico.DataFinalizacao), DateTime.UtcNow);
+        ordem.SetPrivateProperty(nameof(OrdemDeServico.DataPagamento), DateTime.UtcNow);
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+
+        var acao = () => _handlers.RegistrarPagamentoAsync(ordem.Id, CancellationToken.None);
+
+        await acao.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Pagamento ja foi registrado*");
+    }
+
+    [Fact]
+    public async Task EntregarAsync_DeveLancarQuandoJaEntregue()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Entregue);
+
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+
+        var acao = () => _handlers.EntregarAsync(ordem.Id, CancellationToken.None);
+
+        await acao.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*ja foi entregue*");
+    }
+
+    [Fact]
     public async Task EntregarAsync_DeveLancarQuandoPagamentoNaoTiverSidoRegistrado()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Finalizada);
@@ -571,8 +606,14 @@ public class OrdemDeServicoHandlersTests
         ordemAberta.SetPrivateProperty(nameof(OrdemDeServico.DataFinalizacao), null);
 
         _ordemRepositoryMock
-            .Setup(x => x.ObterTodasAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new[] { ordemFinalizadaRapida, ordemFinalizadaLenta, ordemAberta });
+            .Setup(x => x.ContarParaMonitoramentoAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync((3, 1, 2));
+        _ordemRepositoryMock
+            .Setup(x => x.ObterTempoMedioFinalizacaoMinutosAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(180);
+        _ordemRepositoryMock
+            .Setup(x => x.ObterParaMonitoramentoAsync(1, 2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<OrdemDeServico> { ordemFinalizadaRapida, ordemFinalizadaLenta });
 
         var resultado = await _handlers.ObterResumoMonitoramentoAsync(1, 2, CancellationToken.None);
 

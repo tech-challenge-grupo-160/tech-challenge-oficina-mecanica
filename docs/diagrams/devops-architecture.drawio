@@ -1,0 +1,153 @@
+<mxfile host="Electron" agent="Codex">
+  <diagram id="devops-local-architecture" name="DevOps Local Architecture">
+    <mxGraphModel dx="1571" dy="934" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="areaGithub" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=18;verticalAlign=top;spacingTop=12;" value="GitHub / CI-CD" vertex="1">
+          <mxGeometry height="820" width="650" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="areaLocal" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=18;verticalAlign=top;spacingTop=12;" value="Ambiente LOCAL - Self-hosted runner" vertex="1">
+          <mxGeometry height="870" width="800" x="740" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="dev" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" value="Desenvolvedor" vertex="1">
+          <mxGeometry height="60" width="150" x="95" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="feature" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" value="Feature branch&lt;br&gt;feature/*" vertex="1">
+          <mxGeometry height="60" width="150" x="300" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="prDevelop" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="PR para develop" vertex="1">
+          <mxGeometry height="60" width="140" x="500" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="ciDevelop" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="CI develop&lt;br&gt;restore + build + testes" vertex="1">
+          <mxGeometry height="70" width="190" x="180" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="develop" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="Branch develop" vertex="1">
+          <mxGeometry height="60" width="150" x="450" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="release" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;fontStyle=1;" value="Release branch&lt;br&gt;release/*" vertex="1">
+          <mxGeometry height="65" width="150" x="95" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="prHomolog" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;" value="PR para homolog" vertex="1">
+          <mxGeometry height="65" width="150" x="300" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="ciHomolog" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;" value="CI homolog&lt;br&gt;build + testes + validações" vertex="1">
+          <mxGeometry height="85" width="150" x="500" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="mergeHomolog" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;" value="Merge / push&lt;br&gt;homolog" vertex="1">
+          <mxGeometry height="70" width="150" x="180" y="555" as="geometry" />
+        </mxCell>
+        <mxCell id="cdHomolog" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;" value="CD homolog&lt;br&gt;GitHub Actions" vertex="1">
+          <mxGeometry height="70" width="170" x="430" y="555" as="geometry" />
+        </mxCell>
+        <mxCell id="master" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#666666;fontSize=13;" value="Master&lt;br&gt;&quot;produção simulada&quot;&lt;br&gt;&lt;br&gt;*o mesmo ocorre aqui, mas com namespace:&lt;br&gt;&lt;br&gt;&lt;b&gt;oficina-mecanica-prod&lt;br&gt;&lt;br&gt;&lt;/b&gt;" vertex="1">
+          <mxGeometry height="140" width="210" x="245" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="runner" parent="1" style="shape=process;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1;" value="Self-hosted runner&lt;br&gt;Servidor LOCAL (minha máquina)" vertex="1">
+          <mxGeometry height="75" width="210" x="810" y="115" as="geometry" />
+        </mxCell>
+        <mxCell id="terraform" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;" value="Terraform&lt;br&gt;cluster + namespace + secrets + metrics-server" vertex="1">
+          <mxGeometry height="80" width="220" x="830" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="docker" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="Docker build&lt;br&gt;oficina-mecanica-api:local" vertex="1">
+          <mxGeometry height="80" width="210" x="1080" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="kindLoad" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="Kind load image" vertex="1">
+          <mxGeometry height="60" width="160" x="1320" y="275" as="geometry" />
+        </mxCell>
+        <mxCell id="cluster" parent="1" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#b1ddf0;strokeColor=#10739e;fontSize=14;fontStyle=1;" value="Kind cluster&lt;br&gt;oficina-mecanica" vertex="1">
+          <mxGeometry height="90" width="210" x="1035" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="namespace" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=8;" value="Namespace&lt;br&gt;oficina-mecanica-homolog" vertex="1">
+          <mxGeometry height="235" width="595" x="842.5" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="API .NET monolito&lt;br&gt;2 replicas" vertex="1">
+          <mxGeometry height="70" width="160" x="880" y="625" as="geometry" />
+        </mxCell>
+        <mxCell id="SCEeT2YwK6rz4SfY8cCd-2" edge="1" parent="1" source="postgres" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="postgres" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" value="PostgreSQL&lt;br&gt;1 replica" vertex="1">
+          <mxGeometry height="70" width="165" x="1080" y="625" as="geometry" />
+        </mxCell>
+        <mxCell id="SCEeT2YwK6rz4SfY8cCd-1" edge="1" parent="1" source="hpa" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="postgres">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hpa" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;" value="HPA&lt;br&gt;min 2 / max 10" vertex="1">
+          <mxGeometry height="70" width="125" x="1280" y="625" as="geometry" />
+        </mxCell>
+        <mxCell id="svc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" value="Service NodePort&lt;br&gt;80:30080" vertex="1">
+          <mxGeometry height="60" width="160" x="880" y="725" as="geometry" />
+        </mxCell>
+        <mxCell id="portForward" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" value="kubectl port-forward&lt;br&gt;localhost:8080" vertex="1">
+          <mxGeometry height="65" width="190" x="980" y="825" as="geometry" />
+        </mxCell>
+        <mxCell id="client" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;" value="Postman / Swagger + endpoint" vertex="1">
+          <mxGeometry height="65" width="180" x="1235" y="825" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="dev" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="feature">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="feature" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="prDevelop">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="prDevelop" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="ciDevelop">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="ciDevelop" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="develop">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="develop" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="release">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="release" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="prHomolog">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="prHomolog" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="ciHomolog">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="ciHomolog" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="mergeHomolog">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="mergeHomolog" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="cdHomolog">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="cdHomolog" style="endArrow=block;html=1;rounded=0;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="730" y="410" />
+            </Array>
+            <mxPoint x="870" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="runner" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="terraform">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="1" source="runner" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="docker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="1" source="docker" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="kindLoad">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" edge="1" parent="1" source="kindLoad" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="cluster">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="1" source="terraform" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="cluster">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" edge="1" parent="1" source="cluster" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="namespace">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" edge="1" parent="1" source="api" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="svc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" edge="1" parent="1" source="svc" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="portForward">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" edge="1" parent="1" source="portForward" style="endArrow=block;html=1;rounded=0;strokeWidth=2;" target="client">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

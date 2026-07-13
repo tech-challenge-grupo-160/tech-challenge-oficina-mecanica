@@ -28,6 +28,14 @@ public class PecaRepository : IPecaRepository
         return await _context.Pecas.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Peca>> ObterPorIdsAsync(IEnumerable<int> ids, CancellationToken cancellationToken)
+    {
+        var idList = ids.ToList();
+        return await _context.Pecas
+            .Where(p => idList.Contains(p.Id))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IEnumerable<Peca>> ObterTodosAsync(CancellationToken cancellationToken)
     {
         return await _context.Pecas.ToListAsync(cancellationToken);
