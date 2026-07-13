@@ -1,0 +1,213 @@
+# C4 Model - Nível 3: Components Diagram
+
+## Visão Geral
+O diagrama de componentes detalha a arquitetura interna da API REST, mostrando como os componentes se relacionam seguindo os princípios de Clean Architecture e CQRS.
+
+```plantuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title C4 Components Diagram - API REST de Gestão de Oficina Mecânica
+
+Container_Boundary(api, "API REST - ASP.NET Core") {
+    
+    ' Layer 1: API Controllers
+    Component(authController, "AuthController", "Controller", "Gerencia autenticação de usuários (login)")
+    Component(clienteController, "ClientesController", "Controller", "Gerencia CRUD de clientes")
+    Component(veiculoController, "VeiculosController", "Controller", "Gerencia CRUD de veículos")
+    Component(servicoController, "ServicosController", "Controller", "Gerencia catálogo de serviços")
+    Component(pecaController, "PecasController", "Controller", "Gerencia catálogo de peças")
+    Component(osController, "OrdensDeServicoController", "Controller", "Gerencia ordens de serviço")
+    Component(pedidoController, "PedidosCompraController", "Controller", "Gerencia pedidos de compra")
+    Component(acompController, "AcompanhamentoOSController", "Controller", "Acompanhamento público de OS")
+    
+    ' Layer 2: API Bootstrap & Security
+    Component(apiBootstrap, "ApiBootstrap", "Configuração", "Configuração de DI, middleware e opções da API")
+    Component(authBootstrap, "ApiAuthenticationBootstrap", "Configuração", "Configuração de autenticação JWT")
+    Component(swaggerBootstrap, "ApiSwaggerBootstrap", "Configuração", "Configuração do Swagger/OpenAPI")
+    Component(tokenGen, "JwtTokenGenerator", "Security", "Geração de tokens JWT")
+    Component(usuarioAuthService, "UsuarioAutenticadoService", "Security", "Obtém usuário autenticado do contexto")
+      
+    ' Layer 3: Application CQRS Handlers
+    Component(loginHandler, "LoginCommandHandler", "Handler", "Processa comando de login")
+    Component(clienteHandlers, "ClienteHandlers", "Handler", "Processa comandos/queries de clientes")
+    Component(veiculoHandlers, "VeiculoHandlers", "Handler", "Processa comandos/queries de veículos")
+    Component(servicoHandlers, "ServicoHandlers", "Handler", "Processa comandos/queries de serviços")
+    Component(pecaHandlers, "PecaHandlers", "Handler", "Processa comandos/queries de peças")
+    Component(osHandlers, "OrdensDeServicoHandlers", "Handler", "Processa comandos/queries de OS")
+    Component(pedidoHandlers, "PedidosCompraHandlers", "Handler", "Processa comandos/queries de pedidos")
+    Component(acompHandlers, "AcompanhamentoOSHandlers", "Handler", "Processa queries de acompanhamento")
+    
+    ' Layer 3: Application Services
+    Component(osAcompService, "OrdemDeServicoAcompanhamentoService", "Service", "Lógica de acompanhamento de OS")
+    Component(osEstoqueService, "OrdemDeServicoEstoqueService", "Service", "Validação e movimentação de estoque")
+    Component(osHistService, "OrdemDeServicoHistoricoService", "Service", "Gerencia histórico de OS")
+    Component(osNotifService, "OrdemDeServicoNotificacaoService", "Service", "Envia notificações para clientes")
+    
+    ' Layer 4: Domain Entities & Repositories
+    Component(clienteRepo, "ClienteRepository", "Repository", "Acesso a dados de clientes")
+    Component(veiculoRepo, "VeiculoRepository", "Repository", "Acesso a dados de veículos")
+    Component(servicoRepo, "ServicoRepository", "Repository", "Acesso a dados de serviços")
+    Component(pecaRepo, "PecaRepository", "Repository", "Acesso a dados de peças")
+    Component(osRepo, "OrdemDeServicoRepository", "Repository", "Acesso a dados de OS")
+    Component(pedidoRepo, "PedidoCompraRepository", "Repository", "Acesso a dados de pedidos")
+    Component(usuarioRepo, "UsuarioRepository", "Repository", "Acesso a dados de usuários")
+    Component(estoque, "MovimentacaoEstoqueRepository", "Repository", "Controle de movimentações de estoque")
+    Component(historico, "OrdemServicoHistoricoRepository", "Repository", "Acesso a histórico de OS")
+    Component(notificacao, "NotificacaoClienteRepository", "Repository", "Acesso a notificações")
+    
+    ' Layer 4: Cross-cutting Concerns
+    Component(validation, "ValidationBehavior", "Middleware", "Valida comandos usando FluentValidation")
+    Component(logger, "Logging", "Infrastructure", "Registra eventos e erros da aplicação")
+    Component(mediator, "MediatR", "Mediator", "Orquestra Commands e Queries (CQRS)")
+    
+    ' External Infrastructure
+    Component(efCore, "Entity Framework Core", "ORM", "Mapeia entidades para banco de dados")
+    Component(efTrans, "EfTransactionManager", "Transaction", "Gerencia transações do banco")
+}
+
+Container_Boundary(db, "Banco de Dados") {
+    Component(postgresql, "PostgreSQL 16", "Database", "Persiste dados de negócio")
+}
+
+' Controllers → Mediator
+Rel(authController, mediator, "Send command/query")
+Rel(clienteController, mediator, "Send command/query")
+Rel(veiculoController, mediator, "Send command/query")
+Rel(servicoController, mediator, "Send command/query")
+Rel(pecaController, mediator, "Send command/query")
+Rel(osController, mediator, "Send command/query")
+Rel(pedidoController, mediator, "Send command/query")
+Rel(acompController, mediator, "Send command/query")
+
+' Controllers → Security
+Rel(osController, usuarioAuthService, "Obtém usuário autenticado")
+Rel(clienteController, usuarioAuthService, "Obtém usuário autenticado")
+
+' Mediator → Handlers
+Rel(mediator, loginHandler, "Dispatch")
+Rel(mediator, clienteHandlers, "Dispatch")
+Rel(mediator, veiculoHandlers, "Dispatch")
+Rel(mediator, servicoHandlers, "Dispatch")
+Rel(mediator, pecaHandlers, "Dispatch")
+Rel(mediator, osHandlers, "Dispatch")
+Rel(mediator, pedidoHandlers, "Dispatch")
+Rel(mediator, acompHandlers, "Dispatch")
+
+' Handlers → Services
+Rel(loginHandler, tokenGen, "Gera token JWT")
+Rel(osHandlers, osAcompService, "Atualiza acompanhamento")
+Rel(osHandlers, osEstoqueService, "Valida/movimenta estoque")
+Rel(osHandlers, osHistService, "Registra histórico")
+Rel(osHandlers, osNotifService, "Envia notificações")
+
+' Handlers → Repositories
+Rel(loginHandler, usuarioRepo, "Consulta usuário")
+Rel(clienteHandlers, clienteRepo, "Acesso a dados")
+Rel(veiculoHandlers, veiculoRepo, "Acesso a dados")
+Rel(servicoHandlers, servicoRepo, "Acesso a dados")
+Rel(pecaHandlers, pecaRepo, "Acesso a dados")
+Rel(osHandlers, osRepo, "Acesso a dados")
+Rel(osHandlers, historico, "Registra histórico")
+Rel(osHandlers, estoque, "Movimenta estoque")
+Rel(osHandlers, notificacao, "Registra notificações")
+Rel(pedidoHandlers, pedidoRepo, "Acesso a dados")
+
+' Validation
+Rel(mediator, validation, "Valida comando")
+Rel(validation, logger, "Log de validação")
+
+' Repositories → ORM
+Rel(clienteRepo, efCore, "Consulta/persiste")
+Rel(veiculoRepo, efCore, "Consulta/persiste")
+Rel(servicoRepo, efCore, "Consulta/persiste")
+Rel(pecaRepo, efCore, "Consulta/persiste")
+Rel(osRepo, efCore, "Consulta/persiste")
+Rel(pedidoRepo, efCore, "Consulta/persiste")
+Rel(usuarioRepo, efCore, "Consulta/persiste")
+Rel(historico, efCore, "Consulta/persiste")
+Rel(estoque, efCore, "Consulta/persiste")
+Rel(notificacao, efCore, "Consulta/persiste")
+
+' ORM → Database
+Rel(efCore, postgresql, "SQL queries")
+Rel(efTrans, postgresql, "Transações")
+
+SHOW_LEGEND()
+```
+
+## Camadas Arquiteturais
+
+### 1. **API Layer** (Controllers)
+Pontos de entrada HTTP que recebem requisições do cliente e enviam respostas.
+- `AuthController` - Login e autenticação
+- `ClientesController` - CRUD de clientes
+- `VeiculosController` - CRUD de veículos
+- `ServicosController` - CRUD de serviços
+- `PecasController` - CRUD de peças
+- `OrdensDeServicoController` - CRUD e operações de OS
+- `PedidosCompraController` - CRUD de pedidos de compra
+- `AcompanhamentoOSController` - Acompanhamento público
+
+### 2. **Security & Configuration**
+Responsáveis por autenticação e inicialização da aplicação.
+- `JwtTokenGenerator` - Gera tokens JWT assinados
+- `UsuarioAutenticadoService` - Extrai usuário do context
+- `ApiBootstrap`, `ApiAuthenticationBootstrap`, `ApiSwaggerBootstrap` - Configurações
+
+### 3. **Application Layer (CQRS)** 
+Implementa padrão CQRS com Handlers de Commands e Queries.
+- Handlers processam lógica de negócio
+- `MediatR` orquestra as requisições
+- `ValidationBehavior` valida antes de executar
+
+### 4. **Domain Services**
+Lógica de negócio especializada.
+- `OrdemDeServicoAcompanhamentoService` - Rastreamento de OS
+- `OrdemDeServicoEstoqueService` - Validação e movimentação
+- `OrdemDeServicoHistoricoService` - Histórico de mudanças
+- `OrdemDeServicoNotificacaoService` - Notificações
+
+### 5. **Infrastructure Layer** (Repositories)
+Acesso a dados persistidos via Entity Framework Core.
+- Um repositório por entidade (Cliente, Veículo, Serviço, etc.)
+- `EfTransactionManager` - Gerencia transações
+
+### 6. **Data Layer**
+PostgreSQL 16 como banco de dados relacional.
+
+## Fluxos Principais
+
+### Login
+```
+ClienteController → MediatR → LoginCommandHandler 
+  → UsuarioRepository → JwtTokenGenerator → Resposta com Token
+```
+
+### Criar Ordem de Serviço
+```
+OrdensDeServicoController → MediatR → CriarOrdemDeServicoCommandHandler
+  → OrdemDeServicoRepository, VeiculoRepository, ClienteRepository
+  → OrdemDeServicoHistoricoService
+  → Persiste no PostgreSQL
+```
+
+### Movimentação de Estoque
+```
+OrdensDeServicoController → MediatR → AdicionarPecaAOrdemCommandHandler
+  → OrdemDeServicoEstoqueService (valida disponibilidade)
+  → MovimentacaoEstoqueRepository
+  → PecaRepository (atualiza quantidade)
+  → PostgreSQL
+```
+
+## Padrões Utilizados
+
+- **CQRS**: Separação de Commands (escrita) e Queries (leitura)
+- **Repository Pattern**: Abstração do acesso a dados
+- **Mediator Pattern**: Orquestração centralizada de operações
+- **Clean Architecture**: Separação em camadas com dependências unidirecionais
+- **Dependency Injection**: Uso de container DI do ASP.NET Core
+- **Validation**: FluentValidation para validação de regras de negócio
+- **Transaction Management**: Gerenciamento explícito de transações
