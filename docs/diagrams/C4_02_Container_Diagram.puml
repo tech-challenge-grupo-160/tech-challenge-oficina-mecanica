@@ -1,0 +1,59 @@
+# C4 Model - Nível 2: Container Diagram
+
+## Visão Geral
+O diagrama de containers mostra a estrutura de alto nível do sistema de Gestão de Oficina Mecânica, incluindo a API, banco de dados e componentes externos.
+
+```plantuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title C4 Container Diagram - Sistema de Gestão de Oficina Mecânica
+
+Person(Cliente, "Cliente da Oficina", "Pessoa que consulta o status de sua OS")
+Person(Funcionario, "Funcionário da Oficina", "Técnico que gerencia ordens de serviço")
+
+System_Boundary(c1, "Sistema de Gestão de Oficina Mecânica") {
+    Container(api, "API REST", "ASP.NET Core 10", "Fornece endpoints REST para gerenciamento de clientes, veículos, serviços, peças e ordens de serviço. Implementa autenticação JWT.")
+    Container(bd, "Banco de Dados", "PostgreSQL 16", "Armazena dados de clientes, veículos, serviços, peças, estoque, ordens de serviço e usuários.")
+}
+
+System_Ext(EmailService, "Serviço de Email", "Sistema externo para envio de notificações")
+
+Rel(Cliente, api, "Consulta status de OS via HTTPS", "HTTP/HTTPS")
+Rel(Funcionario, api, "Cria e atualiza OS via HTTPS", "HTTP/HTTPS")
+
+Rel(api, bd, "Lê e escreve dados", "TCP/IP")
+
+Rel(api, EmailService, "Solicita envio de notificações", "HTTPS")
+
+SHOW_LEGEND()
+```
+
+## Descrição dos Containers
+
+| Container | Tecnologia | Descrição |
+|-----------|-----------|-----------|
+| **API REST** | ASP.NET Core 10 | Aplicação web que expõe endpoints REST. Implementa padrão CQRS, validação, autenticação JWT e logging. |
+| **Banco de Dados** | PostgreSQL 16 | Persiste todos os dados da aplicação: clientes, veículos, serviços, peças, estoque e ordens de serviço. |
+| **Cache** | Em Memória | Cache de dados frequentemente consultados (serviços, peças, clientes) para otimizar performance. |
+
+## Decisões Arquiteturais
+
+- **API Monolítica**: Um único container contendo toda a lógica de negócio
+- **Banco de Dados Centralizado**: PostgreSQL como fonte única de verdade
+- **Stateless**: Autenticação via JWT não requer sessão no servidor
+- **Cache em Memória**: Reduz consultas ao banco de dados para dados que mudam pouco
+
+## Tecnologias
+
+| Aspecto | Tecnologia |
+|--------|-----------|
+| **Framework Web** | ASP.NET Core 10 |
+| **ORM** | Entity Framework Core |
+| **Banco de Dados** | PostgreSQL 16 |
+| **Autenticação** | JWT Bearer |
+| **Validação** | FluentValidation |
+| **Padrão de Mensageria** | MediatR (CQRS) |
+| **Testes** | xUnit |
+| **Containerização** | Docker |
