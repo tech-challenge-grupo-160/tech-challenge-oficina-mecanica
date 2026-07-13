@@ -47,9 +47,10 @@ resource "kind_cluster" "oficina_mecanica" {
 }
 
 provider "kubernetes" {
-  # Usa o kubeconfig gerado pelo kind diretamente.
-  # Evita base64decode em campos que chegam vazios durante a criacao do cluster.
-  config_path = kind_cluster.oficina_mecanica.kubeconfig_path
+  host                   = kind_cluster.oficina_mecanica.endpoint
+  client_certificate     = kind_cluster.oficina_mecanica.client_certificate
+  client_key             = kind_cluster.oficina_mecanica.client_key
+  cluster_ca_certificate = kind_cluster.oficina_mecanica.cluster_ca_certificate
 }
 
 resource "kubernetes_namespace" "oficina_mecanica" {
