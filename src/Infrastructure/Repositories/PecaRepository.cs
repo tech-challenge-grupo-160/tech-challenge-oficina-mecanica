@@ -1,6 +1,7 @@
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Microsoft.EntityFrameworkCore;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
-using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
@@ -25,6 +26,14 @@ public class PecaRepository : IPecaRepository
     public async Task<Peca?> ObterPorIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _context.Pecas.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Peca>> ObterPorIdsAsync(IEnumerable<int> ids, CancellationToken cancellationToken)
+    {
+        var idList = ids.ToList();
+        return await _context.Pecas
+            .Where(p => idList.Contains(p.Id))
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<Peca>> ObterTodosAsync(CancellationToken cancellationToken)

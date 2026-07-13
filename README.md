@@ -1,6 +1,6 @@
 # Sistema de Gestão de Oficina Mecânica
 
-API REST para operação de oficina mecânica com foco em clientes, veículos, catálogo de serviços e peças, autenticação JWT e fluxo completo de ordens de serviço.
+API REST para operação de oficina mecânica com foco em clientes, veículos, catálogo de serviços e peças, autenticação JWT e fluxo completo de ordens de serviço. 
 
 ## Visão geral
 
@@ -24,6 +24,7 @@ O domínio principal do projeto é a ordem de serviço. A API permite:
 - ASP.NET Core Web API
 - Entity Framework Core
 - PostgreSQL 16
+- MediatR
 - JWT Bearer Authentication
 - FluentValidation
 - xUnit
@@ -45,10 +46,7 @@ Endpoints padrão:
 
 ### Execução local
 
-```bash
-dotnet restore
-dotnet run --project Fiap.TechChallenge.OficinaMecanica.Api.csproj
-```
+Acesse a documentação em [docs/SETUP.md](docs/SETUP.md).
 
 ## Autenticação
 
@@ -68,20 +66,22 @@ Seed de desenvolvimento:
 - [Índice da documentação](docs/README.md)
 - [Setup e operação](docs/SETUP.md)
 - [Arquitetura](docs/ARCHITECTURE.md)
+- [Infraestrutura](docs/INFRAESTRUTURA.md)
 - [Referência da API](docs/API_REFERENCE.md)
 
 ## Estrutura do repositório
 
 ```text
 src/
-  API/
-  Application/
-  Domain/
-  Infrastructure/
-  Shared/
+  API/              # Controllers, requests, responses, mappers e bootstrap HTTP
+  Application/      # CQRS com Commands, Queries, Handlers, Results e validators
+  Domain/           # Entidades, value objects, enums e contratos de repositorio
+  Infrastructure/   # EF Core, repositories, migrations, JWT, clock e health checks
+  Shared/           # Helpers e templates de logging
 
-Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/
-Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/
+tests/
+  Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/
+  Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/
 docs/
 ```
 

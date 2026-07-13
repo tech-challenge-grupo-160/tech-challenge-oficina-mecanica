@@ -22,6 +22,11 @@ public readonly record struct Telefone
         return new Telefone(digitos);
     }
 
+    internal static Telefone FromDatabase(string valor)
+    {
+        return new Telefone(valor);
+    }
+
     public static bool IsValid(string? valor)
     {
         var digitos = StringHelper.OnlyDigits(valor);

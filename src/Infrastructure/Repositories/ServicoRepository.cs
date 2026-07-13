@@ -1,6 +1,7 @@
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
+using Fiap.TechChallenge.OficinaMecanica.Application.Behaviors;
 using Microsoft.EntityFrameworkCore;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
-using Fiap.TechChallenge.OficinaMecanica.Domain.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
@@ -25,6 +26,14 @@ public class ServicoRepository : IServicoRepository
     public async Task<Servico?> ObterPorIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _context.Servicos.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Servico>> ObterPorIdsAsync(IEnumerable<int> ids, CancellationToken cancellationToken)
+    {
+        var idList = ids.ToList();
+        return await _context.Servicos
+            .Where(s => idList.Contains(s.Id))
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<Servico>> ObterTodosAsync(CancellationToken cancellationToken)

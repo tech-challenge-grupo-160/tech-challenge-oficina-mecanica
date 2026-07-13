@@ -1,7 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
-using Fiap.TechChallenge.OficinaMecanica.Application.Services;
+using Fiap.TechChallenge.OficinaMecanica.API.Mappers;
+using Fiap.TechChallenge.OficinaMecanica.API.Requests.Clientes;
+using Fiap.TechChallenge.OficinaMecanica.API.Requests.Veiculos;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.Clientes;
+using Fiap.TechChallenge.OficinaMecanica.API.Responses.Veiculos;
+using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Clientes;
+using Fiap.TechChallenge.OficinaMecanica.Application.Queries.Veiculos;
+using MediatR;
 
 namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 
@@ -10,24 +17,23 @@ namespace Fiap.TechChallenge.OficinaMecanica.API.Controllers;
 [Route("api/v1/[controller]")]
 public class ClientesController : ControllerBase
 {
-    private readonly IClienteApplicationService _clienteService;
-    private readonly IVeiculoApplicationService _veiculoService;
+    private readonly IMediator _mediator;
 
-    public ClientesController(IClienteApplicationService clienteService, IVeiculoApplicationService veiculoService)
+    public ClientesController(IMediator mediator)
     {
-        _clienteService = clienteService;
-        _veiculoService = veiculoService;
+        _mediator = mediator;
     }
 
     [HttpPost]
-    public async Task<ActionResult<ClienteDto>> Criar([FromBody] CriarClienteDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<ClienteResponse>> Criar([FromBody] CriarClienteRequest request, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteService.CriarClienteAsync(dto, cancellationToken);
-        return CreatedAtAction(nameof(ObterPorDocumento), new { cpfCnpj = cliente.CpfCnpj }, cliente);
+        var cliente = await _mediator.Send(request.ToCommand(), cancellationToken);
+        var response = cliente.ToResponse();
+        return CreatedAtAction(nameof(ObterPorDocumento), new { cpfCnpj = response.CpfCnpj }, response);
     }
 
     [HttpGet]
-    public async Task<ActionResult<PagedResultDto<ClienteDto>>> Listar(
+    public async Task<ActionResult<PagedResponse<ClienteResponse>>> Listar(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? nome = null,
@@ -37,42 +43,52 @@ public class ClientesController : ControllerBase
         page = page < 1 ? 1 : page;
         pageSize = pageSize < 1 ? 10 : Math.Min(pageSize, 100);
 
-        var clientes = await _clienteService.ListarClientesAsync(page, pageSize, nome, cpfCnpj, cancellationToken);
-        return Ok(clientes);
+        var clientes = await _mediator.Send(new ListarClientesQuery
+        {
+            Page = page,
+            PageSize = pageSize,
+            Nome = nome,
+            CpfCnpj = cpfCnpj
+        }, cancellationToken);
+        return Ok(clientes.ToResponse());
     }
 
     [HttpGet("documento/{cpfCnpj}")]
-    public async Task<ActionResult<ClienteDto>> ObterPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
+    public async Task<ActionResult<ClienteResponse>> ObterPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteService.ObterClientePorCpfCnpjAsync(cpfCnpj, cancellationToken);
-        return Ok(cliente);
+        var cliente = await _mediator.Send(cpfCnpj.ToQueryByDocumento(), cancellationToken);
+        return Ok(cliente.ToResponse());
     }
 
     [HttpGet("{cpfCnpj}/veiculos")]
-    public async Task<ActionResult<IEnumerable<VeiculoDto>>> ListarVeiculosPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
+    public async Task<ActionResult<IEnumerable<VeiculoResponse>>> ListarVeiculosPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
     {
-        var veiculos = await _veiculoService.ListarVeiculosPorCpfCnpjAsync(cpfCnpj, cancellationToken);
-        return Ok(veiculos);
+        var veiculos = await _mediator.Send(new ListarVeiculosPorDocumentoClienteQuery
+        {
+            CpfCnpj = cpfCnpj
+        }, cancellationToken);
+        return Ok(veiculos.ToResponse());
     }
 
     [HttpPost("{cpfCnpj}/veiculos")]
-    public async Task<ActionResult<VeiculoDto>> CriarVeiculo(string cpfCnpj, [FromBody] CriarVeiculoParaClienteDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<VeiculoResponse>> CriarVeiculo(string cpfCnpj, [FromBody] CriarVeiculoParaClienteRequest request, CancellationToken cancellationToken)
     {
-        var veiculo = await _veiculoService.CriarVeiculoParaClienteAsync(cpfCnpj, dto, cancellationToken);
-        return CreatedAtAction("ObterPorPlaca", "Veiculos", new { placa = veiculo.Placa }, veiculo);
+        var veiculo = await _mediator.Send(request.ToCommand(cpfCnpj), cancellationToken);
+        var response = veiculo.ToResponse();
+        return CreatedAtAction("ObterPorPlaca", "Veiculos", new { placa = response.Placa }, response);
     }
 
     [HttpPut("documento/{cpfCnpj}")]
-    public async Task<ActionResult<ClienteDto>> AtualizarPorDocumento(string cpfCnpj, [FromBody] AtualizarClienteDto dto, CancellationToken cancellationToken)
+    public async Task<ActionResult<ClienteResponse>> AtualizarPorDocumento(string cpfCnpj, [FromBody] AtualizarClienteRequest request, CancellationToken cancellationToken)
     {
-        var cliente = await _clienteService.AtualizarClientePorCpfCnpjAsync(cpfCnpj, dto, cancellationToken);
-        return Ok(cliente);
+        var cliente = await _mediator.Send(request.ToCommand(cpfCnpj), cancellationToken);
+        return Ok(cliente.ToResponse());
     }
 
     [HttpDelete("documento/{cpfCnpj}")]
     public async Task<IActionResult> DeletarPorDocumento(string cpfCnpj, CancellationToken cancellationToken)
     {
-        await _clienteService.DeletarClientePorCpfCnpjAsync(cpfCnpj, cancellationToken);
+        await _mediator.Send(cpfCnpj.ToDeleteCommand(), cancellationToken);
         return NoContent();
     }
 }

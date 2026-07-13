@@ -117,13 +117,13 @@
                   "value": "1"
                 },
                 {
-                  "key": "pageSize",
-                  "value": "10"
-                },
-                {
                   "key": "cpfCnpj",
                   "value": "{{cpfCnpj}}",
                   "disabled": true
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
                 }
               ]
             }
@@ -343,7 +343,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clienteId\": {{clienteId}},\n  \"veiculoId\": {{veiculoId}},\n  \"descricaoSolicitacao\": \"Cliente relatou barulho ao frear e puxando para a direita.\",\n  \"observacoesRecepcao\": \"nenhuma observação\"\n}"
+              "raw": "{\n  \"clienteId\": {{clienteId}},\n  \"veiculoId\": {{veiculoId}},\n  \"descricaoSolicitacao\": \"Cliente relatou barulho ao frear e puxando para a direita.\",\n  \"observacoesRecepcao\": \"nenhuma observação\",\n  \"servicos\": [\n    {\n      \"servicoId\": {{servicoId}}\n    }\n  ],\n  \"pecas\": [\n    {\n        \"pecaId\": {{pecaId}},\n        \"quantidade\": 2\n    }\n  ]\n}\n"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/ordens-servico",
@@ -385,7 +385,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/ordens-servico?page=1&pageSize=10&status=EmDiagnostico",
+              "raw": "{{baseUrl}}/api/v1/ordens-servico?page=1&pageSize=10&status=AguardandoAprovacao",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -405,7 +405,7 @@
                 },
                 {
                   "key": "status",
-                  "value": "EmDiagnostico"
+                  "value": "AguardandoAprovacao"
                 },
                 {
                   "key": "dataAberturaInicio",
@@ -1025,6 +1025,43 @@
                 "v1",
                 "acompanhamento-os",
                 "{{ordemServicoId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Aprovação de orçamento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Tracking-Token",
+                "value": "0EF6A1F57A4EEE67BDA345BA6030F5127717F876F55DAC843A7F94B9AAAACD34",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"aprovado\": false,\r\n  \"motivoRecusa\": \"Valor muito acima do esperado\"\r\n}\r\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ordens-servico/{{ordemServicoId}}/ordem/resposta",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ordens-servico",
+                "{{ordemServicoId}}",
+                "ordem",
+                "resposta"
               ]
             }
           },
