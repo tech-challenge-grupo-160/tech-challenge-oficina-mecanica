@@ -1,6 +1,6 @@
 # Referencia da API
 
-Ultima atualizacao: 2026-07-10
+Ultima atualizacao: 2026-07-12
 
 ## Base URL
 
@@ -335,6 +335,7 @@ Resposta `201 Created`:
 | `PATCH` | `/ordens-servico/{id}/registrar-pagamento` | JWT | Registrar pagamento (status Finalizada) |
 | `PATCH` | `/ordens-servico/{id}/entregar` | JWT | Finalizada -> Entregue |
 | `PATCH` | `/ordens-servico/{id}/cancelar` | JWT | Cancelar ordem |
+| `PATCH` | `/ordens-servico/{numero}/avancar-status` | JWT | Avancar para o proximo status do fluxo |
 
 #### Composicao do orcamento
 
@@ -458,6 +459,36 @@ Request:
   "motivoCancelamento": "Cliente desistiu do reparo."
 }
 ```
+
+#### Avancar status (webhook)
+
+Avanca a ordem de servico para o proximo status do fluxo principal, identificando a OS pelo numero.
+
+```http
+PATCH /ordens-servico/{numero}/avancar-status
+```
+
+Exemplo:
+
+```http
+PATCH /ordens-servico/OS-20260710-3001/avancar-status
+Authorization: Bearer <jwt>
+```
+
+Sem body. O handler determina o proximo status com base no status atual:
+
+| Status atual | Proximo status | Observacao |
+|---|---|---|
+| `Recebida` | `EmDiagnostico` | Transicao direta |
+| `EmDiagnostico` | `AguardandoAprovacao` | Requer servicos e valor > 0 |
+| `AguardandoAprovacao` | `EmExecucao` ou `AguardandoEstoque` | Valida estoque; se faltar, bloqueia e gera pedido de compra |
+| `EmExecucao` | `Finalizada` | Transicao direta |
+| `AguardandoEstoque` | — | Retorna `400`: use `PATCH {id}/liberar-execucao` |
+| `Finalizada` | — | Retorna `400`: registre pagamento e use `PATCH {id}/entregar` |
+| `Entregue` | — | Retorna `400`: estado terminal |
+| `Cancelada` | — | Retorna `400`: estado terminal |
+
+Resposta `200 OK`: retorna o mesmo payload de `OrdemDeServicoResponse` (igual aos demais endpoints de transicao).
 
 #### Responder ordem (endpoint publico)
 
@@ -657,6 +688,11 @@ Resposta `200 OK`:
 | `PATCH .../entregar` | `400` | Status atual nao permite entrega (requer `Finalizada` com pagamento) |
 | `PATCH .../cancelar` | `404` | OS nao encontrada |
 | `PATCH .../cancelar` | `400` | Status atual nao permite cancelamento |
+| `PATCH .../{numero}/avancar-status` | `404` | OS com numero informado nao encontrada |
+| `PATCH .../{numero}/avancar-status` | `400` | OS em `AguardandoEstoque` — use `/liberar-execucao` |
+| `PATCH .../{numero}/avancar-status` | `400` | OS em `Finalizada` — registre pagamento e use `/entregar` |
+| `PATCH .../{numero}/avancar-status` | `400` | OS em estado terminal (`Entregue` ou `Cancelada`) |
+| `PATCH .../{numero}/avancar-status` | `400` | OS em `EmDiagnostico` sem servicos ou orcamento zerado |
 
 **Composicao do orcamento**
 

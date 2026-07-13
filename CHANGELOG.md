@@ -7,6 +7,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Endpoint `PATCH /ordens-servico/{numero}/avancar-status` para avancar a OS para o proximo status do fluxo principal
 - CONTRIBUTING.md com guia de branches, commits, PRs e convencoes de codigo
 - CHANGELOG.md com historico de mudancas por versao
 - Documentacao de erros detalhada por endpoint na API_REFERENCE.md

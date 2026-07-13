@@ -181,6 +181,13 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(ordem.ToResponse());
     }
 
+    [HttpPatch("{numero}/avancar-status")]
+    public async Task<ActionResult<OrdemDeServicoResponse>> AvancarStatus(string numero, CancellationToken cancellationToken)
+    {
+        var ordem = await _mediator.Send(numero.ToAvancarStatusOrdemDeServicoCommand(), cancellationToken);
+        return Ok(ordem.ToResponse());
+    }
+
     [HttpPatch("{id}/cancelar")]
     public async Task<ActionResult<OrdemDeServicoResponse>> Cancelar(
         int id,
