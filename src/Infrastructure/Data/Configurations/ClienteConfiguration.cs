@@ -1,4 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -37,10 +38,17 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
             .IsRequired()
             .HasMaxLength(255);
 
+        entity.Property(e => e.Status)
+            .HasConversion<string>()
+            .IsRequired()
+            .HasMaxLength(50)
+            .HasDefaultValue(StatusCliente.Ativo);
+
         entity.Property(e => e.DataCadastro).HasColumnType("timestamp without time zone");
 
         entity.HasIndex(e => e.CpfCnpj).IsUnique();
         entity.HasIndex(e => e.Email);
+        entity.HasIndex(e => e.Status);
 
         entity.HasMany(e => e.Veiculos)
             .WithOne(v => v.Cliente)

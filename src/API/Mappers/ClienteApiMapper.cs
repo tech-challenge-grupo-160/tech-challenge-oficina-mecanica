@@ -57,6 +57,7 @@ public static class ClienteApiMapper
             CpfCnpj = result.CpfCnpj,
             Telefone = result.Telefone,
             Email = result.Email,
+            Status = result.Status,
             DataCadastro = result.DataCadastro
         };
     }
