@@ -48,6 +48,7 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
     public async Task<OrdemDeServico?> ObterPorIdAsync(int id, CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico
+            .Include(o => o.Cliente)
             .Include(o => o.Servicos)
             .Include(o => o.Pecas)
             .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
@@ -64,6 +65,7 @@ public class OrdemDeServicoRepository : IOrdemDeServicoRepository
     public async Task<OrdemDeServico?> ObterPorCodigoAcompanhamentoAsync(string codigoAcompanhamento, CancellationToken cancellationToken)
     {
         return await _context.OrdensDeServico
+            .Include(o => o.Cliente)
             .Include(o => o.Servicos)
             .Include(o => o.Pecas)
             .FirstOrDefaultAsync(o => o.CodigoAcompanhamento == codigoAcompanhamento, cancellationToken);

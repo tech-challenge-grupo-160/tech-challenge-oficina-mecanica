@@ -29,6 +29,7 @@ Este diretorio contem a collection e o environment do Postman para testar a API 
 | `placa` | `ABC1234` | Placa usada nos requests de veiculo |
 | `ordemServicoId` | `3004` | ID da OS para testes de fluxo |
 | `ordemServicoNumero` | `OS-20260418-3004` | Numero da OS |
+| `codigoAcompanhamento` | *(vazio)* | Codigo de acompanhamento retornado na criacao da OS |
 | `servicoId` | `1002` | ID do servico |
 | `pecaId` | `1004` | ID da peca |
 | `pedidoCompraId` | `1` | ID do pedido de compra |
@@ -91,8 +92,8 @@ Consultas auxiliares:
 - `GET Monitoramento OS` / `GET Monitoramento OS por id` — tempo decorrido e metricas
 - `GET Estimativa Tempo Servico por OS` — soma dos tempos estimados
 - `GET Movimentacao Estoque OS por id` — movimentacoes agrupadas por peca
-- `GET Acompanhamento OS` — consulta publica (requer `X-Tracking-Token`)
-- `POST Aprovacao de orcamento` — resposta publica do cliente (requer `X-Tracking-Token`)
+- `GET Acompanhamento OS` — consulta do cliente autenticado com JWT da Lambda
+- `POST Aprovacao de orcamento` — resposta do cliente autenticado com JWT da Lambda
 - `PATCH Cancelar OS` — cancelamento com motivo
 
 ### 7. Pedidos de Compra

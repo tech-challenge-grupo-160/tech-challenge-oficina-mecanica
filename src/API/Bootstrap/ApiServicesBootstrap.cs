@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using Fiap.TechChallenge.OficinaMecanica.API.Authorization;
 using Fiap.TechChallenge.OficinaMecanica.API.Filters;
 using Fiap.TechChallenge.OficinaMecanica.API.ProblemDetails;
 using Fiap.TechChallenge.OficinaMecanica.API.Services;
@@ -39,7 +40,11 @@ public static class ApiServicesBootstrap
         services.AddApiAuthentication(configuration);
         services.AddApiSwagger();
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy(ApiAuthorizationPolicies.Cliente, policy =>
+                policy.RequireRole(ApiRoles.Cliente));
+        });
         services.AddHttpContextAccessor();
         services.AddScoped<IUsuarioAutenticadoService, UsuarioAutenticadoService>();
         services.AddCors(options =>

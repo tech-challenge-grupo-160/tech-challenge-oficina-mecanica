@@ -9,4 +9,5 @@ public sealed class UsuarioAutenticadoInfo
 {
     public string? UsuarioId { get; init; }
     public string? UsuarioNome { get; init; }
+    public string? ClienteDocumento { get; init; }
 }

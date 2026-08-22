@@ -4,10 +4,10 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
+using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
-using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -22,6 +22,7 @@ public sealed class ResponderOrdemDeServicoCommandHandler : IRequestHandler<Resp
     private readonly OrdemDeServicoHistoricoService _historicoService;
     private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly ITransactionManager _transactionManager;
+    private readonly IUsuarioAutenticadoService _usuarioAutenticadoService;
     private readonly ILogger _logger;
 
     public ResponderOrdemDeServicoCommandHandler(
@@ -29,12 +30,14 @@ public sealed class ResponderOrdemDeServicoCommandHandler : IRequestHandler<Resp
         OrdemDeServicoHistoricoService historicoService,
         IOrdemDeServicoRepository ordemRepository,
         ITransactionManager transactionManager,
+        IUsuarioAutenticadoService usuarioAutenticadoService,
         ILoggerFactory loggerFactory)
     {
         _estoqueService = estoqueService;
         _historicoService = historicoService;
         _ordemRepository = ordemRepository;
         _transactionManager = transactionManager;
+        _usuarioAutenticadoService = usuarioAutenticadoService;
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
@@ -59,7 +62,7 @@ public sealed class ResponderOrdemDeServicoCommandHandler : IRequestHandler<Resp
                         throw new ServiceNotFoundException("Acompanhamento nao encontrado.");
                     }
 
-                    ValidarTokenAcompanhamento(ordem, command.TrackingToken);
+                    ValidarClienteAutenticado(ordem);
                     ValidarStatusParaRespostaOrdem(ordem);
 
                     return command.Aprovado
@@ -78,12 +81,18 @@ public sealed class ResponderOrdemDeServicoCommandHandler : IRequestHandler<Resp
         }
     }
 
-    private void ValidarTokenAcompanhamento(OrdemDeServico ordem, string trackingToken)
+    private void ValidarClienteAutenticado(OrdemDeServico ordem)
     {
-        var tokenHash = StringHelper.ToSha256Hash(trackingToken.Trim());
-        if (!StringHelper.FixedTimeEqualsHex(tokenHash, ordem.TokenAcompanhamentoHash))
+        var usuarioAtual = _usuarioAutenticadoService.ObterUsuarioAtual();
+        if (string.IsNullOrWhiteSpace(usuarioAtual.ClienteDocumento))
         {
-            _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(ValidarTokenAcompanhamento), "Token de acompanhamento invalido para resposta externa da ordem");
+            _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(ValidarClienteAutenticado), "Documento do cliente nao encontrado no token JWT");
+            throw new ServiceUnauthorizedException("Documento do cliente nao encontrado no token.");
+        }
+
+        if (ordem.Cliente?.CpfCnpj.Valor != usuarioAtual.ClienteDocumento)
+        {
+            _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(ValidarClienteAutenticado), "Cliente autenticado nao pertence a ordem respondida");
             throw new ServiceNotFoundException("Acompanhamento nao encontrado.");
         }
     }
