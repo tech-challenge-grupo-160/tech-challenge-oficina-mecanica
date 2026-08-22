@@ -393,7 +393,8 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         {
             Content = JsonContent.Create(new { aprovado = true })
         };
-        request.Headers.Add("X-Tracking-Token", ordemCriada.TokenAcompanhamento);
+        request.Headers.Add(TestAuthHandler.TestRoleHeaderName, "Cliente");
+        request.Headers.Add(TestAuthHandler.TestDocumentoHeaderName, "47654866801");
 
         var response = await _client.SendAsync(request);
 
@@ -419,7 +420,8 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
                 motivoRecusa = "Cliente recusou a ordem de servico."
             })
         };
-        request.Headers.Add("X-Tracking-Token", ordemCriada.TokenAcompanhamento);
+        request.Headers.Add(TestAuthHandler.TestRoleHeaderName, "Cliente");
+        request.Headers.Add(TestAuthHandler.TestDocumentoHeaderName, "47654866801");
 
         var response = await _client.SendAsync(request);
 
@@ -428,6 +430,44 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         ordem.Should().NotBeNull();
         ordem!.Status.Should().Be(nameof(StatusOrdemDeServico.Cancelada));
         ordem.MotivoCancelamento.Should().Be("Cliente recusou a ordem de servico.");
+    }
+
+    [Fact]
+    public async Task ResponderOrdem_DeveRetornarForbiddenQuandoTokenNaoForDeCliente()
+    {
+        var ordemCriada = await CriarOrdemAsync();
+
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar-diagnostico", null);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/ordens-servico/{ordemCriada.Id}/ordem/resposta")
+        {
+            Content = JsonContent.Create(new { aprovado = true })
+        };
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ResponderOrdem_DeveRetornarNotFoundQuandoDocumentoNaoPertencerAoClienteDaOrdem()
+    {
+        var ordemCriada = await CriarOrdemAsync();
+
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
+        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/finalizar-diagnostico", null);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/ordens-servico/{ordemCriada.Id}/ordem/resposta")
+        {
+            Content = JsonContent.Create(new { aprovado = true })
+        };
+        request.Headers.Add(TestAuthHandler.TestRoleHeaderName, "Cliente");
+        request.Headers.Add(TestAuthHandler.TestDocumentoHeaderName, "60617051000199");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]

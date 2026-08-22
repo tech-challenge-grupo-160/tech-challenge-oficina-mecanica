@@ -41,13 +41,11 @@ public static class OrdemDeServicoApiMapper
 
     public static ResponderOrdemDeServicoCommand ToCommand(
         this ResponderOrdemDeServicoRequest request,
-        int id,
-        string trackingToken)
+        int id)
     {
         return new ResponderOrdemDeServicoCommand
         {
             Id = id,
-            TrackingToken = trackingToken,
             Aprovado = request.Aprovado,
             MotivoRecusa = request.MotivoRecusa
         };

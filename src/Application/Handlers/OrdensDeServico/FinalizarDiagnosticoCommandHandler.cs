@@ -70,7 +70,7 @@ public sealed class FinalizarDiagnosticoCommandHandler : IRequestHandler<Finaliz
                 ordemAtualizada.Id,
                 TipoNotificacaoCliente.OrcamentoDisponivel,
                 CanalNotificacaoCliente.WhatsApp,
-                $"Orcamento disponivel para a ordem de servico {ordemAtualizada.Numero}. Endpoint de acompanhamento: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
+                $"Orcamento disponivel para a ordem de servico {ordemAtualizada.Numero}. Acesse o acompanhamento apos autenticar com CPF/CNPJ: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Diagnostico finalizado com sucesso para a ordem {ordemAtualizada.Numero}");
             return OrdemDeServicoMapper.ToResult(ordemAtualizada);

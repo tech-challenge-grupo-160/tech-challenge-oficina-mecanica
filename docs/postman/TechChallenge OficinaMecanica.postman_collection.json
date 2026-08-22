@@ -1016,7 +1016,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/acompanhamento-os/{{ordemServicoId}}",
+              "raw": "{{baseUrl}}/api/v1/acompanhamento-os/{{codigoAcompanhamento}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1024,7 +1024,7 @@
                 "api",
                 "v1",
                 "acompanhamento-os",
-                "{{ordemServicoId}}"
+                "{{codigoAcompanhamento}}"
               ]
             }
           },
@@ -1034,13 +1034,7 @@
           "name": "Aprovação de orçamento",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "X-Tracking-Token",
-                "value": "0EF6A1F57A4EEE67BDA345BA6030F5127717F876F55DAC843A7F94B9AAAACD34",
-                "type": "text"
-              }
-            ],
+            "header": [],
             "body": {
               "mode": "raw",
               "raw": "{\r\n  \"aprovado\": false,\r\n  \"motivoRecusa\": \"Valor muito acima do esperado\"\r\n}\r\n",
@@ -1478,6 +1472,11 @@
   "variable": [
     {
       "key": "baseUrl",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "codigoAcompanhamento",
       "value": "",
       "type": "default"
     }

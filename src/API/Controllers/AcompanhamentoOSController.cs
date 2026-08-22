@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using Fiap.TechChallenge.OficinaMecanica.API.Authorization;
 using Fiap.TechChallenge.OficinaMecanica.API.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.API.Requests.AcompanhamentoOS;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.AcompanhamentoOS;
@@ -20,23 +21,16 @@ public class AcompanhamentoOSController : ControllerBase
         _mediator = mediator;
     }
 
-    [AllowAnonymous]
+    [Authorize(Policy = ApiAuthorizationPolicies.Cliente)]
     [EnableRateLimiting("public")]
-    [HttpGet("{codigo}")]
+    [HttpGet("{codigoAcompanhamento}")]
     public async Task<ActionResult<AcompanhamentoOrdemDeServicoResponse>> ObterStatus(
-        string codigo,
-        [FromHeader(Name = "X-Tracking-Token")] string? trackingToken,
+        string codigoAcompanhamento,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(trackingToken))
-        {
-            return BadRequest("Header X-Tracking-Token e obrigatorio.");
-        }
-
         var request = new ObterAcompanhamentoOSRequest
         {
-            Codigo = codigo,
-            Token = trackingToken
+            CodigoAcompanhamento = codigoAcompanhamento
         };
 
         var result = await _mediator.Send(request.ToQuery(), cancellationToken);

@@ -1,3 +1,4 @@
+using Fiap.TechChallenge.OficinaMecanica.API.Authorization;
 using Fiap.TechChallenge.OficinaMecanica.API.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.API.Requests.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses;
@@ -135,21 +136,15 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(ordem.ToResponse());
     }
 
-    [AllowAnonymous]
+    [Authorize(Policy = ApiAuthorizationPolicies.Cliente)]
     [EnableRateLimiting("public")]
     [HttpPost("{id}/ordem/resposta")]
     public async Task<ActionResult<OrdemDeServicoResponse>> ResponderOrdem(
         int id,
-        [FromHeader(Name = "X-Tracking-Token")] string? trackingToken,
         [FromBody] ResponderOrdemDeServicoRequest request,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(trackingToken))
-        {
-            return BadRequest("Header X-Tracking-Token e obrigatorio.");
-        }
-
-        var ordem = await _mediator.Send(request.ToCommand(id, trackingToken), cancellationToken);
+        var ordem = await _mediator.Send(request.ToCommand(id), cancellationToken);
         return Ok(ordem.ToResponse());
     }
 

@@ -31,10 +31,13 @@ public class UsuarioAutenticadoService : IUsuarioAutenticadoService
             user.FindFirstValue(JwtRegisteredClaimNames.UniqueName) ??
             user.FindFirstValue("unique_name");
 
+        var clienteDocumento = user.FindFirstValue("documento");
+
         return new UsuarioAutenticadoInfo
         {
             UsuarioId = usuarioId,
-            UsuarioNome = usuarioNome
+            UsuarioNome = usuarioNome,
+            ClienteDocumento = clienteDocumento
         };
     }
 }

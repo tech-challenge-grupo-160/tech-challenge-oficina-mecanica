@@ -219,6 +219,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
 public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
+    public const string TestRoleHeaderName = "X-Test-Role";
+    public const string TestDocumentoHeaderName = "X-Test-Documento";
+
     public TestAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
@@ -229,12 +232,23 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var claims = new[]
+        var role = Request.Headers.TryGetValue(TestRoleHeaderName, out var roleHeader)
+            ? roleHeader.ToString()
+            : "Administrador";
+        var documento = Request.Headers.TryGetValue(TestDocumentoHeaderName, out var documentoHeader)
+            ? documentoHeader.ToString()
+            : null;
+
+        var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, CustomWebApplicationFactory.UsuarioAutenticadoId),
             new Claim(ClaimTypes.Name, CustomWebApplicationFactory.UsuarioAutenticadoNome),
-            new Claim(ClaimTypes.Role, "Administrador")
+            new Claim(ClaimTypes.Role, role)
         };
+        if (!string.IsNullOrWhiteSpace(documento))
+        {
+            claims.Add(new Claim("documento", documento));
+        }
 
         var identity = new ClaimsIdentity(claims, Scheme.Name);
         var principal = new ClaimsPrincipal(identity);

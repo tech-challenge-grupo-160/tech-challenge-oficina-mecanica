@@ -13,7 +13,6 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
-using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 using FluentAssertions;
@@ -60,7 +59,8 @@ public class OrdemDeServicoHandlersTests
             .Returns(new UsuarioAutenticadoInfo
             {
                 UsuarioId = "1000",
-                UsuarioNome = "unit-test-user"
+                UsuarioNome = "unit-test-user",
+                ClienteDocumento = "47654866801"
             });
         _historicoRepositoryMock
             .Setup(x => x.CriarAsync(It.IsAny<OrdemServicoHistorico>(), It.IsAny<CancellationToken>()))
@@ -99,6 +99,7 @@ public class OrdemDeServicoHandlersTests
             _historicoRepositoryMock.Object,
             _notificacaoClienteRepositoryMock.Object,
             _transactionManagerMock.Object,
+            _usuarioAutenticadoServiceMock.Object,
             _clockMock.Object,
             NullLoggerFactory.Instance,
             acompanhamentoService,
@@ -534,9 +535,8 @@ public class OrdemDeServicoHandlersTests
     [Fact]
     public async Task ResponderAsync_DeveCancelarQuandoClienteRecusarOrcamento()
     {
-        const string token = "token-publico";
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoAprovacao);
-        ordem.SetPrivateProperty(nameof(OrdemDeServico.TokenAcompanhamentoHash), StringHelper.ToSha256Hash(token));
+        ordem.SetPrivateProperty(nameof(OrdemDeServico.Cliente), ClienteMock.Criar(cpfCnpj: "47654866801"));
 
         _transactionManagerMock
             .Setup(x => x.ExecuteAsync(It.IsAny<Func<CancellationToken, Task<OrdemDeServico>>>(), It.IsAny<CancellationToken>()))
@@ -552,7 +552,6 @@ public class OrdemDeServicoHandlersTests
             new ResponderOrdemDeServicoCommand
             {
                 Id = ordem.Id,
-                TrackingToken = token,
                 Aprovado = false,
                 MotivoRecusa = "Orcamento recusado."
             },
@@ -856,6 +855,7 @@ public class OrdemDeServicoHandlersTests
         private readonly IOrdemServicoHistoricoRepository _historicoRepository;
         private readonly INotificacaoClienteRepository _notificacaoClienteRepository;
         private readonly ITransactionManager _transactionManager;
+        private readonly IUsuarioAutenticadoService _usuarioAutenticadoService;
         private readonly IClock _clock;
         private readonly ILoggerFactory _loggerFactory;
         private readonly OrdemDeServicoAcompanhamentoService _acompanhamentoService;
@@ -873,6 +873,7 @@ public class OrdemDeServicoHandlersTests
             IOrdemServicoHistoricoRepository historicoRepository,
             INotificacaoClienteRepository notificacaoClienteRepository,
             ITransactionManager transactionManager,
+            IUsuarioAutenticadoService usuarioAutenticadoService,
             IClock clock,
             ILoggerFactory loggerFactory,
             OrdemDeServicoAcompanhamentoService acompanhamentoService,
@@ -889,6 +890,7 @@ public class OrdemDeServicoHandlersTests
             _historicoRepository = historicoRepository;
             _notificacaoClienteRepository = notificacaoClienteRepository;
             _transactionManager = transactionManager;
+            _usuarioAutenticadoService = usuarioAutenticadoService;
             _clock = clock;
             _loggerFactory = loggerFactory;
             _acompanhamentoService = acompanhamentoService;
@@ -1074,6 +1076,7 @@ public class OrdemDeServicoHandlersTests
                 _historicoService,
                 _ordemRepository,
                 _transactionManager,
+                _usuarioAutenticadoService,
                 _loggerFactory).Handle(command, cancellationToken);
         }
 

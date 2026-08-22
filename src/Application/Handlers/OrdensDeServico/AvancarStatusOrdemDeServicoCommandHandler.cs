@@ -119,7 +119,7 @@ public sealed class AvancarStatusOrdemDeServicoCommandHandler : IRequestHandler<
             ordemAtualizada.Id,
             TipoNotificacaoCliente.OrcamentoDisponivel,
             CanalNotificacaoCliente.WhatsApp,
-            $"Orcamento disponivel para a ordem de servico {ordemAtualizada.Numero}. Endpoint de acompanhamento: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
+            $"Orcamento disponivel para a ordem de servico {ordemAtualizada.Numero}. Acesse o acompanhamento apos autenticar com CPF/CNPJ: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
             cancellationToken);
         return ordemAtualizada;
     }
@@ -182,7 +182,7 @@ public sealed class AvancarStatusOrdemDeServicoCommandHandler : IRequestHandler<
             ordemAtualizada.Id,
             TipoNotificacaoCliente.ServicoFinalizado,
             CanalNotificacaoCliente.WhatsApp,
-            $"Servico finalizado para a ordem de servico {ordemAtualizada.Numero}. Veiculo pronto para pagamento e retirada. Endpoint de acompanhamento: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
+            $"Servico finalizado para a ordem de servico {ordemAtualizada.Numero}. Veiculo pronto para pagamento e retirada. Acompanhamento disponivel apos autenticacao: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
             cancellationToken);
         return ordemAtualizada;
     }
