@@ -36,7 +36,7 @@ actor "Cliente da Oficina" as cliente
 actor "Funcionario" as funcionario
 
 AWSCloudGroup(aws) {
-  RegionGroup(region, "sa-east-1 (Sao Paulo)") {
+  RegionGroup(region, "us-east-1 (N. Virginia)") {
 
     APIGateway(apigw, "API Gateway", "REST + JWT Authorizer")
     ElasticContainerRegistry(ecr, "ECR", "Imagens da API")
@@ -52,7 +52,7 @@ AWSCloudGroup(aws) {
       PrivateSubnetGroup(priv, "Subnets privadas (2 AZs)") {
         Lambda(authfn, "Lambda Auth", "Valida CPF, emite JWT")
         ElasticKubernetesService(eks, "EKS", "API .NET, HPA 2-10 pods")
-        RDS(rds, "RDS PostgreSQL", "Multi-AZ, backup automatizado")
+        RDS(rds, "RDS PostgreSQL", "Single-AZ, backup automatizado")
       }
     }
   }
@@ -80,8 +80,8 @@ authfn ..> datadog
 cw ..> datadog
 
 gha ..> ecr : "push"
-gha ..> eks : "deploy (OIDC)"
-gha ..> authfn : "deploy (OIDC)"
+gha ..> eks : "deploy (chave da sessao)"
+gha ..> authfn : "deploy (chave da sessao)"
 
 @enduml
 ```
@@ -93,7 +93,7 @@ gha ..> authfn : "deploy (OIDC)"
 | API Gateway | API Gateway | Roteamento, throttling e validação do JWT nas rotas sensíveis | [#42](../../issues/42), [#43](../../issues/43) |
 | Lambda Auth | Lambda | Valida CPF, consulta cliente no banco e emite o JWT | [#37](../../issues/37)–[#39](../../issues/39) |
 | Cluster | EKS | Roda a API .NET com HPA entre 2 e 10 réplicas | [#60](../../issues/60) |
-| Banco | RDS PostgreSQL | Multi-AZ, backup automatizado, subnet privada | [#61](../../issues/61) |
+| Banco | RDS PostgreSQL | Single-AZ (restricao de orcamento), subnet privada | [#61](../../issues/61) |
 | Ingress | ALB | Entrada TLS para o cluster | [#64](../../issues/64) |
 | Registry | ECR | Imagens da API publicadas pelo pipeline | [#52](../../issues/52) |
 | Segredos | Secrets Manager | Chave de assinatura do JWT e credenciais do banco | [#46](../../issues/46) |
@@ -104,8 +104,8 @@ gha ..> authfn : "deploy (OIDC)"
 - **Banco e Lambda em subnet privada.** O RDS não tem acesso público; a Lambda alcança o banco por dentro da VPC.
 - **Dois caminhos distintos a partir do API Gateway.** `/auth` vai para a Lambda; as rotas protegidas só chegam ao ALB depois que o authorizer valida o JWT.
 - **Nenhum segredo em manifesto ou variável de ambiente em claro.** Lambda e pods leem do Secrets Manager em runtime.
-- **Pipelines autenticam por OIDC**, sem chave estática — por isso o GitHub Actions aparece fora da nuvem, com seta tracejada.
-- **Duas AZs** para atender ao requisito de alta disponibilidade do banco e do cluster.
+- **Pipelines autenticam com credenciais temporárias da sessão do AWS Academy Learner Lab**, renovadas a cada sessão. OIDC seria o correto, mas o ambiente bloqueia `iam:CreateOpenIDConnectProvider` — ver RFC-0001.
+- **Duas AZs** na rede. O RDS fica Single-AZ por limite de orçamento do Learner Lab — registrado como limitação conhecida.
 
 ## Como renderizar
 

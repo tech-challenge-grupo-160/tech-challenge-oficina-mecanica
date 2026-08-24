@@ -38,9 +38,58 @@ Sem a decisão registrada, nenhum Terraform pode ser escrito — e hoje **10 iss
 | Registro de imagens | Amazon ECR |
 | Segredos | AWS Secrets Manager |
 | IaC | Terraform, state remoto em S3 com lock em DynamoDB |
-| Região | `sa-east-1` (São Paulo) |
+| Região | `us-east-1` (imposta pelo ambiente) |
 
 A arquitetura resultante está desenhada em [`docs/diagrams/C4_04_AWS_Deployment_Diagram.puml`](../diagrams/C4_04_AWS_Deployment_Diagram.puml).
+
+## Restrições do ambiente: AWS Academy Learner Lab
+
+A conta usada é um **AWS Academy Learner Lab**, e isso impõe limites que alteram a arquitetura. Verificado na conta em 24/08/2026:
+
+| Verificação | Resultado |
+|---|---|
+| Região | `us-east-1`, sem escolha |
+| Identidade | `assumed-role/voclabs/...` — role temporária de sessão |
+| `iam:CreateOpenIDConnectProvider` | **AccessDenied** |
+| `LabRole` | existe e é a única role utilizável |
+
+### Consequências
+
+**1. OIDC para os pipelines é inviável.** A issue [#54](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/54) previa federação de identidade entre GitHub Actions e AWS, sem chave estática. O ambiente bloqueia a criação do provedor OIDC e de roles.
+
+**Alternativa adotada:** os pipelines usam as **credenciais temporárias da sessão do lab**, cadastradas como secrets do repositório e renovadas a cada sessão. Isso é pior em segurança e exige passo manual — está registrado como **limitação conhecida do ambiente**, não como escolha de arquitetura.
+
+**2. Menor privilégio é impossível.** A issue [#59](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/59) previa roles específicas por componente. Com apenas a `LabRole` disponível, Lambda, cluster e pipelines compartilham a mesma identidade — o oposto de menor privilégio. O Terraform deve **referenciar** a role existente via `data`, nunca criar.
+
+> Ao referenciar a `LabRole`, monte o ARN com `data.aws_caller_identity.current.account_id` em vez de escrever o número da conta. Os quatro repositórios são **públicos**.
+
+**3. Sessão de 4 horas.** O ambiente dorme ao fim da sessão. O entregável pede *"Links para os deploys ativos"* — esses links estarão fora do ar fora da janela de uso. A gravação do vídeo precisa acontecer com a sessão ativa, e a limitação deve ser declarada na entrega.
+
+**4. Orçamento de US$ 100 para toda a disciplina.**
+
+O control plane do EKS cobra US$ 0,10/hora **enquanto o cluster existir** — ele não é suspenso junto com a sessão, diferente das instâncias EC2:
+
+| Cenário | Custo só do control plane |
+|---|---|
+| Cluster de pé por 21 dias | **US$ 50,40** — metade do crédito |
+| Criado e destruído a cada sessão de 8h | ~US$ 17 |
+
+Somados nodes, RDS, NAT Gateway (~US$ 32/mês) e ALB, **deixar o cluster ligado esgota o crédito antes da entrega**.
+
+### Decisões decorrentes
+
+- **RDS Single-AZ**, não Multi-AZ. Dobrar o custo do banco não cabe no orçamento.
+- **Sem NAT Gateway**; nodes em subnet pública com security group restritivo. Menos seguro, e registrado como tal.
+- **Cluster criado tarde**, próximo à gravação do vídeo, e destruído logo depois. `terraform destroy` ao fim de cada sessão de trabalho.
+- **`LabRole` em todos os componentes**, referenciada e nunca criada.
+
+### Uma alternativa que o enunciado permite
+
+A lista de infraestrutura obrigatória pede "Banco de Dados **Gerenciado**" mas, para Kubernetes, apenas "Cluster Kubernetes **com escalabilidade**" — sem exigir que seja gerenciado.
+
+Um cluster auto-gerenciado (k3s ou kubeadm) em EC2, com HPA e autoscaling de nodes, atenderia à letra do requisito, rodaria em instâncias que o lab suspende junto com a sessão e **eliminaria os US$ 0,10/hora contínuos**.
+
+É uma leitura defensável do enunciado, mas é uma aposta: EKS é a resposta que o avaliador provavelmente espera. **Recomenda-se confirmar com o professor antes de decidir.**
 
 ## Alternativas avaliadas
 
@@ -62,17 +111,18 @@ Se esta RFC estivesse sendo escrita antes da implementação, a comparação mer
 
 **Cronograma:** destrava [#57](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/57), [#58](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/58), [#59](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/59), [#60](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/60) e [#61](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/61), e por consequência o épico de observabilidade inteiro.
 
-**Custo:** o EKS cobra US$ 0,10/hora pelo control plane (~US$ 72/mês) e **não tem camada gratuita**. É o item dominante. Somados nodes t3.medium, RDS db.t3.micro Multi-AZ, NAT Gateway e ALB, a ordem de grandeza é de **algumas dezenas a pouco mais de cem dólares por mês**.
+**Custo:** ver a seção de restrições do ambiente. Orçamento total de US$ 100, com o control plane do EKS consumindo até metade dele se o cluster ficar de pé durante a fase.
 
-> ⚠️ **Este número precisa ser confirmado antes do `apply`.** Não foi validado no Pricing Calculator, e o grupo deve verificar qual conta será usada e se há créditos disponíveis. Um cluster EKS esquecido ligado após a entrega continua cobrando.
+> ⚠️ **Confirmar no Pricing Calculator antes do primeiro `apply`.** Um cluster EKS esquecido ligado continua cobrando mesmo com a sessão do lab encerrada.
 
 **Segurança:** RDS e Lambda em subnets privadas; segredos no Secrets Manager; pipelines autenticando por OIDC, sem chave estática.
 
 ## Questões em aberto
 
-- **Qual conta AWS será usada** e quem responde pela fatura
-- **Existem créditos** de estudante ou promocionais disponíveis
-- **Quem destrói a infraestrutura** após a entrega, e em que data
+- ~~Qual conta AWS será usada~~ — **resolvido:** AWS Academy Learner Lab, `us-east-1`
+- ~~Existem créditos disponíveis~~ — **resolvido:** US$ 100 para toda a disciplina
+- **Quem roda `terraform destroy`** ao fim de cada sessão, para o crédito não vazar
+- **EKS ou cluster auto-gerenciado** — decisão de custo descrita acima, vale confirmar com o professor
 - **ALB ou NLB** na entrada do cluster: como o API Gateway já roteia e valida o JWT, parte do que o ALB oferece fica redundante, e o VPC Link do API Gateway exige NLB. Pode ser decidido na issue [#64](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/64) sem bloquear esta RFC
 
 ## Decisão
