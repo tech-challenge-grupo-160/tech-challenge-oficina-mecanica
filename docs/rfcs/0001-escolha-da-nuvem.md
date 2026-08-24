@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Em revisão |
+| **Status** | Em revisão — ambiente e restrições confirmados com o professor em 24/08 |
 | **Autor** | Grupo 160 |
 | **Data** | 2026-08-24 |
 | **Issue** | [#56](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/56) |
@@ -57,24 +57,26 @@ A conta usada é um **AWS Academy Learner Lab**, e isso impõe limites que alter
 
 **1. OIDC para os pipelines é inviável.** A issue [#54](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/54) previa federação de identidade entre GitHub Actions e AWS, sem chave estática. O ambiente bloqueia a criação do provedor OIDC e de roles.
 
-**Alternativa adotada:** os pipelines usam as **credenciais temporárias da sessão do lab**, cadastradas como secrets do repositório e renovadas a cada sessão. Isso é pior em segurança e exige passo manual — está registrado como **limitação conhecida do ambiente**, não como escolha de arquitetura.
+**Alternativa adotada, aprovada pelo professor em 24/08:** os pipelines usam as **credenciais temporárias da sessão do lab**, cadastradas como secrets do repositório e renovadas a cada sessão. Isso é pior em segurança e exige passo manual — está registrado como **limitação do ambiente**, não como escolha de arquitetura. O desenho correto (OIDC) está descrito acima para constar na entrega.
 
 **2. Menor privilégio é impossível.** A issue [#59](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/59) previa roles específicas por componente. Com apenas a `LabRole` disponível, Lambda, cluster e pipelines compartilham a mesma identidade — o oposto de menor privilégio. O Terraform deve **referenciar** a role existente via `data`, nunca criar.
 
 > Ao referenciar a `LabRole`, monte o ARN com `data.aws_caller_identity.current.account_id` em vez de escrever o número da conta. Os quatro repositórios são **públicos**.
 
-**3. Sessão de 4 horas.** O ambiente dorme ao fim da sessão. O entregável pede *"Links para os deploys ativos"* — esses links estarão fora do ar fora da janela de uso. A gravação do vídeo precisa acontecer com a sessão ativa, e a limitação deve ser declarada na entrega.
+**3. Sessão de 4 horas.** O ambiente dorme ao fim da sessão. O entregável pede *"Links para os deploys ativos (se aplicável)"* — o professor confirmou em 24/08 que esse item pode ser marcado como **não aplicável**, com a demonstração feita no vídeo. A gravação precisa acontecer com a sessão ativa.
 
-**4. Orçamento de US$ 100 para toda a disciplina.**
+**4. Orçamento de US$ 100 para toda a disciplina, renovável.**
 
-O control plane do EKS cobra US$ 0,10/hora **enquanto o cluster existir** — ele não é suspenso junto com a sessão, diferente das instâncias EC2:
+O professor confirmou em 24/08 que **renova o crédito quando acabar**, mediante aviso. Isso remove o custo como fator de decisão de arquitetura — mas não como fator de disciplina operacional.
+
+O control plane do EKS cobra US$ 0,10/hora **enquanto o cluster existir**; ele não é suspenso junto com a sessão do lab, diferente das instâncias EC2:
 
 | Cenário | Custo só do control plane |
 |---|---|
-| Cluster de pé por 21 dias | **US$ 50,40** — metade do crédito |
+| Cluster de pé por 21 dias | US$ 50,40 |
 | Criado e destruído a cada sessão de 8h | ~US$ 17 |
 
-Somados nodes, RDS, NAT Gateway (~US$ 32/mês) e ALB, **deixar o cluster ligado esgota o crédito antes da entrega**.
+Mesmo com renovação disponível, a prática adotada é **`terraform destroy` ao fim de cada sessão de trabalho** — pedir crédito novo por esquecimento é desperdício evitável.
 
 ### Decisões decorrentes
 
@@ -83,13 +85,11 @@ Somados nodes, RDS, NAT Gateway (~US$ 32/mês) e ALB, **deixar o cluster ligado 
 - **Cluster criado tarde**, próximo à gravação do vídeo, e destruído logo depois. `terraform destroy` ao fim de cada sessão de trabalho.
 - **`LabRole` em todos os componentes**, referenciada e nunca criada.
 
-### Uma alternativa que o enunciado permite
+### Alternativa avaliada e descartada: cluster auto-gerenciado
 
-A lista de infraestrutura obrigatória pede "Banco de Dados **Gerenciado**" mas, para Kubernetes, apenas "Cluster Kubernetes **com escalabilidade**" — sem exigir que seja gerenciado.
+A lista de infraestrutura obrigatória pede "Banco de Dados **Gerenciado**" mas, para Kubernetes, apenas "Cluster Kubernetes **com escalabilidade**" — sem exigir serviço gerenciado. Um cluster k3s ou kubeadm em EC2 atenderia à letra do requisito e eliminaria a cobrança contínua do control plane.
 
-Um cluster auto-gerenciado (k3s ou kubeadm) em EC2, com HPA e autoscaling de nodes, atenderia à letra do requisito, rodaria em instâncias que o lab suspende junto com a sessão e **eliminaria os US$ 0,10/hora contínuos**.
-
-É uma leitura defensável do enunciado, mas é uma aposta: EKS é a resposta que o avaliador provavelmente espera. **Recomenda-se confirmar com o professor antes de decidir.**
+**Descartada.** O único argumento a favor era custo, e com o crédito renovável ele deixou de pesar. O EKS é a resposta esperada na avaliação e evita o risco de interpretação divergente do enunciado.
 
 ## Alternativas avaliadas
 
@@ -120,9 +120,9 @@ Se esta RFC estivesse sendo escrita antes da implementação, a comparação mer
 ## Questões em aberto
 
 - ~~Qual conta AWS será usada~~ — **resolvido:** AWS Academy Learner Lab, `us-east-1`
-- ~~Existem créditos disponíveis~~ — **resolvido:** US$ 100 para toda a disciplina
-- **Quem roda `terraform destroy`** ao fim de cada sessão, para o crédito não vazar
-- **EKS ou cluster auto-gerenciado** — decisão de custo descrita acima, vale confirmar com o professor
+- ~~Existem créditos disponíveis~~ — **resolvido:** US$ 100, renováveis mediante aviso ao professor
+- **Quem roda `terraform destroy`** ao fim de cada sessão de trabalho
+- ~~EKS ou cluster auto-gerenciado~~ — **resolvido:** EKS, já que o crédito é renovável
 - **ALB ou NLB** na entrada do cluster: como o API Gateway já roteia e valida o JWT, parte do que o ALB oferece fica redundante, e o VPC Link do API Gateway exige NLB. Pode ser decidido na issue [#64](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/64) sem bloquear esta RFC
 
 ## Decisão
