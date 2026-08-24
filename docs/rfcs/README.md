@@ -6,11 +6,11 @@ Propostas técnicas **em discussão**. Uma RFC existe para o grupo debater antes
 
 | RFC | Título | Status | Issue |
 |---|---|---|---|
+| [0001](0001-escolha-da-nuvem.md) | Escolha da nuvem — AWS | Em revisão | [#56](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/56) |
 | — | Estratégia de autenticação por CPF e escolha do API Gateway | Pendente | [#35](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/35) |
-| — | Escolha da nuvem e justificativa técnica e de custo | Pendente | [#56](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/56) |
 | — | Escolha da ferramenta de observabilidade | Pendente | [#66](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/66) |
 
-As três são da Sprint 1 e **bloqueiam boa parte do restante da fase**. Enquanto não forem fechadas, o trabalho que depende delas avança sobre premissas, não sobre decisões.
+As duas pendentes são da Sprint 1 e **bloqueiam parte do restante da fase**. Enquanto não forem fechadas, o trabalho que depende delas avança sobre premissas, não sobre decisões.
 
 ## Fluxo
 

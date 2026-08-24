@@ -1,0 +1,116 @@
+# Arquitetura AWS — Fase 3
+
+## Visão Geral
+
+Diagrama de implantação da aplicação na AWS, cobrindo os requisitos obrigatórios da Fase 3: API Gateway, Function Serverless para autenticação por CPF, banco de dados gerenciado, cluster Kubernetes com escalabilidade e camada de observabilidade.
+
+> **Status:** proposta. A escolha da nuvem depende da RFC [#56](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/56) (`F3-22`) e a ferramenta de observabilidade da RFC [#66](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/66) (`F3-32`). Este diagrama assume **AWS** e **Datadog**.
+
+```plantuml
+@startuml AWS Deployment - Sistema de Gestao de Oficina Mecanica
+
+!define AWSPuml https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/main/dist
+!include AWSPuml/AWSCommon.puml
+!include AWSPuml/Groups/AWSCloud.puml
+!include AWSPuml/Groups/Region.puml
+!include AWSPuml/Groups/VPC.puml
+!include AWSPuml/Groups/PublicSubnet.puml
+!include AWSPuml/Groups/PrivateSubnet.puml
+!include AWSPuml/NetworkingContentDelivery/APIGateway.puml
+!include AWSPuml/NetworkingContentDelivery/ElasticLoadBalancing.puml
+!include AWSPuml/Compute/Lambda.puml
+!include AWSPuml/Containers/ElasticKubernetesService.puml
+!include AWSPuml/Containers/ElasticContainerRegistry.puml
+!include AWSPuml/Database/RDS.puml
+!include AWSPuml/SecurityIdentityCompliance/SecretsManager.puml
+!include AWSPuml/ManagementGovernance/CloudWatch.puml
+
+title Arquitetura AWS - Sistema de Gestao de Oficina Mecanica (Fase 3)
+
+hide stereotype
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 45
+
+actor "Cliente da Oficina" as cliente
+actor "Funcionario" as funcionario
+
+AWSCloudGroup(aws) {
+  RegionGroup(region, "sa-east-1 (Sao Paulo)") {
+
+    APIGateway(apigw, "API Gateway", "REST + JWT Authorizer")
+    ElasticContainerRegistry(ecr, "ECR", "Imagens da API")
+    SecretsManager(secrets, "Secrets Manager", "Chave JWT, credenciais do banco")
+    CloudWatch(cw, "CloudWatch", "Metricas e logs de infra")
+
+    VPCGroup(vpc, "VPC 10.0.0.0/16") {
+
+      PublicSubnetGroup(pub, "Subnets publicas (2 AZs)") {
+        ElasticLoadBalancing(alb, "ALB", "Ingress do cluster, TLS")
+      }
+
+      PrivateSubnetGroup(priv, "Subnets privadas (2 AZs)") {
+        Lambda(authfn, "Lambda Auth", "Valida CPF, emite JWT")
+        ElasticKubernetesService(eks, "EKS", "API .NET, HPA 2-10 pods")
+        RDS(rds, "RDS PostgreSQL", "Multi-AZ, backup automatizado")
+      }
+    }
+  }
+}
+
+' Sistemas externos declarados depois do bloco da nuvem: assim o Graphviz
+' os posiciona nas bordas em vez de atravessar o diagrama com as arestas.
+rectangle "GitHub Actions\n(4 repositorios)" as gha
+rectangle "Datadog\n(observabilidade)" as datadog
+
+cliente --> apigw : "HTTPS"
+funcionario --> apigw : "HTTPS"
+
+apigw --> authfn : "POST /auth"
+authfn --> rds : "consulta cliente"
+authfn --> secrets : "chave JWT"
+apigw --> alb : "rotas protegidas"
+alb --> eks : "HTTP"
+eks --> rds : "TCP 5432"
+eks --> secrets : "credenciais"
+ecr --> eks : "pull da imagem"
+
+eks ..> datadog : "metricas, logs, traces"
+authfn ..> datadog
+cw ..> datadog
+
+gha ..> ecr : "push"
+gha ..> eks : "deploy (OIDC)"
+gha ..> authfn : "deploy (OIDC)"
+
+@enduml
+```
+
+## Componentes
+
+| Componente | Serviço AWS | Papel | Issue |
+|---|---|---|---|
+| API Gateway | API Gateway | Roteamento, throttling e validação do JWT nas rotas sensíveis | [#42](../../issues/42), [#43](../../issues/43) |
+| Lambda Auth | Lambda | Valida CPF, consulta cliente no banco e emite o JWT | [#37](../../issues/37)–[#39](../../issues/39) |
+| Cluster | EKS | Roda a API .NET com HPA entre 2 e 10 réplicas | [#60](../../issues/60) |
+| Banco | RDS PostgreSQL | Multi-AZ, backup automatizado, subnet privada | [#61](../../issues/61) |
+| Ingress | ALB | Entrada TLS para o cluster | [#64](../../issues/64) |
+| Registry | ECR | Imagens da API publicadas pelo pipeline | [#52](../../issues/52) |
+| Segredos | Secrets Manager | Chave de assinatura do JWT e credenciais do banco | [#46](../../issues/46) |
+| Observabilidade | Datadog + CloudWatch | Latência, recursos, logs JSON, traces e alertas | [#67](../../issues/67) |
+
+## Decisões refletidas no diagrama
+
+- **Banco e Lambda em subnet privada.** O RDS não tem acesso público; a Lambda alcança o banco por dentro da VPC.
+- **Dois caminhos distintos a partir do API Gateway.** `/auth` vai para a Lambda; as rotas protegidas só chegam ao ALB depois que o authorizer valida o JWT.
+- **Nenhum segredo em manifesto ou variável de ambiente em claro.** Lambda e pods leem do Secrets Manager em runtime.
+- **Pipelines autenticam por OIDC**, sem chave estática — por isso o GitHub Actions aparece fora da nuvem, com seta tracejada.
+- **Duas AZs** para atender ao requisito de alta disponibilidade do banco e do cluster.
+
+## Como renderizar
+
+```bash
+docker run --rm -v "${PWD}:/data" plantuml/plantuml -tpng "/data/docs/diagrams/C4_04_AWS_Deployment_Diagram.puml"
+```
+
+No VS Code, a extensão PlantUML renderiza o bloco com `Alt+D` — mesmo fluxo usado nos diagramas C4 existentes deste diretório.
