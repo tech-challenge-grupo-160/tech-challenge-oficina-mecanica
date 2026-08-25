@@ -1,5 +1,7 @@
 # Documentação
 
+> **Começando agora ou retomando o projeto?** Leia o [Guia de continuidade da Fase 03](CONTINUIDADE-FASE-03.md).
+
 Este diretório reúne a documentação viva do projeto, alinhada ao código atual do repositório.
 
 ## Leitura recomendada
