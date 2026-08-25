@@ -25,7 +25,7 @@ Estado do projeto em **24/08/2026** e o que cada pessoa pode pegar a seguir.
 
 ### O que existe na AWS hoje
 
-Conta `763437866131`, região `us-east-1`:
+Região `us-east-1` (única permitida pelo Learner Lab):
 
 ```
 VPC 10.0.0.0/16
@@ -120,6 +120,90 @@ bash scripts/renova-secrets.sh --check
 ```
 
 > **Credencial não passa por chat, e-mail ou grupo de mensagem** — nem as temporárias. Se uma vazar: **End Lab** e **Start Lab** invalidam a sessão na hora.
+
+### Trocar credenciais vs. trocar de conta
+
+São situações muito diferentes. Confundir as duas leva a apagar infraestrutura sem necessidade.
+
+#### Credenciais novas, mesma conta — rotina
+
+Acontece a cada sessão do lab, e também quando o professor renova o crédito.
+
+**Não é preciso reaplicar nada.** Credencial é só autenticação. O state guarda **IDs de recursos** (`vpc-0a1b2c...`), e esses recursos continuam existindo. Os recursos de rede não são "ligados": sobrevivem ao lab dormir. O que o lab suspende são instâncias EC2.
+
+Procedimento:
+
+1. Cole o bloco novo no `~/.aws/credentials`, perfil `[default]`
+2. Rode `bash scripts/renova-secrets.sh` no `infra-k8s`
+3. Siga trabalhando
+
+Se algum pipeline tiver falhado com credencial velha, reexecute sem precisar de commit novo:
+
+```bash
+gh run rerun <id-da-execucao> --repo tech-challenge-grupo-160/<repo> --failed
+```
+
+#### Conta AWS diferente — recomeço
+
+Se a conta mudar, o state velho **vira lixo**: ele aponta para IDs que não existem na conta nova, e o próprio bucket de state está na conta antiga, inacessível.
+
+**Como detectar.** Rode e compare com o número anterior:
+
+```bash
+aws sts get-caller-identity --query Account --output text
+```
+
+> Registrem o número da conta atual num lugar acessível ao grupo — **fora de repositório público**. Sem essa referência, ninguém percebe a troca até um `terraform plan` estranho aparecer.
+
+**Procedimento completo:**
+
+1. **Confirme que mudou mesmo.** Compare o número. Renovar crédito **não** troca a conta; resetar o lab pode trocar.
+
+2. **Recrie o backend de state** — o bucket antigo não é mais alcançável:
+
+   ```bash
+   cd tech-challenge-infra-k8s/bootstrap
+   rm -f terraform.tfstate terraform.tfstate.backup
+   terraform init && terraform apply
+   ```
+
+   O nome do bucket muda sozinho: ele inclui o id da conta, resolvido em runtime.
+
+3. **Atualize a variável nos dois repositórios de infra:**
+
+   ```bash
+   gh variable set TF_STATE_BUCKET --body "$(terraform output -raw state_bucket)" --repo tech-challenge-grupo-160/tech-challenge-infra-k8s
+   gh variable set TF_STATE_BUCKET --body "$(terraform output -raw state_bucket)" --repo tech-challenge-grupo-160/tech-challenge-infra-database
+   ```
+
+4. **Reinicialize e reaplique cada módulo**, apontando para o backend novo:
+
+   ```bash
+   cd ../infra
+   rm -rf .terraform
+   terraform init -backend-config="bucket=<bucket-novo>" -backend-config="key=dev/rede.tfstate" -backend-config="region=us-east-1" -backend-config="dynamodb_table=tc-grupo160-tflock"
+   terraform apply -var-file=inventories/dev/terraform.tfvars
+   ```
+
+   O `rm -rf .terraform` é necessário: sem ele o Terraform tenta migrar o state do backend antigo e falha.
+
+5. **Renove os secrets** com `renova-secrets.sh`
+
+6. **Reimplante a Lambda** — ela vive na conta antiga:
+
+   ```bash
+   gh workflow run ci.yml --repo tech-challenge-grupo-160/tech-challenge-lambda-auth --ref develop -f ambiente=homologacao
+   ```
+
+Nada disso exige mudar código. Todos os recursos são criados pelo Terraform, e o id da conta nunca está escrito nos arquivos — vem sempre de `data.aws_caller_identity`.
+
+#### Conta igual, mas os recursos sumiram
+
+Acontece se a AWS Academy limpar a conta. O state diz que os recursos existem, mas não existem.
+
+O sintoma é o `terraform plan` mostrar **tudo como `will be created`** em um ambiente que você sabe que já foi aplicado.
+
+Não é problema: rode `terraform apply` e ele recria. O state se reconcilia sozinho. Só não se assuste com o tamanho do plano.
 
 ### Aplicar infraestrutura
 
@@ -247,6 +331,7 @@ O vídeo precisa mostrar: autenticação com CPF, execução da pipeline, deploy
 | `Failed to load ".tfvars" as a plan file` | PowerShell quebrou o argumento | Use aspas: `-var-file="caminho"` |
 | `Backend initialization required` | `init` com `-backend=false` antes do `plan` | Já corrigido no CI |
 | Job verde mas nada aconteceu | `continue-on-error` mascarando falha | Já removido do `plan` |
+| `plan` mostra tudo como `will be created` | Recursos apagados, ou a conta AWS mudou | Ver "Trocar credenciais vs. trocar de conta" |
 
 **A lição que se repetiu:** status verde não é prova de execução. Confira a saída do passo, não o ícone do job.
 
