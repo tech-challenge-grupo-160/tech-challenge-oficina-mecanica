@@ -7,10 +7,12 @@ Propostas técnicas **em discussão**. Uma RFC existe para o grupo debater antes
 | RFC | Título | Status | Issue |
 |---|---|---|---|
 | [0001](0001-escolha-da-nuvem.md) | Escolha da nuvem — AWS | Em revisão | [#56](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/56) |
-| — | Estratégia de autenticação por CPF e escolha do API Gateway | Pendente | [#35](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/35) |
+| [0002](0002-autenticacao-por-cpf-e-api-gateway.md) | Estratégia de autenticação por CPF e escolha do API Gateway | Rascunho | [#35](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/35) |
 | — | Escolha da ferramenta de observabilidade | Pendente | [#66](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/66) |
 
-As duas pendentes são da Sprint 1 e **bloqueiam parte do restante da fase**. Enquanto não forem fechadas, o trabalho que depende delas avança sobre premissas, não sobre decisões.
+A pendente é da Sprint 1 e **bloqueia o épico de observabilidade inteiro**. Enquanto não for fechada, o trabalho que depende dela avança sobre premissas, não sobre decisões.
+
+> A RFC-0002 **corrige** um ponto da RFC-0001, que registrou *"API Gateway (REST API, com JWT authorizer)"* — combinação que não existe na AWS. Ao aceitar a 0002, ajustar a tabela de serviços da 0001.
 
 ## Fluxo
 
