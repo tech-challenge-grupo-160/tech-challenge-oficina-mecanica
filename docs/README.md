@@ -28,6 +28,10 @@ Rotas, autenticação, payloads principais, fluxo da OS, monitoramento e tratame
 
 Infra do projeto, como executar terraform, explicação k8s e docker.
 
+### [MATRIZ_AUTORIZACAO.md](MATRIZ_AUTORIZACAO.md)
+
+Classificação das 53 rotas entre públicas, autenticadas, de cliente e internas, com o critério de sensibilidade e o que o API Gateway deve rotear.
+
 ## Convenções
 
 - a documentação deve refletir o estado atual do código;
