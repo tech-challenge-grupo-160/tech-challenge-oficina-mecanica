@@ -31,7 +31,7 @@ Sem a decisão registrada, nenhum Terraform pode ser escrito — e hoje **10 iss
 
 | Necessidade | Serviço AWS |
 |---|---|
-| API Gateway | Amazon API Gateway (REST API, com JWT authorizer) |
+| API Gateway | Amazon API Gateway **HTTP API (v2)**, com Lambda authorizer — ver [emenda](#2026-08-27--api-gateway-http-api-não-rest-api) |
 | Function Serverless | AWS Lambda (`dotnet10`, x86_64, 512 MB, timeout 30 s) |
 | Banco gerenciado | Amazon RDS PostgreSQL, Multi-AZ, em subnet privada |
 | Cluster Kubernetes | Amazon EKS com node group gerenciado e autoscaling |
@@ -80,8 +80,8 @@ Mesmo com renovação disponível, a prática adotada é **`terraform destroy` a
 
 ### Decisões decorrentes
 
-- **RDS Single-AZ**, não Multi-AZ. Dobrar o custo do banco não cabe no orçamento.
-- **Sem NAT Gateway**; nodes em subnet pública com security group restritivo. Menos seguro, e registrado como tal.
+- ~~**RDS Single-AZ**, não Multi-AZ. Dobrar o custo do banco não cabe no orçamento.~~ — **revisto em 27/08, ver [emenda](#2026-08-27--rds-multi-az-revertendo-a-decisão-por-single-az)**
+- **Sem NAT Gateway**; nodes em subnet pública com security group restritivo. Menos seguro, e registrado como tal. Consequência não antecipada na [emenda do VPC Endpoint](#2026-08-27--vpc-endpoint-de-interface-para-o-secrets-manager).
 - **Cluster criado tarde**, próximo à gravação do vídeo, e destruído logo depois. `terraform destroy` ao fim de cada sessão de trabalho.
 - **`LabRole` em todos os componentes**, referenciada e nunca criada.
 
@@ -130,3 +130,52 @@ Se esta RFC estivesse sendo escrita antes da implementação, a comparação mer
 _A preencher ao fechar a RFC._
 
 Sendo aceita, registrar ADR correspondente em [`docs/adrs/`](../adrs/), já que a escolha de nuvem é decisão arquitetural permanente dentro do escopo do projeto.
+
+## Emendas
+
+Decisões tomadas depois da redação original. Ficam registradas aqui em vez de
+reescrever o texto acima — saber o que mudou e por quê vale tanto quanto o
+estado final.
+
+### 2026-08-27 — RDS Multi-AZ, revertendo a decisão por Single-AZ
+
+A seção "Decisões decorrentes" dizia *"RDS Single-AZ, não Multi-AZ. Dobrar o
+custo do banco não cabe no orçamento"* — e **contradizia a tabela de serviços
+deste próprio documento**, que já listava Multi-AZ. A contradição existia desde
+a redação original e passou despercebida.
+
+Resolvida em favor de Multi-AZ, por dois motivos:
+
+1. **Os números.** `db.t3.micro` em `us-east-1` custa ~US$ 0,018/h Single-AZ
+   contra ~US$ 0,036/h Multi-AZ. Com `terraform destroy` ao fim de cada sessão,
+   a diferença real é de **~US$ 0,43/dia** — não o "dobrar o custo" que a frase
+   sugeria em termos absolutos, contra um orçamento de US$ 100 renovável.
+2. **O requisito.** A issue [#61](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/61)
+   tem "alta disponibilidade habilitada" como critério de aceite.
+
+Aplicado e verificado em `dev`: instância `tc-grupo160-dev` com `MultiAZ = true`,
+criptografada e sem acesso público.
+
+### 2026-08-27 — VPC Endpoint de interface para o Secrets Manager
+
+Consequência não antecipada da decisão de **não ter NAT Gateway**, que continua
+válida.
+
+A Lambda de autenticação precisa entrar na VPC para alcançar o RDS em subnet
+privada. Ao entrar, perde a saída para a internet — a subnet privada não tem
+rota default — e deixaria de ler o segredo do JWT no cold start, quebrando a
+issue [#46](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/46).
+
+O endpoint de interface devolve esse acesso por dentro da rede, a
+**~US$ 0,01/hora por AZ**, contra ~US$ 0,045/hora do NAT Gateway mais tráfego.
+A decisão de não ter NAT segue de pé; o endpoint é o que a torna praticável.
+
+### 2026-08-27 — API Gateway HTTP API, não REST API
+
+A tabela de serviços registrava *"REST API, com JWT authorizer"*. **Essa
+combinação não existe na AWS:** o authorizer JWT nativo é exclusivo do HTTP API
+(v2), e mesmo lá exige emissor OIDC com JWKS e assinatura assimétrica — que não
+é o que a Lambda emite.
+
+Corrigido na tabela acima. A decisão, as alternativas e a justificativa do
+Lambda authorizer estão na [RFC-0002](0002-autenticacao-por-cpf-e-api-gateway.md).

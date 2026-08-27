@@ -12,7 +12,9 @@ Propostas técnicas **em discussão**. Uma RFC existe para o grupo debater antes
 
 A pendente é da Sprint 1 e **bloqueia o épico de observabilidade inteiro**. Enquanto não for fechada, o trabalho que depende dela avança sobre premissas, não sobre decisões.
 
-> A RFC-0002 **corrige** um ponto da RFC-0001, que registrou *"API Gateway (REST API, com JWT authorizer)"* — combinação que não existe na AWS. Ao aceitar a 0002, ajustar a tabela de serviços da 0001.
+> A RFC-0001 tem uma seção de [**Emendas**](0001-escolha-da-nuvem.md#emendas) com as decisões tomadas depois da redação original: RDS Multi-AZ (revertendo a escolha por Single-AZ), o VPC Endpoint do Secrets Manager e a correção do API Gateway para HTTP API, que a RFC-0002 decidiu.
+>
+> Decisão que muda o que está escrito numa RFC já mergeada entra como emenda datada, não como reescrita do texto — saber o que mudou e por quê vale tanto quanto o estado final.
 
 ## Fluxo
 
