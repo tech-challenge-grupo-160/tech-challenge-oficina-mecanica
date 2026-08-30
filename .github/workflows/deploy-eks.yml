@@ -1,0 +1,261 @@
+# Deploy da API no cluster EKS (issue #52 / F3-18).
+#
+# Substitui o caminho dos workflows *-ci-cd-self-hosted.yml, que publicavam num
+# cluster kind local por runner self-hosted Windows. Aqueles seguem existindo
+# enquanto a issue #65 nao aposentar o fluxo kind.
+#
+# O que muda em relacao ao anterior:
+#
+#   - a imagem vai para o ECR com tag versionada pelo SHA, em vez de
+#     `kind load docker-image` de uma imagem `:local`;
+#   - o destino e o EKS, alcancado por kubeconfig gerado na hora;
+#   - a connection string do RDS e a chave do JWT viram um Secret do
+#     Kubernetes montado a partir do Secrets Manager, como decidido na RFC-0002.
+#
+# Os manifests vivem em tech-challenge-infra-k8s. O repositorio e publico, entao
+# o checkout nao precisa de token.
+
+name: Deploy EKS
+
+on:
+  push:
+    branches: [homolog, main]
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: "Ambiente de destino"
+        type: choice
+        options: [desenvolvimento, homologacao, producao]
+        default: desenvolvimento
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  BUILD_CONFIGURATION: 'Release'
+  SOLUTION_FILE: 'Fiap.TechChallenge.OficinaMecanica.slnx'
+  UNIT_TEST_PROJECT: 'tests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests/Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.csproj'
+  INTEGRATION_TEST_PROJECT: 'tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.csproj'
+  REPO_INFRA: 'tech-challenge-grupo-160/tech-challenge-infra-k8s'
+  K8S_NAMESPACE: 'oficina-mecanica'
+
+jobs:
+  # Os testes continuam sendo pre-requisito do deploy, como no fluxo anterior:
+  # criterio de aceite da issue #52.
+  ci:
+    name: Build e testes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION_FILE }}
+
+      - name: Build
+        run: >
+          dotnet build ${{ env.SOLUTION_FILE }}
+          --configuration ${{ env.BUILD_CONFIGURATION }}
+          --no-restore
+
+      - name: Testes unitarios
+        run: >
+          dotnet test ${{ env.UNIT_TEST_PROJECT }}
+          --configuration ${{ env.BUILD_CONFIGURATION }}
+          --no-build --no-restore --verbosity normal
+
+      - name: Testes de integracao
+        timeout-minutes: 10
+        run: >
+          dotnet test ${{ env.INTEGRATION_TEST_PROJECT }}
+          --configuration ${{ env.BUILD_CONFIGURATION }}
+          --no-build --no-restore --verbosity normal
+
+  deploy:
+    name: Deploy
+    needs: ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: ${{ inputs.ambiente || (github.ref_name == 'main' && 'producao' || 'homologacao') }}
+
+    steps:
+      - name: Checkout da aplicacao
+        uses: actions/checkout@v4
+
+      - name: Checkout dos manifests
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.REPO_INFRA }}
+          ref: develop
+          path: infra-k8s
+
+      # Sem credencial nao ha deploy: falhar e o comportamento correto.
+      - name: Exige credenciais da sessao
+        env:
+          KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::Sem credenciais da AWS. Rode scripts/renova-secrets.sh no repo de infra."
+            exit 1
+          fi
+
+      - name: Autenticar na AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      # O sufixo casa com var.ambiente do Terraform. Divergir aqui aponta o
+      # deploy para um cluster ou um segredo de outro ambiente.
+      - name: Resolver ambiente
+        id: amb
+        run: |
+          AMBIENTE="${{ inputs.ambiente || (github.ref_name == 'main' && 'producao' || 'homologacao') }}"
+          case "$AMBIENTE" in
+            desenvolvimento) SUFIXO="dev" ;;
+            producao)        SUFIXO="prod" ;;
+            *)               SUFIXO="hom" ;;
+          esac
+          # O id da conta vem em runtime: o repositorio e publico.
+          CONTA="$(aws sts get-caller-identity --query Account --output text)"
+          REGIAO="${{ vars.AWS_REGION || 'us-east-1' }}"
+
+          echo "sufixo=${SUFIXO}" >> "$GITHUB_OUTPUT"
+          echo "cluster=tc-grupo160-${SUFIXO}" >> "$GITHUB_OUTPUT"
+          echo "registry=${CONTA}.dkr.ecr.${REGIAO}.amazonaws.com" >> "$GITHUB_OUTPUT"
+          echo "imagem=${CONTA}.dkr.ecr.${REGIAO}.amazonaws.com/tc-grupo160-${SUFIXO}-api" >> "$GITHUB_OUTPUT"
+          echo "segredo_banco=tc-grupo160/${SUFIXO}/banco" >> "$GITHUB_OUTPUT"
+          echo "segredo_jwt=tc-grupo160/${SUFIXO}/jwt-signing-key" >> "$GITHUB_OUTPUT"
+          echo "Ambiente: $AMBIENTE  Cluster: tc-grupo160-${SUFIXO}"
+
+      # Falha cedo e com mensagem clara. Sem isto, a ausencia do cluster so
+      # apareceria no update-kubeconfig, com erro generico de AccessDenied.
+      - name: Conferir que o cluster existe
+        run: |
+          if ! aws eks describe-cluster --name "${{ steps.amb.outputs.cluster }}" >/dev/null 2>&1; then
+            echo "::error::Cluster ${{ steps.amb.outputs.cluster }} nao existe. Ligue criar_cluster no inventory do ambiente em tech-challenge-infra-k8s."
+            exit 1
+          fi
+
+      - name: Login no ECR
+        run: |
+          aws ecr get-login-password --region "${{ vars.AWS_REGION || 'us-east-1' }}" \
+            | docker login --username AWS --password-stdin "${{ steps.amb.outputs.registry }}"
+
+      # Duas tags: o SHA, que e o que o rollback usa, e `latest` por conveniencia
+      # de inspecao. O deploy referencia sempre o SHA - `latest` num Deployment
+      # torna impossivel saber o que esta rodando.
+      - name: Build e push da imagem
+        run: |
+          IMAGEM="${{ steps.amb.outputs.imagem }}"
+          SHA="${GITHUB_SHA::12}"
+          docker build -f docker/backend/Dockerfile -t "${IMAGEM}:${SHA}" -t "${IMAGEM}:latest" .
+          docker push "${IMAGEM}:${SHA}"
+          docker push "${IMAGEM}:latest"
+          echo "IMAGEM_TAG=${IMAGEM}:${SHA}" >> "$GITHUB_ENV"
+
+      - name: Gerar kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region "${{ vars.AWS_REGION || 'us-east-1' }}" \
+            --name "${{ steps.amb.outputs.cluster }}"
+
+      - name: Criar namespace
+        run: kubectl apply -f infra-k8s/k8s/nuvem/namespace.yaml
+
+      # O Secret e montado a partir do Secrets Manager a cada deploy, nunca
+      # versionado. Os valores sao mascarados no log antes de qualquer uso: sem
+      # isto, um erro de kubectl poderia ecoar a senha do banco.
+      - name: Sincronizar Secret com o Secrets Manager
+        run: |
+          CONN="$(aws secretsmanager get-secret-value \
+            --secret-id '${{ steps.amb.outputs.segredo_banco }}' \
+            --query SecretString --output text | jq -r .connectionString)"
+          JWT="$(aws secretsmanager get-secret-value \
+            --secret-id '${{ steps.amb.outputs.segredo_jwt }}' \
+            --query SecretString --output text)"
+
+          echo "::add-mask::$CONN"
+          echo "::add-mask::$JWT"
+
+          if [ -z "$CONN" ] || [ "$CONN" = "null" ]; then
+            echo "::error::connectionString ausente em ${{ steps.amb.outputs.segredo_banco }}."
+            exit 1
+          fi
+
+          kubectl create secret generic api-secret \
+            --namespace "${{ env.K8S_NAMESPACE }}" \
+            --from-literal=ConnectionStrings__DefaultConnection="$CONN" \
+            --from-literal=Jwt__SecretKey="$JWT" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Aplicar manifests
+        working-directory: infra-k8s/k8s/nuvem
+        run: |
+          # `kustomize edit set image` exigiria o binario proprio do kustomize;
+          # o kubectl ja embute o motor, entao a substituicao e feita no arquivo.
+          sed -i "s|newTag: .*|newTag: ${GITHUB_SHA::12}|" kustomization.yaml
+          sed -i "s|newName: .*|newName: ${{ steps.amb.outputs.imagem }}|" kustomization.yaml
+          kubectl apply -k .
+
+      # A migration roda no startup da API, entao o primeiro rollout de um banco
+      # vazio demora mais que os seguintes.
+      - name: Aguardar rollout
+        run: |
+          kubectl rollout status deployment/oficina-mecanica-api \
+            --namespace "${{ env.K8S_NAMESPACE }}" --timeout=300s
+
+      - name: Estado do namespace
+        if: always()
+        run: kubectl get all --namespace "${{ env.K8S_NAMESPACE }}"
+
+      # Diagnostico util quando o rollout falha: sem isto so restaria o
+      # "timed out waiting for the condition", sem dizer por que.
+      - name: Logs da API quando falha
+        if: failure()
+        run: |
+          kubectl describe pods --namespace "${{ env.K8S_NAMESPACE }}" \
+            --selector app=oficina-mecanica-api | tail -40
+          kubectl logs --namespace "${{ env.K8S_NAMESPACE }}" \
+            --selector app=oficina-mecanica-api --tail=120 --all-containers || true
+
+      - name: Resumo
+        if: always()
+        run: |
+          {
+            echo "### Deploy no EKS"
+            echo ""
+            echo "| Item | Valor |"
+            echo "|---|---|"
+            echo "| Ambiente | ${{ inputs.ambiente || (github.ref_name == 'main' && 'producao' || 'homologacao') }} |"
+            echo "| Cluster | \`${{ steps.amb.outputs.cluster }}\` |"
+            echo "| Imagem | \`${GITHUB_SHA::12}\` |"
+            echo "| Namespace | \`${{ env.K8S_NAMESPACE }}\` |"
+            echo ""
+            echo "#### Rollback"
+            echo ""
+            echo "Volta para a revisao anterior do Deployment:"
+            echo ""
+            echo '```bash'
+            echo "kubectl rollout undo deployment/oficina-mecanica-api -n ${{ env.K8S_NAMESPACE }}"
+            echo '```'
+            echo ""
+            echo "Para uma imagem especifica, use a tag do commit desejado:"
+            echo ""
+            echo '```bash'
+            echo "kubectl set image deployment/oficina-mecanica-api api=${{ steps.amb.outputs.imagem }}:<sha> -n ${{ env.K8S_NAMESPACE }}"
+            echo '```'
+            echo ""
+            echo "As tags disponiveis saem de \`aws ecr list-images --repository-name tc-grupo160-${{ steps.amb.outputs.sufixo }}-api\`."
+            echo "O lifecycle policy do ECR guarda apenas as 10 imagens mais recentes."
+          } >> "$GITHUB_STEP_SUMMARY"
