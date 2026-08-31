@@ -74,6 +74,15 @@ exigir_ferramentas() {
 # O get-caller-identity responde mesmo com a sessao do lab encerrada; o que
 # denuncia a credencial morta e um deny explicito em qualquer outra chamada.
 # Por isso a checagem faz as duas coisas.
+#
+# A segunda chamada NAO leva --max-items: describe-availability-zones nao e uma
+# operacao paginada, e o CLI rejeita o argumento com erro de uso. Como a saida
+# ia para /dev/null, o script culpava a credencial por um erro de sintaxe e
+# mandava reiniciar o lab que estava perfeitamente bem. Corrigido em 30/08.
+#
+# Por isso tambem a saida e lida antes de acusar: so o texto da resposta
+# distingue "sem permissao" de "o comando quebrou por outro motivo". Errar essa
+# distincao manda a pessoa procurar no lugar errado.
 exigir_credencial() {
   if ! aws sts get-caller-identity >/dev/null 2>&1; then
     vermelho "ERRO: credencial da AWS invalida ou ausente."
@@ -82,12 +91,22 @@ exigir_credencial() {
     exit 1
   fi
 
-  if ! aws ec2 describe-availability-zones --max-items 1 >/dev/null 2>&1; then
+  local saida
+  if saida="$(aws ec2 describe-availability-zones \
+       --query 'AvailabilityZones[0].ZoneName' --output text 2>&1)"; then
+    return 0
+  fi
+
+  if echo "$saida" | grep -qiE "explicit deny|AccessDenied|UnauthorizedOperation|ExpiredToken|InvalidClientTokenId"; then
     vermelho "ERRO: a credencial existe mas esta sendo negada."
     echo "Isso costuma ser a policy 'voc-cancel-cred': a sessao do lab encerrou."
     echo "Start Lab de novo e cole a credencial nova."
-    exit 1
+  else
+    vermelho "ERRO: nao consegui falar com a AWS, e nao parece ser a credencial."
+    echo "A resposta foi:"
+    echo "$saida" | sed 's/^/  /' | head -5
   fi
+  exit 1
 }
 
 conta_atual() { aws sts get-caller-identity --query Account --output text; }
