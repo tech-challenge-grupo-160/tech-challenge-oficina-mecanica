@@ -48,8 +48,9 @@ BANCO="$RAIZ/tech-challenge-infra-database"
 LAMBDA="$RAIZ/tech-challenge-lambda-auth"
 APP="$RAIZ/tech-challenge-oficina-mecanica"
 
-TOTAL=7
-[ "$SO_INFRA" -eq 1 ] && TOTAL=4
+TOTAL=8
+# Com --so-infra a etapa 2 e pulada, mas o fluxo vai ate a 5.
+[ "$SO_INFRA" -eq 1 ] && TOTAL=5
 
 # ============================================================ verificacoes
 
@@ -113,12 +114,53 @@ if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
   cinza "  TF_STATE_BUCKET atualizado nos repositorios."
 fi
 
+# ------------------------------------------------------- funcoes Lambda
+#
+# ANTES da rede, e isto nao e preferencia. A `aws_lambda_permission` do gateway
+# exige que a funcao exista: a API AddPermission devolve 404 se ela nao estiver
+# publicada, e o apply inteiro falha.
+#
+# Num ambiente ja em uso o erro nunca aparece, porque as funcoes foram
+# publicadas muito antes. Numa conta do zero, aparece sempre - descoberto em
+# 31/08, na primeira subida completa por este script.
+#
+# Aqui vai so o codigo. Rede, variaveis de ambiente e VPC entram depois, quando
+# subnets, security groups e segredos existirem.
+
+CONTA_ROLE="arn:aws:iam::${CONTA}:role/LabRole"
+
+if [ "$SO_INFRA" -eq 0 ]; then
+  etapa 2 "$TOTAL" "Funcoes Lambda (codigo)"
+  if ! dotnet lambda help >/dev/null 2>&1; then
+    cinza "  Instalando Amazon.Lambda.Tools..."
+    dotnet tool install -g Amazon.Lambda.Tools >/dev/null 2>&1 || true
+  fi
+
+  dotnet lambda deploy-function "tc-grupo160-auth-${AMBIENTE}" \
+    --project-location "$LAMBDA/Fiap.TechChallenge.OficinaMecanica.AuthLambda" \
+    --configuration Release --function-role "$CONTA_ROLE" --region "$REGIAO" >/dev/null
+
+  # Mesmo artefato, outro handler. Sem --function-handler, publicaria a funcao
+  # de autenticacao com o nome do authorizer, e sem erro nenhum no deploy.
+  dotnet lambda deploy-function "tc-grupo160-authorizer-${AMBIENTE}" \
+    --project-location "$LAMBDA/Fiap.TechChallenge.OficinaMecanica.AuthLambda" \
+    --configuration Release --function-role "$CONTA_ROLE" --region "$REGIAO" \
+    --function-handler "Fiap.TechChallenge.OficinaMecanica.AuthLambda::Fiap.TechChallenge.OficinaMecanica.AuthLambda.AuthorizerFunction::FunctionHandler" >/dev/null
+  verde "  Funcoes publicadas."
+fi
+
 # ------------------------------------------------------------------- rede
 
-etapa 2 "$TOTAL" "Rede, cluster, ECR, gateway e balanceador"
+etapa 3 "$TOTAL" "Rede, cluster, ECR, gateway e balanceador"
 tf_init "$K8S/infra" "$AMBIENTE/rede.tfstate" "$BUCKET" "$REGIAO"
+
+# Sem as funcoes publicadas, as permissoes do gateway nao podem ser criadas.
+VAR_LAMBDAS=""
+[ "$SO_INFRA" -eq 1 ] && VAR_LAMBDAS="-var=lambdas_publicadas=false"
+
+# shellcheck disable=SC2086
 terraform -chdir="$K8S/infra" apply -auto-approve -input=false \
-  -var-file="inventories/$AMBIENTE/terraform.tfvars"
+  -var-file="inventories/$AMBIENTE/terraform.tfvars" $VAR_LAMBDAS
 verde "  Ambiente $AMBIENTE aplicado."
 
 # ------------------------------------------------------------------ banco
@@ -127,7 +169,7 @@ verde "  Ambiente $AMBIENTE aplicado."
 # group do state da rede. Invertendo a ordem, ele falha procurando um state que
 # ainda nao existe.
 
-etapa 3 "$TOTAL" "Banco de dados gerenciado"
+etapa 4 "$TOTAL" "Banco de dados gerenciado"
 tf_init "$BANCO" "$AMBIENTE/banco.tfstate" "$BUCKET" "$REGIAO"
 terraform -chdir="$BANCO" apply -auto-approve -input=false \
   -var-file="inventories/$AMBIENTE/terraform.tfvars"
@@ -135,7 +177,7 @@ verde "  RDS aplicado."
 
 GATEWAY="$(terraform -chdir="$K8S/infra" output -raw gateway_url 2>/dev/null || echo '')"
 
-etapa 4 "$TOTAL" "Conferindo o que subiu"
+etapa 5 "$TOTAL" "Conferindo o que subiu"
 CLUSTER="$(terraform -chdir="$K8S/infra" output -raw cluster_nome 2>/dev/null || echo '')"
 if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "null" ]; then
   amarelo "  criar_cluster esta desligado em inventories/$AMBIENTE."
@@ -160,26 +202,20 @@ titulo "Aplicacoes"
 SUFIXO="$AMBIENTE"
 ECR="$(terraform -chdir="$K8S/infra" output -raw ecr_api_url)"
 
-# ---------------------------------------------------------------- lambdas
+# ---------------------------------------------------- configuracao das lambdas
 #
-# As duas funcoes saem do MESMO artefato, com handlers diferentes. Nao sao
-# criadas pelo Terraform: gerenciar aqui e la faria os dois disputarem o mesmo
-# recurso. Por isso tambem nao somem no `terraform destroy` - ver
-# derruba-tudo.sh.
+# O codigo ja foi publicado na etapa 2 - tinha que ser, senao a permissao do
+# gateway falharia. Aqui entram rede e variaveis, que dependem de subnets,
+# security groups e segredos criados nas etapas seguintes.
+#
+# As funcoes nao sao criadas pelo Terraform: gerenciar aqui e la faria os dois
+# disputarem o mesmo recurso. Por isso tambem nao somem no `terraform destroy` -
+# ver derruba-tudo.sh.
 
-etapa 5 "$TOTAL" "Funcoes Lambda"
-if ! dotnet lambda help >/dev/null 2>&1; then
-  cinza "  Instalando Amazon.Lambda.Tools..."
-  dotnet tool install -g Amazon.Lambda.Tools >/dev/null 2>&1 || true
-fi
+etapa 6 "$TOTAL" "Rede e variaveis das funcoes"
 
-ROLE="arn:aws:iam::${CONTA}:role/LabRole"
 SEGREDO_JWT="tc-grupo160/${SUFIXO}/jwt-signing-key"
 SEGREDO_BANCO="tc-grupo160/${SUFIXO}/banco"
-
-dotnet lambda deploy-function "tc-grupo160-auth-${SUFIXO}" \
-  --project-location "$LAMBDA/Fiap.TechChallenge.OficinaMecanica.AuthLambda" \
-  --configuration Release --function-role "$ROLE" --region "$REGIAO" >/dev/null
 
 # A funcao de autenticacao precisa da VPC para alcancar o RDS; o authorizer nao
 # toca no banco e fica fora, evitando a ENI e o cold start que ela custa.
@@ -197,26 +233,15 @@ aws lambda update-function-configuration \
   --vpc-config "{\"SubnetIds\":${SUBNETS},\"SecurityGroupIds\":[\"${SG_LAMBDA}\"]}" >/dev/null
 aws lambda wait function-updated --function-name "tc-grupo160-auth-${SUFIXO}"
 
-dotnet lambda deploy-function "tc-grupo160-authorizer-${SUFIXO}" \
-  --project-location "$LAMBDA/Fiap.TechChallenge.OficinaMecanica.AuthLambda" \
-  --configuration Release --function-role "$ROLE" --region "$REGIAO" \
-  --function-handler "Fiap.TechChallenge.OficinaMecanica.AuthLambda::Fiap.TechChallenge.OficinaMecanica.AuthLambda.AuthorizerFunction::FunctionHandler" >/dev/null
-
 aws lambda wait function-updated --function-name "tc-grupo160-authorizer-${SUFIXO}"
 aws lambda update-function-configuration \
   --function-name "tc-grupo160-authorizer-${SUFIXO}" \
   --environment "{\"Variables\":{\"JWT_SECRET_ID\":\"$SEGREDO_JWT\",\"JWT_ISSUER\":\"Fiap.TechChallenge.OficinaMecanica\",\"JWT_AUDIENCE\":\"Fiap.TechChallenge.OficinaMecanica\"}}" >/dev/null
-verde "  Autenticacao e authorizer publicados."
-
-# O authorizer so pode ser referenciado depois de existir. Reaplicar a rede
-# agora cria o aws_apigatewayv2_authorizer, que na primeira passada e ignorado
-# se a funcao ainda nao existia.
-terraform -chdir="$K8S/infra" apply -auto-approve -input=false \
-  -var-file="inventories/$AMBIENTE/terraform.tfvars" >/dev/null
+verde "  Funcoes configuradas."
 
 # -------------------------------------------------------------------- API
 
-etapa 6 "$TOTAL" "API no cluster"
+etapa 7 "$TOTAL" "API no cluster"
 aws eks update-kubeconfig --region "$REGIAO" --name "$CLUSTER" >/dev/null
 
 SHA="$(git -C "$APP" rev-parse --short=12 HEAD)"
@@ -256,7 +281,7 @@ verde "  API no ar."
 
 # ============================================================= verificacao
 
-etapa 7 "$TOTAL" "Teste de fumaca"
+etapa 8 "$TOTAL" "Teste de fumaca"
 sleep 10
 CODIGO="$(curl -s -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/auth" \
   -H 'Content-Type: application/json' -d '{"documento":"476.548.668-01"}' || echo 000)"
