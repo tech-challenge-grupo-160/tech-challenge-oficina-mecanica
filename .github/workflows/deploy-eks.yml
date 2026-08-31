@@ -103,7 +103,7 @@ jobs:
           KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
         run: |
           if [ -z "$KEY" ]; then
-            echo "::error::Sem credenciais da AWS. Rode scripts/renova-secrets.sh no repo de infra."
+            echo "::error::Sem credenciais da AWS. Rode scripts/renova-secrets.sh na raiz deste repositorio."
             exit 1
           fi
 
