@@ -121,6 +121,8 @@ fi
 titulo "O que existe agora"
 conferir_custos
 
+avisar_se_a_branch_diverge "$RAIZ" "$AMBIENTE" "DESTRUIR"
+
 if [ "$SEM_PERGUNTAR" -eq 0 ]; then
   echo
   amarelo "Isto DESTROI o ambiente '$AMBIENTE' inteiro, sem volta:"

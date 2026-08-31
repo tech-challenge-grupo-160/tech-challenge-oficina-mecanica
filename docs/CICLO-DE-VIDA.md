@@ -134,6 +134,45 @@ bash scripts/derruba-tudo.sh --so-conferir
 O script derruba **um ambiente**. Se `hom` ou `prod` também estiverem de pé,
 rode para cada um.
 
+### O ambiente não vem da branch
+
+Existem **exatamente três** ambientes — `dev`, `hom` e `prod` —, cada um com seu
+próprio state e seus próprios recursos na AWS. Uma branch de feature **não ganha
+ambiente próprio**: ela compartilha o `dev`, que é aplicado quando algo entra na
+`develop`.
+
+Os scripts escolhem o ambiente pelo `--ambiente`, e **nunca olham para a
+branch**. O padrão é `dev`. Derivar da branch faria o mesmo comando se comportar
+de formas diferentes sem mudar — o tipo de mágica que destrói o ambiente errado
+sem ninguém entender por quê.
+
+A ligação branch → ambiente existe só nas pipelines:
+
+| Branch | Pipeline aplica |
+|---|---|
+| `develop` | `dev` |
+| `homolog` | `hom` |
+| `main` / `master` | `prod` |
+
+Como o padrão silencioso enfraquece a escolha explícita — quem trabalha em
+`homolog` e roda sem argumento derrubaria o `dev` —, os scripts avisam quando a
+branch de algum repositório sugere outro ambiente:
+
+```text
+ATENCAO: a branch de algum repositorio sugere outro ambiente.
+  tech-challenge-infra-k8s: homolog (a pipeline aplicaria 'hom')
+
+O comando vai DESTRUIR o ambiente 'dev'.
+```
+
+O aviso não bloqueia: informa antes da confirmação. Explícito continua
+explícito, e o engano fica difícil de cometer em silêncio.
+
+> Uma consequência de os ambientes não serem por branch: **aplicar código de
+> branch não mergeada não sobrevive**. O próximo push na `develop` reconcilia o
+> `dev` com o que está lá e desfaz o que não estiver no código. Já derrubou um
+> authorizer no meio do caminho.
+
 ## Mudando de conta AWS
 
 O projeto é portável entre contas do Learner Lab por construção, não por
