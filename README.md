@@ -65,9 +65,39 @@ Seed de desenvolvimento:
 
 - [Índice da documentação](docs/README.md)
 - [Setup e operação](docs/SETUP.md)
+- [Ciclo de vida da infraestrutura](docs/CICLO-DE-VIDA.md)
 - [Arquitetura](docs/ARCHITECTURE.md)
 - [Infraestrutura](docs/INFRAESTRUTURA.md)
 - [Referência da API](docs/API_REFERENCE.md)
+
+## Infraestrutura na AWS
+
+Os scripts que sobem e derrubam o ambiente inteiro ficam neste repositório,
+porque orquestram os quatro — o porquê está em
+[docs/CICLO-DE-VIDA.md](docs/CICLO-DE-VIDA.md).
+
+```bash
+bash scripts/sobe-tudo.sh
+```
+
+```bash
+bash scripts/derruba-tudo.sh
+```
+
+Renovar as credenciais do Learner Lab nos quatro repositórios, a cada sessão:
+
+```bash
+bash scripts/renova-secrets.sh
+```
+
+> **O cluster cobra sozinho.** O control plane do EKS custa US$ 0,10/hora
+> enquanto existir e **não** é suspenso junto com a sessão do lab. Um ambiente
+> de pé custa cerca de US$ 5/dia. Para ver o que está cobrando agora, sem
+> destruir nada:
+>
+> ```bash
+> bash scripts/derruba-tudo.sh --so-conferir
+> ```
 
 ## Estrutura do repositório
 
