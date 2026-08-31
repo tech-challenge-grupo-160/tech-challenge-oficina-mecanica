@@ -28,14 +28,14 @@
               "raw": "\n{\n  \"usuario\": \"admin\",\n  \"senha\": \"admin123\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/v1/Auth/login",
+              "raw": "{{baseUrl}}/api/v1/auth/login",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "Auth",
+                "auth",
                 "login"
               ]
             }

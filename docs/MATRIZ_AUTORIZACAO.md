@@ -51,6 +51,22 @@ O nível **Cliente** é mais restritivo que **Autenticada**, não mais permissiv
 
 Com o API Gateway em produção, esta rota deixa de ser a porta de entrada principal: quem autentica por CPF chama a **Lambda**, não a API. O `/auth/login` permanece para o usuário administrativo do seed e para desenvolvimento local.
 
+> ⚠️ **O caminho é `auth` em minúsculo, e isso importa no gateway.**
+>
+> O roteamento do API Gateway é **sensível a maiúsculas**; o do ASP.NET não é.
+> Local, `/api/v1/Auth/login` e `/api/v1/auth/login` são a mesma coisa. Pelo
+> gateway, só o segundo casa com a rota pública — o primeiro cai no
+> `ANY /api/v1/{proxy+}`, recebe o authorizer e devolve **401**, o que parece
+> credencial errada e não é.
+>
+> A caixa canônica vem do controller. O `AuthController` declara
+> `[Route("api/v1/auth")]` explicitamente, em minúsculo. Os demais usam
+> `[Route("api/v1/[controller]")]`, e aí o token preserva o nome da classe —
+> `Clientes`, `Pecas`, `Servicos` **capitalizados estão corretos**.
+>
+> Para essas, a caixa não muda nada: todas caem no `{proxy+}` de qualquer jeito.
+> A diferença só aparece na única rota com entrada pública própria no gateway.
+
 ## Rotas de nível Cliente
 
 | Método | Rota | Controller | Por quê |
