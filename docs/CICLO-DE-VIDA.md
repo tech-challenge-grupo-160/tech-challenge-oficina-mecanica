@@ -18,8 +18,73 @@ bash scripts/sobe-tudo.sh
 bash scripts/derruba-tudo.sh
 ```
 
-Ambos aceitam `--ambiente hom` ou `--ambiente prod`, e `--sim` para não
-perguntar nada. No Windows, rode pelo Git Bash.
+No Windows, rode pelo **Git Bash**.
+
+### Parâmetros
+
+Ambos, sem argumento, agem sobre o ambiente **`dev`**.
+
+| Parâmetro | Em qual | O que faz |
+|---|---|---|
+| `--ambiente <dev\|hom\|prod>` | ambos | Escolhe o ambiente. Padrão `dev` |
+| `--sim` | ambos | Não pergunta nada. Para uso em automação |
+| `-h`, `--help` | ambos | Mostra o cabeçalho do script |
+| `--so-infra` | subir | Para depois da conferência, sem publicar as aplicações. Dispensa Docker, kubectl e .NET |
+| `--assumir-pipelines` | subir | Aponta as pipelines do time para a **sua** conta. Ver a seção sobre várias pessoas |
+| `--so-conferir` | derrubar | Só lista o que está cobrando. **Não destrói nada** |
+| `--com-bootstrap` | derrubar | Remove também o bucket de state, com todo o histórico |
+
+Exemplos:
+
+```bash
+bash scripts/derruba-tudo.sh --so-conferir
+```
+
+```bash
+bash scripts/sobe-tudo.sh --ambiente hom --sim
+```
+
+## Mais de uma pessoa subindo ambiente
+
+**Leia antes de rodar pela primeira vez.**
+
+Cada membro tem a sua conta do Learner Lab, e portanto o seu bucket de state —
+os ambientes são independentes e não se atrapalham. O que **é** compartilhado
+são os quatro repositórios da organização.
+
+Dois scripts escrevem neles:
+
+| Script | O que grava | Onde |
+|---|---|---|
+| `sobe-tudo.sh` | `TF_STATE_BUCKET` | variável dos 4 repositórios |
+| `renova-secrets.sh` | credenciais da AWS | secrets dos 4 repositórios |
+
+Se duas pessoas rodarem, **a última ganha**: as pipelines passam a aplicar na
+conta dela. Os merges de todo o time vão para o ambiente de uma pessoa só — sem
+erro nenhum, e sem ninguém perceber.
+
+Por isso o `sobe-tudo.sh` **não sobrescreve em silêncio**. Se a variável já
+apontar para outra conta, ele avisa e não mexe:
+
+```text
+As pipelines apontam para OUTRA conta.
+  atual:  ...4331
+  a sua:  ...6131
+Nao mexi. Seu ambiente sobe normalmente, mas os merges do time
+continuam aplicando na conta de quem configurou antes.
+```
+
+O ambiente da pessoa sobe do mesmo jeito — só as pipelines ficam como estavam.
+Para assumir de propósito, `--assumir-pipelines`.
+
+**A combinação que funciona:** uma pessoa dona das pipelines, e as demais
+subindo ambiente na própria conta para testar, sem tocar nos repositórios. Quem
+for assumir, avise o grupo — senão os merges dos outros começam a aplicar num
+lugar que eles não esperam.
+
+> O `renova-secrets.sh` **não** tem essa proteção: ele sempre sobrescreve. É o
+> comportamento certo para quem é dono das pipelines, e um tiro no pé para quem
+> não é. Rode-o apenas se as pipelines forem suas.
 
 ## Por que os scripts vivem aqui
 
@@ -69,20 +134,28 @@ O `sobe-tudo.sh` executa sete etapas, nesta ordem:
 | # | Etapa | Por que nesta posição |
 |---|---|---|
 | 1 | Backend de state (S3 + DynamoDB) | tudo mais guarda state nele |
-| 2 | Rede, cluster, ECR, gateway, ALB | base de todo o resto |
-| 3 | Banco gerenciado | lê a rede pelo state remoto |
-| 4 | Conferência | para cedo se o cluster estiver desligado |
-| 5 | Funções Lambda | precisam da rede e dos segredos |
-| 6 | API no cluster | precisa do cluster e do ECR |
-| 7 | Teste de fumaça | `POST /auth` deve responder 200 |
+| 2 | **Funções Lambda (código)** | o gateway não sobe sem elas |
+| 3 | Rede, cluster, ECR, gateway, ALB | base de todo o resto |
+| 4 | Banco gerenciado | lê a rede pelo state remoto |
+| 5 | Conferência | para cedo se o cluster estiver desligado |
+| 6 | Rede e variáveis das funções | dependem de subnets, SGs e segredos |
+| 7 | API no cluster | precisa do cluster e do ECR |
+| 8 | Teste de fumaça | `POST /auth` deve responder 200 |
 
-**A ordem entre 2 e 3 não é preferência.** O Terraform do banco lê `vpc_id`,
-subnets e o security group do state da rede. Invertendo, ele falha procurando
-um state que ainda não existe.
+Duas dessas posições **não são preferência**.
 
-O script aplica a rede **duas vezes**: a primeira cria tudo, e a segunda entra
-depois que as Lambdas existem, para criar o authorizer do gateway — que só pode
-referenciar uma função já publicada.
+**As funções vêm antes da rede (2 antes de 3).** A `aws_lambda_permission` do
+gateway exige que a função exista: a API `AddPermission` devolve 404 se ela não
+estiver publicada, e o apply inteiro falha. Num ambiente já em uso o erro nunca
+aparece, porque as funções foram publicadas muito antes — numa conta do zero,
+aparece sempre.
+
+Só o **código** entra na etapa 2. Rede, variáveis de ambiente e VPC ficam para a
+etapa 6, quando subnets, security groups e segredos já existem.
+
+**O banco vem depois da rede (4 depois de 3).** O Terraform do banco lê
+`vpc_id`, subnets e o security group do state da rede. Invertendo, ele falha
+procurando um state que ainda não existe.
 
 ### Se o cluster não subir
 

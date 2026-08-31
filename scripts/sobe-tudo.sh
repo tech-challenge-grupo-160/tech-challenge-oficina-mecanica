@@ -11,6 +11,7 @@
 #   ./scripts/sobe-tudo.sh --ambiente hom     # outro ambiente
 #   ./scripts/sobe-tudo.sh --so-infra         # para antes das aplicacoes
 #   ./scripts/sobe-tudo.sh --sim              # nao pergunta nada
+#   ./scripts/sobe-tudo.sh --assumir-pipelines  # aponta as pipelines para a sua conta
 #
 # CUSTO: o cluster EKS cobra US$ 0,10/hora enquanto existir e NAO e suspenso
 # junto com a sessao do lab, diferente das instancias EC2. Com o NAT Gateway,
@@ -27,12 +28,14 @@ AMBIENTE="dev"
 REGIAO="${AWS_REGION:-us-east-1}"
 SO_INFRA=0
 SEM_PERGUNTAR=0
+ASSUMIR_PIPELINES=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --ambiente) AMBIENTE="$2"; shift 2 ;;
     --so-infra) SO_INFRA=1; shift ;;
     --sim)      SEM_PERGUNTAR=1; shift ;;
+    --assumir-pipelines) ASSUMIR_PIPELINES=1; shift ;;
     -h|--help)  sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) vermelho "Argumento desconhecido: $1"; exit 1 ;;
   esac
@@ -104,14 +107,37 @@ terraform -chdir="$K8S/bootstrap" init -input=false >/dev/null
 terraform -chdir="$K8S/bootstrap" apply -auto-approve -input=false >/dev/null
 verde "  Backend pronto: s3://$BUCKET"
 
-# Sem isto as pipelines apontariam para o bucket da conta antiga.
+# As pipelines precisam saber em que bucket esta o state, e a variavel vive nos
+# repositorios da organizacao - compartilhada por todo mundo.
+#
+# Ai mora um risco que so aparece com mais de uma pessoa: cada membro tem a sua
+# conta do Learner Lab, logo o seu bucket. Se dois rodarem este script, o
+# segundo aponta as pipelines dos QUATRO repositorios para a conta dele, e os
+# merges do primeiro passam a aplicar no ambiente errado - sem erro nenhum, e
+# sem ninguem perceber.
+#
+# Por isso: sobrescreve em silencio so quando o valor ja e o mesmo, ou quando
+# nao ha valor. Se outra conta ja for a dona, avisa e nao mexe.
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-  for r in tech-challenge-oficina-mecanica tech-challenge-lambda-auth \
-           tech-challenge-infra-k8s tech-challenge-infra-database; do
-    gh variable set TF_STATE_BUCKET --body "$BUCKET" \
-      --repo "tech-challenge-grupo-160/$r" >/dev/null 2>&1 || true
-  done
-  cinza "  TF_STATE_BUCKET atualizado nos repositorios."
+  ATUAL="$(gh variable list --repo "tech-challenge-grupo-160/tech-challenge-infra-k8s" \
+    --json name,value --jq '.[]|select(.name=="TF_STATE_BUCKET")|.value' 2>/dev/null || echo '')"
+
+  if [ -n "$ATUAL" ] && [ "$ATUAL" != "$BUCKET" ] && [ "$ASSUMIR_PIPELINES" -eq 0 ]; then
+    echo
+    amarelo "  As pipelines apontam para OUTRA conta."
+    cinza   "  atual:  ...$(echo "$ATUAL" | tail -c 5)"
+    cinza   "  a sua:  ...$(echo "$BUCKET" | tail -c 5)"
+    cinza   "  Nao mexi. Seu ambiente sobe normalmente, mas os merges do time"
+    cinza   "  continuam aplicando na conta de quem configurou antes."
+    cinza   "  Para assumir as pipelines: --assumir-pipelines"
+  else
+    for r in tech-challenge-oficina-mecanica tech-challenge-lambda-auth \
+             tech-challenge-infra-k8s tech-challenge-infra-database; do
+      gh variable set TF_STATE_BUCKET --body "$BUCKET" \
+        --repo "tech-challenge-grupo-160/$r" >/dev/null 2>&1 || true
+    done
+    cinza "  TF_STATE_BUCKET atualizado nos repositorios."
+  fi
 fi
 
 # ------------------------------------------------------- funcoes Lambda
