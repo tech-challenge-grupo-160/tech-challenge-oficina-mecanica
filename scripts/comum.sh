@@ -147,3 +147,52 @@ confirmar() {
   read -r resposta
   [ "$resposta" = "sim" ]
 }
+
+# ------------------------------------------------- branch x ambiente
+#
+# O ambiente vem de --ambiente, nunca da branch. Derivar da branch faria o
+# mesmo comando se comportar de formas diferentes sem mudar - e o tipo de
+# magia que destroi o ambiente errado sem ninguem entender por que.
+#
+# Mas o padrao silencioso enfraquece isso: quem esta trabalhando em homolog e
+# roda o script sem argumento derruba o dev achando que mexeu em homologacao.
+# Dai o aviso: explicito continua explicito, e o engano fica dificil de
+# cometer em silencio.
+
+# A mesma associacao que as pipelines usam. Branch de feature nao tem ambiente
+# proprio - ela compartilha o dev, aplicado quando algo entra na develop.
+ambiente_da_branch() {
+  case "$1" in
+    main|master) echo "prod" ;;
+    homolog)     echo "hom" ;;
+    develop)     echo "dev" ;;
+    *)           return 1 ;;
+  esac
+}
+
+# Olha os quatro repositorios, e nao so o que contem o script: quem trabalha
+# no infra-k8s roda daqui por caminho relativo, e a branch que importa e a
+# de onde a pessoa acha que esta mexendo.
+avisar_se_a_branch_diverge() {
+  local raiz="$1" escolhido="$2" acao="$3"
+  local divergentes="" r branch sugerido
+
+  for r in tech-challenge-oficina-mecanica tech-challenge-infra-k8s \
+           tech-challenge-infra-database tech-challenge-lambda-auth; do
+    branch="$(git -C "$raiz/$r" rev-parse --abbrev-ref HEAD 2>/dev/null)" || continue
+    sugerido="$(ambiente_da_branch "$branch")" || continue
+    if [ "$sugerido" != "$escolhido" ]; then
+      divergentes="${divergentes}  ${r}: ${branch} (a pipeline aplicaria '${sugerido}')\n"
+    fi
+  done
+
+  [ -n "$divergentes" ] || return 0
+
+  echo
+  amarelo "ATENCAO: a branch de algum repositorio sugere outro ambiente."
+  printf '%b' "$divergentes"
+  echo
+  amarelo "O comando vai ${acao} o ambiente '${escolhido}'."
+  cinza  "O ambiente vem de --ambiente, nunca da branch. Se nao for esse o"
+  cinza  "alvo, cancele e rode de novo passando --ambiente <dev|hom|prod>."
+}

@@ -71,6 +71,8 @@ cinza "  state:    s3://$BUCKET"
 
 exigir_lab_role || true
 
+avisar_se_a_branch_diverge "$RAIZ" "$AMBIENTE" "CRIAR"
+
 if [ "$SEM_PERGUNTAR" -eq 0 ]; then
   echo
   amarelo "Isto cria infraestrutura que COBRA:"
