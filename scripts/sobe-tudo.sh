@@ -298,6 +298,15 @@ TMP="$(mktemp -d)"
 cp -r "$K8S/k8s/." "$TMP/"
 sed -i "s|newTag: .*|newTag: ${SHA}|; s|newName: .*|newName: ${ECR}|" "$TMP/nuvem/kustomization.yaml"
 kubectl apply -k "$TMP/nuvem" >/dev/null
+
+# O Cluster Autoscaler vive em kube-system, fora do overlay da aplicacao. E ele
+# que cria node quando o HPA pede mais pod do que cabe. Os dois placeholders sao
+# resolvidos aqui pelo mesmo motivo do newTag acima: o manifest serve os tres
+# ambientes, e o nome do cluster entra na tag de descoberta.
+sed -i "s|__CLUSTER__|${CLUSTER}|g; s|__REGIAO__|${REGIAO}|g" \
+  "$TMP/cluster-autoscaler/deployment.yaml"
+kubectl apply -k "$TMP/cluster-autoscaler" >/dev/null
+
 rm -rf "$TMP"
 
 cinza "  Aguardando rollout (a migration roda no startup)..."

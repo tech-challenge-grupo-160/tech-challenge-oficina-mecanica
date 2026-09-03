@@ -28,6 +28,10 @@ Rotas, autenticação, payloads principais, fluxo da OS, monitoramento e tratame
 
 Infra do projeto, como executar terraform, explicação k8s e docker.
 
+### [ROLLBACK-BANCO.md](ROLLBACK-BANCO.md)
+
+Como voltar atrás no banco gerenciado: por que `kubectl rollout undo` não desfaz migration, snapshot manual antes de operação arriscada, restore por snapshot ou point-in-time, e o caminho de emergência de volta ao PostgreSQL no cluster.
+
 ### [MATRIZ_AUTORIZACAO.md](MATRIZ_AUTORIZACAO.md)
 
 Classificação das 53 rotas entre públicas, autenticadas, de cliente e internas, com o critério de sensibilidade e o que o API Gateway deve rotear.
