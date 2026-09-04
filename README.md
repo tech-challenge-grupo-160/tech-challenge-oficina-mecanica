@@ -99,6 +99,18 @@ bash scripts/renova-secrets.sh
 > bash scripts/derruba-tudo.sh --so-conferir
 > ```
 
+### Desenvolvimento local
+
+Para rodar só a API, o Docker Compose do [início rápido](#com-docker) resolve.
+
+Para mexer nos manifests do Kubernetes sem cluster na nuvem, existe um ambiente
+kind em [`local/`](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s/tree/develop/local),
+no `infra-k8s`. **É só desenvolvimento** — nenhum pipeline usa kind desde 04/09,
+quando os workflows por runner self-hosted foram aposentados.
+
+O mapa completo de onde cada ambiente roda está em
+[docs/INFRAESTRUTURA.md](docs/INFRAESTRUTURA.md).
+
 ## Estrutura do repositório
 
 ```text
