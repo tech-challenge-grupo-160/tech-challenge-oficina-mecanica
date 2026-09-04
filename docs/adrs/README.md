@@ -7,6 +7,7 @@ Decisões arquiteturais **permanentes** do projeto — aquelas que, uma vez toma
 | ADR | Título | Status | Data |
 |---|---|---|---|
 | [0001](0001-segregacao-em-quatro-repositorios.md) | Segregar o monorepo em quatro repositórios | Proposta | 2026-08-11 |
+| [0002](0002-estrategia-de-escalabilidade.md) | Escalar em duas camadas: HPA por utilização, Cluster Autoscaler por pod pendente | Aceita | 2026-09-04 |
 
 ## ADR ou RFC?
 
