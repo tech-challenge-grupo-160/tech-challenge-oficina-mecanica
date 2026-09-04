@@ -104,7 +104,24 @@ if [ -f "$STATE_BOOT" ] && ! grep -q "$BUCKET" "$STATE_BOOT" 2>/dev/null; then
 fi
 
 terraform -chdir="$K8S/bootstrap" init -input=false >/dev/null
-terraform -chdir="$K8S/bootstrap" apply -auto-approve -input=false >/dev/null
+
+# Com o bucket ja de pe, o apply roda SEM refresh. Nao e teimosia: em 04/09 o
+# SCP do Learner Lab passou a negar `s3:GetBucketObjectLockConfiguration`, e o
+# provider da AWS faz essa leitura toda vez que atualiza um aws_s3_bucket. O
+# apply morria com AccessDenied antes de chegar em qualquer outra etapa.
+#
+#   AccessDenied: ... explicit deny in a service control policy
+#
+# Nao ha o que perder aqui. Bucket e tabela de lock sao criados uma vez e nunca
+# mudam, e o `plan -refresh=false` confirma que o state ja bate com a
+# configuracao. O caminho de conta nova continua igual, com refresh, porque la
+# ha recurso a criar de verdade - se o SCP tambem barrar aquele fluxo, o erro
+# aparece na cara e nao escondido atras de um -refresh=false.
+if aws s3api head-bucket --bucket "$BUCKET" >/dev/null 2>&1; then
+  terraform -chdir="$K8S/bootstrap" apply -auto-approve -input=false -refresh=false >/dev/null
+else
+  terraform -chdir="$K8S/bootstrap" apply -auto-approve -input=false >/dev/null
+fi
 verde "  Backend pronto: s3://$BUCKET"
 
 # As pipelines precisam saber em que bucket esta o state, e a variavel vive nos
@@ -298,6 +315,15 @@ TMP="$(mktemp -d)"
 cp -r "$K8S/k8s/." "$TMP/"
 sed -i "s|newTag: .*|newTag: ${SHA}|; s|newName: .*|newName: ${ECR}|" "$TMP/nuvem/kustomization.yaml"
 kubectl apply -k "$TMP/nuvem" >/dev/null
+
+# O Cluster Autoscaler vive em kube-system, fora do overlay da aplicacao. E ele
+# que cria node quando o HPA pede mais pod do que cabe. Os dois placeholders sao
+# resolvidos aqui pelo mesmo motivo do newTag acima: o manifest serve os tres
+# ambientes, e o nome do cluster entra na tag de descoberta.
+sed -i "s|__CLUSTER__|${CLUSTER}|g; s|__REGIAO__|${REGIAO}|g" \
+  "$TMP/cluster-autoscaler/deployment.yaml"
+kubectl apply -k "$TMP/cluster-autoscaler" >/dev/null
+
 rm -rf "$TMP"
 
 cinza "  Aguardando rollout (a migration roda no startup)..."

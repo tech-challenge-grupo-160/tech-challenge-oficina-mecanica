@@ -173,6 +173,12 @@ O `derruba-tudo.sh` desfaz na ordem inversa, e a inversão importa:
 4. **Backend de state** — só com `--com-bootstrap`
 5. **Conferência** do que ficou cobrando
 
+> **O banco sai sem deixar cópia.** A instância é criada com
+> `skip_final_snapshot = true`, então o passo 2 apaga os dados e pronto. Se
+> houver algo no RDS que você queira de volta, tire um snapshot manual **antes**
+> de rodar o script — o procedimento está em
+> [ROLLBACK-BANCO.md](ROLLBACK-BANCO.md).
+
 ### Por que as Lambdas saem primeiro
 
 **Elas não estão no Terraform.** São publicadas pelo pipeline com

@@ -17,9 +17,14 @@
 
 name: Deploy EKS
 
+# `master`, e nao `main`: a branch de producao deste repositorio nasceu antes de
+# o GitHub trocar o padrao, e so os tres repositorios novos usam `main`. Ate
+# 03/09 o gatilho abaixo dizia `main` - branch que nao existe aqui. O deploy de
+# producao nunca teria disparado, e o `ref_name == 'main'` nunca resolveria para
+# `producao`: um push em `master` cairia no ambiente de homologacao.
 on:
   push:
-    branches: [homolog, main]
+    branches: [homolog, master]
   workflow_dispatch:
     inputs:
       ambiente:
@@ -84,7 +89,7 @@ jobs:
     needs: ci
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    environment: ${{ inputs.ambiente || (github.ref_name == 'main' && 'producao' || 'homologacao') }}
+    environment: ${{ inputs.ambiente || (github.ref_name == 'master' && 'producao' || 'homologacao') }}
 
     steps:
       - name: Checkout da aplicacao
@@ -120,7 +125,7 @@ jobs:
       - name: Resolver ambiente
         id: amb
         run: |
-          AMBIENTE="${{ inputs.ambiente || (github.ref_name == 'main' && 'producao' || 'homologacao') }}"
+          AMBIENTE="${{ inputs.ambiente || (github.ref_name == 'master' && 'producao' || 'homologacao') }}"
           case "$AMBIENTE" in
             desenvolvimento) SUFIXO="dev" ;;
             producao)        SUFIXO="prod" ;;
@@ -169,6 +174,28 @@ jobs:
           aws eks update-kubeconfig \
             --region "${{ vars.AWS_REGION || 'us-east-1' }}" \
             --name "${{ steps.amb.outputs.cluster }}"
+
+      # Componente do cluster, nao da aplicacao: vive em kube-system e fica fora
+      # do overlay k8s/nuvem, que forca `namespace: oficina-mecanica` em tudo o
+      # que passa por ele. Sem o autoscaler o HPA escala pod ate acabar o espaco
+      # nos nodes e para de escalar. Ver issue #60.
+      - name: Aplicar o Cluster Autoscaler
+        working-directory: infra-k8s/k8s/cluster-autoscaler
+        run: |
+          CLUSTER="${{ steps.amb.outputs.cluster }}"
+          REGIAO="${{ vars.AWS_REGION || 'us-east-1' }}"
+          sed -i "s|__CLUSTER__|${CLUSTER}|g; s|__REGIAO__|${REGIAO}|g" deployment.yaml
+
+          # Um placeholder que sobrevive vira um autoscaler que nao descobre
+          # node group nenhum e fica rodando sem fazer nada - falha silenciosa.
+          if ! grep -q "k8s.io/cluster-autoscaler/${CLUSTER}" deployment.yaml; then
+            echo "::error::Placeholder __CLUSTER__ nao foi substituido no manifest do autoscaler."
+            exit 1
+          fi
+
+          kubectl apply -k .
+          kubectl rollout status deployment/cluster-autoscaler \
+            --namespace kube-system --timeout=180s
 
       - name: Criar namespace
         run: kubectl apply -f infra-k8s/k8s/nuvem/namespace.yaml
@@ -237,7 +264,7 @@ jobs:
             echo ""
             echo "| Item | Valor |"
             echo "|---|---|"
-            echo "| Ambiente | ${{ inputs.ambiente || (github.ref_name == 'main' && 'producao' || 'homologacao') }} |"
+            echo "| Ambiente | ${{ inputs.ambiente || (github.ref_name == 'master' && 'producao' || 'homologacao') }} |"
             echo "| Cluster | \`${{ steps.amb.outputs.cluster }}\` |"
             echo "| Imagem | \`${GITHUB_SHA::12}\` |"
             echo "| Namespace | \`${{ env.K8S_NAMESPACE }}\` |"
