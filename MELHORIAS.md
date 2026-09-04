@@ -33,10 +33,14 @@ Nao ha uma classe base para entidades com campos comuns (`Id`, `CriadoEm`, `Atua
 
 ### 9. Secrets no Terraform em plain text
 
-**Severidade:** Alta  
-**Arquivo:** `infra/main.tf` (linhas 109-128)
+**Severidade:** ~~Alta~~ Baixa — resolvido para a nuvem em 04/09  
+**Arquivo:** `local/main.tf` no [tech-challenge-infra-k8s](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s)
 
-Os secrets do PostgreSQL e JWT sao passados como variaveis Terraform comuns. Eles ficam no state file em plain text. Considerar usar um secret manager (Vault, AWS Secrets Manager) ou ao menos criptografar o state.
+Os secrets do PostgreSQL e JWT eram passados como variaveis Terraform comuns e ficavam no state em plain text.
+
+Na nuvem isso nao existe mais: a chave do JWT e a credencial do banco vivem no AWS Secrets Manager, e o deploy monta um Secret do Kubernetes a partir delas a cada execucao, sem nunca versionar valor. Ver RFC-0002 e `secrets.tf` no repositorio de infraestrutura.
+
+O que sobrou e o ambiente kind local, que foi para `local/` no `infra-k8s` na issue #65. Ali os valores sao de desenvolvimento (`dev-secret-key-minimo-32-caracteres-ok`), o state e local e o cluster e descartavel — continua nao sendo bonito, mas nao e mais risco.
 
 ---
 
