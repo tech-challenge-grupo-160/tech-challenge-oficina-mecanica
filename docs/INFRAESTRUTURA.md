@@ -1,194 +1,110 @@
-# Terraform — Cluster Kubernetes local com kind
+# Infraestrutura
 
-Este README descreve a configuração Terraform usada para provisionar um cluster Kubernetes local com **kind** (Kubernetes in Docker), sem necessidade de conta em cloud.
+Onde cada coisa roda, e onde cada coisa é definida.
 
-## Visão geral da infraestrutura
+> Este documento descrevia, até 04/09, um cluster **kind** local como se fosse a
+> infraestrutura do projeto. Não é mais: a infraestrutura é a AWS, e o kind
+> sobrou como ambiente de desenvolvimento. Reescrito na
+> [#65](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/65).
 
-A infraestrutura do projeto combina três camadas principais:
+## Os três ambientes, e o quarto que não é ambiente
 
-- `infra/`: scripts Terraform para criar um cluster Kind local, namespace e recursos de suporte.
-- `k8s/`: manifests Kubernetes para implantar a API e o banco de dados PostgreSQL no cluster.
-- `docker/`: Dockerfiles que geram a imagem da API e fornecem um exemplo de extensão para o Postgres.
+| | Onde roda | Banco | Quem publica |
+|---|---|---|---|
+| `dev`, `hom`, `prod` | EKS, na AWS | RDS PostgreSQL gerenciado | workflow `Deploy EKS` ou `scripts/sobe-tudo.sh` |
+| Desenvolvimento local | kind, na sua máquina | PostgreSQL dentro do cluster | você, à mão |
+| Só rodar a API | Docker Compose | contêiner do Compose | você, à mão |
 
-O fluxo de implantação segue estes passos:
+A última linha é a que resolve o dia a dia. **Se você só quer a API de pé, use o
+Docker Compose** — está no [SETUP.md](SETUP.md) e sobe em segundos. O kind serve
+quando o que você está mexendo é o Kubernetes em si.
 
-1. Provisionar o cluster local com Terraform.
-2. Construir a imagem Docker da API.
-3. Carregar a imagem no cluster Kind.
-4. Aplicar os manifests Kubernetes para criar namespace, deployments, services e HPA.
+## Nada disso é definido aqui
 
-## Estrutura dos arquivos
+Este repositório é a **aplicação**. A infraestrutura vive em outros dois, por
+decisão da [ADR-0001](adrs/0001-segregacao-em-quatro-repositorios.md):
 
-```text
-infra/
-├── main.tf                   # Criação do cluster kind, namespace e metrics-server
-├── variables.tf              # Variáveis configuráveis (nome, portas, réplicas)
-├── versions.tf               # Providers e versões mínimas exigidas
-├── outputs.tf                # Valores exportados após o apply
-├── inventories/
-│   ├── dev/terraform.tfvars  # Configuração do ambiente de desenvolvimento
-│   ├── hom/terraform.tfvars  # Configuração do ambiente de homologação
-│   └── prod/terraform.tfvars # Configuração do ambiente de produção
-└── .gitignore                # Exclui state e credenciais do Git
+| Repositório | O que define |
+|---|---|
+| [tech-challenge-infra-k8s](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s) | VPC, EKS, API Gateway, ALB, ECR, segredos, manifests do Kubernetes, Cluster Autoscaler — e o `local/`, com o kind |
+| [tech-challenge-infra-database](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-database) | RDS PostgreSQL Multi-AZ, subnet group, credencial no Secrets Manager |
 
-k8s/
-├── kustomization.yaml
-├── namespace.yaml
-├── api/
-│   ├── configmap.yaml
-│   ├── secret.yaml
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   └── hpa.yaml
-└── postgres/
-    ├── configmap.yaml
-    ├── secret.yaml
-    ├── pvc.yaml
-    ├── deployment.yaml
-    └── service.yaml
+O que fica **neste** repositório é o que atravessa os quatro: os scripts de ciclo
+de vida em `scripts/`, e a documentação que não pertence a um repositório só.
 
-docker/
-├── backend/
-│   └── Dockerfile
-└── postgres/
-    └── Dockerfile
-```
+Até 04/09 havia cópias de `infra/` e `k8s/` aqui, sobras do split. Eram duplicata
+estrita do `infra-k8s` e já tinham começado a divergir — foram removidas.
 
-## Kubernetes
+## Subir e derrubar o ambiente na nuvem
 
-O `kustomization.yaml` orquestra os recursos abaixo, criando-os no namespace `oficina-mecanica`:
-
-- `namespace.yaml`: define o namespace do cluster.
-- `postgres/`: configura o banco de dados PostgreSQL, incluindo configmap, secret, PVC, deployment e service.
-- `api/`: configura a API da aplicação, com configmap, secret, deployment, service e HPA.
-
-A API é exposta no cluster por um `Service` do tipo `NodePort`, com porta interna `80` apontando para `8080` no pod. O deployment da API usa `imagePullPolicy: Never`, o que significa que a imagem é carregada localmente no Kind antes de aplicar os manifests.
-
-O `HorizontalPodAutoscaler` da API escala entre `2` e `10` réplicas com base em uso de CPU (`70%`) e memória (`75%`).
-
-O PostgreSQL utiliza uma estratégia `Recreate` no deployment para evitar múltiplos pods escrevendo no mesmo volume simultaneamente. O banco monta um `PersistentVolumeClaim` de `5Gi` em `/var/lib/postgresql/data`.
-
-## Docker
-
-O `docker/backend/Dockerfile` builda a aplicação .NET:
-
-- restaura os projetos da solução
-- publica a API em Release
-- usa a imagem `mcr.microsoft.com/dotnet/aspnet:10.0-alpine` para execução
-- expõe a porta `8080`
-- define `ASPNETCORE_URLS=http://+:8080`
-
-O `docker/postgres/Dockerfile` estende a imagem `postgres:16` e instala o `pgagent`, usando o Debian package manager.
-
-## Pré-requisitos
-
-Você precisa de **três ferramentas** instaladas:
-
-### 1. Docker Desktop
-
-Já deve estar instalado (`docker-compose`). Confirme com:
+Dois comandos, e eles orquestram os quatro repositórios:
 
 ```bash
-docker --version
+bash scripts/sobe-tudo.sh
 ```
-
-### 2. Terraform
-
-Baixe o instalador para Windows em: https://developer.hashicorp.com/terraform/install
-
-Ou instale via **winget**:
-
-```powershell
-winget install HashiCorp.Terraform
-```
-
-Confirme:
 
 ```bash
-terraform --version
-# Deve mostrar >= 1.6.0
+bash scripts/derruba-tudo.sh
 ```
 
-### 3. kind
+A ordem das etapas, as dependências entre elas e o que fazer quando dá errado
+estão em [CICLO-DE-VIDA.md](CICLO-DE-VIDA.md).
 
-Baixe o binário para Windows em: https://kind.sigs.k8s.io/docs/user/quick-start/#installing-from-release-binaries
+> **O cluster cobra sozinho.** O control plane do EKS custa US$ 0,10/hora
+> enquanto existir e **não** é suspenso junto com a sessão do Learner Lab.
+> Um ambiente de pé custa cerca de US$ 5/dia. Derrube ao terminar.
 
-Ou instale via **winget**:
+## Desenvolvimento local com kind
 
-```powershell
-winget install Kubernetes.kind
+**Nenhum pipeline usa kind.** Até 04/09, os workflows `homolog-ci-cd-self-hosted.yml`
+e `master-ci-cd-self-hosted.yml` publicavam num cluster kind por um runner
+self-hosted Windows. Foram removidos: um runner na máquina de uma pessoa não é
+ambiente de homologação nem de produção, e enquanto eles existissem qualquer
+promoção de branch acordava pipeline sem runner.
+
+O kind continua útil para testar manifests antes de mandá-los para a nuvem. Um
+`kubectl apply` local pega erro de YAML, de probe e de configuração em segundos,
+sem cluster EKS cobrando e sem esperar 15 minutos de apply.
+
+A configuração está em
+[`local/`](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s/tree/develop/local),
+no `infra-k8s`, com o passo a passo no README de lá.
+
+**A diferença que importa entre local e nuvem** está no banco. O kustomization da
+raiz de `k8s/` inclui `postgres/` e roda o banco dentro do cluster; o overlay
+`k8s/nuvem` **não** inclui, porque na nuvem o banco é o RDS. Aplicar o
+kustomization errado na nuvem criaria um segundo banco, vazio, e a API
+conversaria com o errado.
+
+## Como a API chega ao usuário
+
+```
+cliente
+  → API Gateway (HTTP API)          rota /auth pública, /api/v1 atrás do authorizer JWT
+  → VPC Link → ALB interno          balanceador em subnet privada, alvos por instância
+  → NodePort 30080 nos nodes        kube-proxy encaminha ao pod
+  → API .NET                        lê a connection string e a chave do JWT de um Secret
+  → RDS PostgreSQL                  Multi-AZ, em subnet privada, sem acesso público
 ```
 
-Confirme:
+A autenticação por CPF é uma Lambda fora do cluster, e um segundo Lambda
+authorizer valida o JWT na borda do gateway — o desenho e o porquê estão na
+[RFC-0002](rfcs/0002-autenticacao-por-cpf-e-api-gateway.md).
 
-```bash
-kind --version
-```
+## Escalabilidade
 
-## Como executar
+Duas camadas: o HPA escala **pod** por utilização (2 a 10 réplicas), e o Cluster
+Autoscaler escala **node** quando um pod não cabe em lugar nenhum (2 a 4 nodes).
 
-### 1. Instalar dependências
+A análise completa, com o teste de carga medido em `dev`, está na
+[ADR-0002](adrs/0002-estrategia-de-escalabilidade.md).
 
-```powershell
-winget install HashiCorp.Terraform
-winget install Kubernetes.kind
-```
+## Imagem da API
 
-### 2. Provisionar o cluster com Terraform
+O `Dockerfile` fica em `docker/backend/`, neste repositório — a imagem é
+artefato da aplicação, não da infraestrutura. O deploy a publica no ECR com tag
+do SHA do commit, e é essa tag que o rollback usa.
 
-```bash
-cd infra
-terraform init
-terraform apply -var-file="inventories/dev/terraform.tfvars"
-```
-
-### 3. Construir a imagem Docker da API
-
-```bash
-cd ..
-docker build -f docker/backend/Dockerfile -t oficina-mecanica-api:local .
-```
-
-### 4. Carregar a imagem no cluster Kind
-
-```bash
-kind load docker-image oficina-mecanica-api:local --name oficina-mecanica
-```
-
-### 5. Aplicar os manifests Kubernetes
-
-```bash
-kubectl apply -k k8s/
-kubectl rollout restart deployment/oficina-mecanica-api -n oficina-mecanica
-```
-
-### 6. Aguardar os pods ficarem prontos
-
-```bash
-kubectl get pods -n oficina-mecanica -w
-```
-
-### 7. Expor a API (necessário no Windows)
-
-```bash
-kubectl port-forward -n oficina-mecanica svc/oficina-mecanica-api 8080:80
-```
-
-### Endpoints disponíveis
-
-- Health check: `http://localhost:8080/health`
-- Swagger: `http://localhost:8080/swagger`
-- Login:
-
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
-```
-
-## Como destruir
-
-```bash
-cd infra
-terraform destroy -var-file="inventories/dev/terraform.tfvars"
-```
+O rollback da aplicação sai no resumo de cada execução do workflow. O rollback do
+**banco** é outra coisa, e tem documento próprio:
+[ROLLBACK-BANCO.md](ROLLBACK-BANCO.md).

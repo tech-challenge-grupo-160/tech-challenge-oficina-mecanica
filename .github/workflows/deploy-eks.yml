@@ -1,10 +1,12 @@
 # Deploy da API no cluster EKS (issue #52 / F3-18).
 #
-# Substitui o caminho dos workflows *-ci-cd-self-hosted.yml, que publicavam num
-# cluster kind local por runner self-hosted Windows. Aqueles seguem existindo
-# enquanto a issue #65 nao aposentar o fluxo kind.
+# Unico caminho de deploy do projeto desde 04/09. Substituiu os workflows
+# *-ci-cd-self-hosted.yml, que publicavam num cluster kind local por runner
+# self-hosted Windows - removidos na issue #65. O kind sobrou como ambiente de
+# desenvolvimento, em `local/` no tech-challenge-infra-k8s, e nenhum pipeline
+# depende dele.
 #
-# O que muda em relacao ao anterior:
+# O que mudou em relacao ao caminho antigo:
 #
 #   - a imagem vai para o ECR com tag versionada pelo SHA, em vez de
 #     `kind load docker-image` de uma imagem `:local`;
