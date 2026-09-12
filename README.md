@@ -133,6 +133,17 @@ docs/
 dotnet test
 ```
 
+## Logs e observabilidade
+
+A API escreve um objeto JSON por linha no stdout, pronto para coleta pelo
+Datadog Agent. Cada evento contém `timestamp`, `nivel`, `mensagem`, `servico`,
+`ambiente`, `rota`, `status`, `duracao` e `traceId`. CPF, JWT, tokens, senhas
+e chaves de API são mascarados antes da escrita.
+
+O nível pode ser configurado por ambiente com as seções `Logging:LogLevel` dos
+arquivos `appsettings.Development.json` e `appsettings.Production.json`, ou
+por variáveis como `Logging__LogLevel__Default`.
+
 ## Observações
 
 - Swagger só é exposto em `Development`.
