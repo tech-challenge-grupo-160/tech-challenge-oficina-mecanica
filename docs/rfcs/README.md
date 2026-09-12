@@ -8,9 +8,9 @@ Propostas técnicas **em discussão**. Uma RFC existe para o grupo debater antes
 |---|---|---|---|
 | [0001](0001-escolha-da-nuvem.md) | Escolha da nuvem — AWS | Em revisão | [#56](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/56) |
 | [0002](0002-autenticacao-por-cpf-e-api-gateway.md) | Estratégia de autenticação por CPF e escolha do API Gateway | Rascunho | [#35](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/35) |
-| — | Escolha da ferramenta de observabilidade | Pendente | [#66](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/66) |
+| [0003](0003-escolha-da-ferramenta-de-observabilidade.md) | Escolha da ferramenta de observabilidade | Em revisão | [#66](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/66) |
 
-A pendente é da Sprint 1 e **bloqueia o épico de observabilidade inteiro**. Enquanto não for fechada, o trabalho que depende dela avança sobre premissas, não sobre decisões.
+A RFC-0003 registra a comparação e a decisão proposta para a ferramenta de observabilidade. O status só muda para `Aceita` depois da revisão e do merge do PR correspondente.
 
 > A RFC-0001 tem uma seção de [**Emendas**](0001-escolha-da-nuvem.md#emendas) com as decisões tomadas depois da redação original: RDS Multi-AZ (revertendo a escolha por Single-AZ), o VPC Endpoint do Secrets Manager e a correção do API Gateway para HTTP API, que a RFC-0002 decidiu.
 >
