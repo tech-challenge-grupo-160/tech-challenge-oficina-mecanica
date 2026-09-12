@@ -179,17 +179,16 @@ if [ "$SO_INFRA" -eq 0 ]; then
     dotnet tool install -g Amazon.Lambda.Tools >/dev/null 2>&1 || true
   fi
 
-  dotnet lambda deploy-function "tc-grupo160-auth-${AMBIENTE}" \
+dotnet lambda deploy-function "tc-grupo160-auth-${AMBIENTE}" \
     --project-location "$LAMBDA/Fiap.TechChallenge.OficinaMecanica.AuthLambda" \
-    --configuration Release --function-role "$CONTA_ROLE" --region "$REGIAO" >/dev/null
+    --configuration Release --function-role "$CONTA_ROLE" --region "$REGIAO"
 
-  # Mesmo artefato, outro handler. Sem --function-handler, publicaria a funcao
+# Mesmo artefato, outro handler. Sem --function-handler, publicaria a funcao
   # de autenticacao com o nome do authorizer, e sem erro nenhum no deploy.
   dotnet lambda deploy-function "tc-grupo160-authorizer-${AMBIENTE}" \
     --project-location "$LAMBDA/Fiap.TechChallenge.OficinaMecanica.AuthLambda" \
     --configuration Release --function-role "$CONTA_ROLE" --region "$REGIAO" \
-    --function-handler "Fiap.TechChallenge.OficinaMecanica.AuthLambda::Fiap.TechChallenge.OficinaMecanica.AuthLambda.AuthorizerFunction::FunctionHandler" >/dev/null
-  verde "  Funcoes publicadas."
+    --function-handler "Fiap.TechChallenge.OficinaMecanica.AuthLambda::Fiap.TechChallenge.OficinaMecanica.AuthLambda.AuthorizerFunction::FunctionHandler"
 fi
 
 # ------------------------------------------------------------------- rede
@@ -198,7 +197,7 @@ etapa 3 "$TOTAL" "Rede, cluster, ECR, gateway e balanceador"
 tf_init "$K8S/infra" "$AMBIENTE/rede.tfstate" "$BUCKET" "$REGIAO"
 
 # Sem as funcoes publicadas, as permissoes do gateway nao podem ser criadas.
-VAR_LAMBDAS=""
+VAR_LAMBDAS="-var=lambdas_publicadas=true"
 [ "$SO_INFRA" -eq 1 ] && VAR_LAMBDAS="-var=lambdas_publicadas=false"
 
 # shellcheck disable=SC2086
@@ -272,16 +271,31 @@ SG_LAMBDA="$(aws ec2 describe-security-groups \
 aws lambda wait function-updated --function-name "tc-grupo160-auth-${SUFIXO}"
 aws lambda update-function-configuration \
   --function-name "tc-grupo160-auth-${SUFIXO}" \
-  --environment "{\"Variables\":{\"JWT_SECRET_ID\":\"$SEGREDO_JWT\",\"DB_SECRET_ID\":\"$SEGREDO_BANCO\"}}" \
+  --environment "{\"Variables\":{\"JWT_SECRET_ID\":\"$SEGREDO_JWT\",\"DB_SECRET_ID\":\"$SEGREDO_BANCO\",\"DD_TRACE_ENABLED\":\"true\"}}" \
   --vpc-config "{\"SubnetIds\":${SUBNETS},\"SecurityGroupIds\":[\"${SG_LAMBDA}\"]}" >/dev/null
 aws lambda wait function-updated --function-name "tc-grupo160-auth-${SUFIXO}"
 
 aws lambda wait function-updated --function-name "tc-grupo160-authorizer-${SUFIXO}"
 aws lambda update-function-configuration \
   --function-name "tc-grupo160-authorizer-${SUFIXO}" \
-  --environment "{\"Variables\":{\"JWT_SECRET_ID\":\"$SEGREDO_JWT\",\"JWT_ISSUER\":\"Fiap.TechChallenge.OficinaMecanica\",\"JWT_AUDIENCE\":\"Fiap.TechChallenge.OficinaMecanica\"}}" >/dev/null
+  --environment "{\"Variables\":{\"JWT_SECRET_ID\":\"$SEGREDO_JWT\",\"JWT_ISSUER\":\"Fiap.TechChallenge.OficinaMecanica\",\"JWT_AUDIENCE\":\"Fiap.TechChallenge.OficinaMecanica\",\"DD_TRACE_ENABLED\":\"true\"}}" >/dev/null
 verde "  Funcoes configuradas."
 
+# A instrumentacao vem depois da configuracao das variaveis da aplicacao:
+# update-function-configuration substitui o mapa inteiro e apagaria as DD_* se
+# o datadog-ci rodasse antes. O datadog-ci adiciona as camadas e as variaveis
+# necessarias sem colocar a API key em texto puro na funcao.
+DATADOG_SECRET_ARN="$(terraform -chdir="$K8S/infra" output -raw datadog_api_key_secret_arn 2>/dev/null || echo '')"
+if [ -n "$DATADOG_SECRET_ARN" ] && [ "$DATADOG_SECRET_ARN" != "null" ]; then
+  exigir_ferramentas npx
+  DATADOG_API_KEY_SECRET_ARN="$DATADOG_SECRET_ARN" \
+    DATADOG_SITE="datadoghq.com" \
+    npx --yes @datadog/datadog-ci@latest lambda instrument \
+    -f "tc-grupo160-auth-${AMBIENTE}" \
+    -f "tc-grupo160-authorizer-${AMBIENTE}" \
+    -r "$REGIAO" -v 25 -e 99
+  verde "  Lambdas instrumentadas com Datadog."
+fi
 # -------------------------------------------------------------------- API
 
 etapa 7 "$TOTAL" "API no cluster"
