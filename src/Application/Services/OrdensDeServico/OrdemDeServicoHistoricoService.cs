@@ -19,7 +19,7 @@ public sealed class OrdemDeServicoHistoricoService
         IOrdemServicoHistoricoRepository historicoRepository,
         IUsuarioAutenticadoService usuarioAutenticadoService,
         IClock clock,
-        IBusinessMetrics? businessMetrics = null)
+        IBusinessMetrics businessMetrics)
     {
         _historicoRepository = historicoRepository;
         _usuarioAutenticadoService = usuarioAutenticadoService;
