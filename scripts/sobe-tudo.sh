@@ -330,6 +330,15 @@ cp -r "$K8S/k8s/." "$TMP/"
 sed -i "s|newTag: .*|newTag: ${SHA}|; s|newName: .*|newName: ${ECR}|" "$TMP/nuvem/kustomization.yaml"
 kubectl apply -k "$TMP/nuvem" >/dev/null
 
+# Garante a configuracao do tracer mesmo quando o overlay recebido do
+# repositorio de infraestrutura estiver desatualizado. O Agent usa o IP do
+# node onde cada pod roda; nunca fixe um IP de node neste script.
+kubectl patch deployment oficina-mecanica-api \
+  --namespace oficina-mecanica \
+  --type strategic \
+  --patch "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"api\",\"env\":[{\"name\":\"DD_SERVICE\",\"value\":\"oficina-mecanica-api\"},{\"name\":\"DD_ENV\",\"value\":\"${AMBIENTE}\"},{\"name\":\"DD_AGENT_HOST\",\"valueFrom\":{\"fieldRef\":{\"fieldPath\":\"status.hostIP\"}}}]}]}}}}" \
+  >/dev/null
+
 # O Cluster Autoscaler vive em kube-system, fora do overlay da aplicacao. E ele
 # que cria node quando o HPA pede mais pod do que cabe. Os dois placeholders sao
 # resolvidos aqui pelo mesmo motivo do newTag acima: o manifest serve os tres
