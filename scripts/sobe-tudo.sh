@@ -98,9 +98,13 @@ etapa 1 "$TOTAL" "Backend de state (S3 + DynamoDB)"
 # conta, reaproveita-lo faria o Terraform tentar reconciliar recursos que nao
 # existem aqui - por isso a checagem.
 STATE_BOOT="$K8S/bootstrap/terraform.tfstate"
-if [ -f "$STATE_BOOT" ] && ! grep -q "$BUCKET" "$STATE_BOOT" 2>/dev/null; then
-  amarelo "  State local do bootstrap e de outra conta. Movendo para .antigo."
-  mv "$STATE_BOOT" "$STATE_BOOT.antigo-$(date +%Y%m%d%H%M%S)"
+if [ -f "$STATE_BOOT" ]; then
+  # Se o state local existir mas nao contiver o bucket nem recursos registrados
+  # para a conta atual, move para antigo para forcar o Terraform a importar ou usar o correto.
+  if ! grep -q "$BUCKET" "$STATE_BOOT" 2>/dev/null || ! grep -q "aws_s3_bucket" "$STATE_BOOT" 2>/dev/null; then
+    amarelo "  State local do bootstrap invalido ou de outra conta. Movendo para .antigo."
+    mv "$STATE_BOOT" "$STATE_BOOT.antigo-$(date +%Y%m%d%H%M%S)"
+  fi
 fi
 
 terraform -chdir="$K8S/bootstrap" init -input=false >/dev/null
