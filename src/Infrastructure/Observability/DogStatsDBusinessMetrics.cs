@@ -9,6 +9,7 @@ public sealed class DogStatsDBusinessMetrics : IBusinessMetrics, IDisposable
 {
     private const string OrdersCreatedMetric = "oficina_mecanica.orders.created";
     private const string OrderFailuresMetric = "oficina_mecanica.orders.creation_failed";
+    private const string OrderStageDurationMetric = "oficina_mecanica.orders.stage_duration";
     private readonly DogStatsdService _client;
 
     public DogStatsDBusinessMetrics(IHostEnvironment environment, ILogger<DogStatsDBusinessMetrics> logger)
@@ -42,6 +43,19 @@ public sealed class DogStatsDBusinessMetrics : IBusinessMetrics, IDisposable
     public void RecordOrderCreationFailure(string reason)
     {
         _client.Increment(OrderFailuresMetric, tags: [$"reason:{reason}"]);
+    }
+
+    public void RecordOrderStageDuration(string stage, double durationSeconds)
+    {
+        if (durationSeconds < 0)
+        {
+            return;
+        }
+
+        _client.Histogram(
+            OrderStageDurationMetric,
+            durationSeconds,
+            tags: [$"stage:{stage}"]);
     }
 
     public void Dispose()
