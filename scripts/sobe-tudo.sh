@@ -314,10 +314,10 @@ kubectl apply -f "$K8S/k8s/nuvem/namespace.yaml" >/dev/null
 
 # O Secret e montado do Secrets Manager a cada deploy, nunca versionado. Sem jq
 # de proposito: ele nao vem no Git Bash do Windows.
-CONN="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_BANCO" \
+CONN="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_BANCO" --region "$REGIAO" \
   --query SecretString --output text \
   | grep -o '"connectionString":"[^"]*"' | sed 's/^"connectionString":"//; s/"$//')"
-JWT="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_JWT" \
+JWT="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_JWT" --region "$REGIAO" \
   --query SecretString --output text)"
 
 kubectl create secret generic api-secret --namespace oficina-mecanica \
