@@ -19,6 +19,9 @@ titulo() {
 
 etapa()  { printf '\033[36m[%s/%s]\033[0m %s\n' "$1" "$2" "$3"; }
 
+# Garante chave Datadog padrao para execucoes locais de scripts Terraform se nao definida
+export TF_VAR_datadog_api_key="${TF_VAR_datadog_api_key:-dummy_datadog_key_local}"
+
 # ---------------------------------------------------------------- caminhos
 #
 # Os quatro repositorios ficam lado a lado. Este script vive em
