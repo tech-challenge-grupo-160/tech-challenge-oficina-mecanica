@@ -4,6 +4,21 @@
 * text=auto
 
 ###############################################################################
+# Scripts: LF sempre.
+#
+# O Git for Windows instala com core.autocrlf=true, que converte LF para CRLF
+# no checkout. O arquivo no repositorio continua correto, mas a copia em disco
+# vem com \r - e o bash le o \r como parte do comando:
+#
+#   ./renova-secrets.sh: line 17: $'\r': command not found
+#   ./renova-secrets.sh: line 39: syntax error near unexpected token `$'do\r''
+#
+# Regra trazida do tech-challenge-infra-k8s junto com os scripts, em 30/08.
+# La ela nasceu de um bug real - ver a issue #8 daquele repositorio.
+###############################################################################
+*.sh text eol=lf
+
+###############################################################################
 # Set default behavior for command prompt diff.
 #
 # This is need for earlier builds of msysgit that does not have it on by

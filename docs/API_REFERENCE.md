@@ -67,12 +67,12 @@ Authorization: Bearer <jwt>
 - `/pecas`
 - `/ordens-servico`
 - `/pedidos-compra`
+- `GET /acompanhamento-os/{codigoAcompanhamento}` (JWT de cliente)
+- `POST /ordens-servico/{id}/ordem/resposta` (JWT de cliente)
 
 ### Endpoints publicos
 
 - `POST /auth/login`
-- `GET /acompanhamento-os/{codigo}` (requer header `X-Tracking-Token`)
-- `POST /ordens-servico/{id}/ordem/resposta` (requer header `X-Tracking-Token`)
 
 ## Tratamento de erros
 
@@ -357,11 +357,11 @@ Resposta `201 Created`:
 | `GET` | `/ordens-servico/{id}/estimativa-tempo-servico` | JWT | Estimativa de tempo dos servicos |
 | `GET` | `/ordens-servico/monitoramento?page=&pageSize=` | JWT | Resumo de monitoramento (paginado) |
 
-#### Endpoints publicos da ordem
+#### Endpoints do cliente
 
 | Metodo | Rota | Autenticacao | Descricao |
 |---|---|---|---|
-| `POST` | `/ordens-servico/{id}/ordem/resposta` | Publica (header `X-Tracking-Token`) | Cliente aprova ou recusa orcamento |
+| `POST` | `/ordens-servico/{id}/ordem/resposta` | JWT de cliente | Cliente aprova ou recusa orçamento |
 
 #### Criar ordem de servico
 
@@ -407,7 +407,7 @@ Resposta `201 Created`:
   "numero": "OS-20260710-3001",
   "codigoAcompanhamento": "abc123",
   "urlAcompanhamento": "/api/v1/acompanhamento-os/abc123",
-  "tokenAcompanhamento": "token-unico-retornado-apenas-na-criacao",
+  "tokenAcompanhamento": null,
   "clienteId": 1000,
   "veiculoId": 1000,
   "descricaoSolicitacao": "Cliente relatou ruido ao frear.",
@@ -427,7 +427,7 @@ Resposta `201 Created`:
 }
 ```
 
-O campo `tokenAcompanhamento` so e retornado na criacao da ordem. Nas demais consultas ele e omitido.
+O campo `tokenAcompanhamento` foi mantido no contrato apenas por compatibilidade e nao e mais utilizado para autenticar o cliente.
 
 #### Adicionar servico a ordem
 
@@ -490,11 +490,11 @@ Sem body. O handler determina o proximo status com base no status atual:
 
 Resposta `200 OK`: retorna o mesmo payload de `OrdemDeServicoResponse` (igual aos demais endpoints de transicao).
 
-#### Responder ordem (endpoint publico)
+#### Responder ordem (endpoint do cliente)
 
 ```http
 POST /ordens-servico/{id}/ordem/resposta
-X-Tracking-Token: <token-de-acompanhamento>
+Authorization: Bearer <jwt-cliente>
 ```
 
 Request para aprovar:
@@ -708,22 +708,22 @@ Resposta `200 OK`:
 | `DELETE .../pecas/{pecaId}` | `404` | OS nao encontrada |
 | `DELETE .../pecas/{pecaId}` | `400` | Status atual nao permite remover peca (requer `EmDiagnostico`) |
 
-**Endpoint publico de resposta**
+**Endpoint de resposta do cliente autenticado**
 
 | Endpoint | Status | Cenario |
 |---|---|---|
-| `POST .../ordem/resposta` | `404` | OS nao encontrada ou token de acompanhamento invalido |
+| `POST .../ordem/resposta` | `404` | OS nao encontrada ou cliente autenticado nao pertence a OS |
 | `POST .../ordem/resposta` | `400` | OS nao esta em `AguardandoAprovacao` |
 
-### Acompanhamento publico
+### Acompanhamento do cliente
 
 | Metodo | Rota | Autenticacao | Descricao |
 |---|---|---|---|
-| `GET` | `/acompanhamento-os/{codigo}` | Publica (header `X-Tracking-Token`) | Consultar status da OS pelo codigo publico |
+| `GET` | `/acompanhamento-os/{codigoAcompanhamento}` | JWT de cliente | Consultar status da OS pelo codigo de acompanhamento enviado ao cliente |
 
 ```http
-GET /acompanhamento-os/{codigo}
-X-Tracking-Token: <token-de-acompanhamento>
+GET /acompanhamento-os/{codigoAcompanhamento}
+Authorization: Bearer <jwt-cliente>
 ```
 
 Resposta `200 OK`:
@@ -746,8 +746,8 @@ Resposta `200 OK`:
 
 | Endpoint | Status | Cenario |
 |---|---|---|
-| `GET /acompanhamento-os/{codigo}` | `404` | Codigo de acompanhamento nao encontrado |
-| `GET /acompanhamento-os/{codigo}` | `404` | Token de acompanhamento invalido |
+| `GET /acompanhamento-os/{codigoAcompanhamento}` | `404` | Codigo de acompanhamento nao encontrado |
+| `GET /acompanhamento-os/{codigoAcompanhamento}` | `404` | Cliente autenticado nao pertence a OS |
 
 ### Pedidos de compra
 

@@ -7,5 +7,6 @@ public sealed class ClienteResult
     public string CpfCnpj { get; init; } = null!;
     public string Telefone { get; init; } = null!;
     public string Email { get; init; } = null!;
+    public string Status { get; init; } = null!;
     public DateTime DataCadastro { get; init; }
 }

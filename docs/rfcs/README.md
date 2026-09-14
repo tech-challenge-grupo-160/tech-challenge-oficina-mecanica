@@ -1,0 +1,32 @@
+# Request for Comments
+
+Propostas técnicas **em discussão**. Uma RFC existe para o grupo debater antes de decidir — não para anunciar uma decisão já tomada.
+
+## Índice
+
+| RFC | Título | Status | Issue |
+|---|---|---|---|
+| [0001](0001-escolha-da-nuvem.md) | Escolha da nuvem — AWS | Em revisão | [#56](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/56) |
+| [0002](0002-autenticacao-por-cpf-e-api-gateway.md) | Estratégia de autenticação por CPF e escolha do API Gateway | Rascunho | [#35](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/35) |
+| [0003](0003-escolha-da-ferramenta-de-observabilidade.md) | Escolha da ferramenta de observabilidade | Em revisão | [#66](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/66) |
+
+A RFC-0003 registra a comparação e a decisão proposta para a ferramenta de observabilidade. O status só muda para `Aceita` depois da revisão e do merge do PR correspondente.
+
+> A RFC-0001 tem uma seção de [**Emendas**](0001-escolha-da-nuvem.md#emendas) com as decisões tomadas depois da redação original: RDS Multi-AZ (revertendo a escolha por Single-AZ), o VPC Endpoint do Secrets Manager e a correção do API Gateway para HTTP API, que a RFC-0002 decidiu.
+>
+> Decisão que muda o que está escrito numa RFC já mergeada entra como emenda datada, não como reescrita do texto — saber o que mudou e por quê vale tanto quanto o estado final.
+
+## Fluxo
+
+1. Abrir a RFC como Pull Request, com status `Rascunho`
+2. Definir prazo para comentários
+3. Discutir **no PR**, não em conversa paralela — o registro é parte do entregável
+4. Ao consenso, mudar o status para `Aceita` e mergear
+5. Se a decisão for permanente, escrever a ADR correspondente em [`docs/adrs/`](../adrs/)
+
+## Convenções
+
+- Numeração sequencial de quatro dígitos, atribuída ao abrir o PR
+- Nome do arquivo: `NNNN-titulo-em-kebab-case.md`
+- Use o [TEMPLATE.md](TEMPLATE.md)
+- Uma RFC rejeitada **permanece no repositório**, com status `Rejeitada`. Saber o que foi descartado e por quê tem tanto valor quanto saber o que foi escolhido.

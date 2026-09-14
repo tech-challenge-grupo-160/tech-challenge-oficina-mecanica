@@ -70,7 +70,7 @@ public sealed class FinalizarOrdemDeServicoCommandHandler : IRequestHandler<Fina
                 ordemAtualizada.Id,
                 TipoNotificacaoCliente.ServicoFinalizado,
                 CanalNotificacaoCliente.WhatsApp,
-                $"Servico finalizado para a ordem de servico {ordemAtualizada.Numero}. Veiculo pronto para pagamento e retirada. Endpoint de acompanhamento: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
+                $"Servico finalizado para a ordem de servico {ordemAtualizada.Numero}. Veiculo pronto para pagamento e retirada. Acompanhamento disponivel apos autenticacao: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Servico finalizado com sucesso para a ordem {ordemAtualizada.Numero}");
             return OrdemDeServicoMapper.ToResult(ordemAtualizada);

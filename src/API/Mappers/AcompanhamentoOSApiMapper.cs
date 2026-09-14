@@ -11,8 +11,7 @@ public static class AcompanhamentoOSApiMapper
     {
         return new ObterAcompanhamentoOSQuery
         {
-            Codigo = request.Codigo,
-            Token = request.Token
+            CodigoAcompanhamento = request.CodigoAcompanhamento
         };
     }
 

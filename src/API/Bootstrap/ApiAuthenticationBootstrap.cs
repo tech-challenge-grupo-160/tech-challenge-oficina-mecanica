@@ -1,3 +1,4 @@
+using Fiap.TechChallenge.OficinaMecanica.API.Security;
 using Fiap.TechChallenge.OficinaMecanica.Application.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -16,11 +17,10 @@ public static class ApiAuthenticationBootstrap
         }).AddJwtBearer(options =>
         {
             var jwtSection = configuration.GetSection(JwtOptions.SectionName);
-            var secretKey = jwtSection.GetValue<string>("SecretKey") ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(secretKey))
-            {
-                throw new InvalidOperationException("Jwt:SecretKey nao configurado.");
-            }
+
+            // Secrets Manager quando Jwt:SecretId existir, configuracao local
+            // caso contrario. Lanca se nenhum dos dois estiver definido.
+            var secretKey = JwtSigningKeyResolver.Resolver(configuration);
 
             options.TokenValidationParameters = new TokenValidationParameters
             {

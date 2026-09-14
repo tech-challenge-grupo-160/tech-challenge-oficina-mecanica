@@ -26,7 +26,8 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
         var ordemCriada = await CriarOrdemAsync();
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/acompanhamento-os/{ordemCriada.CodigoAcompanhamento}");
-        request.Headers.TryAddWithoutValidation("X-Tracking-Token", ordemCriada.TokenAcompanhamento);
+        request.Headers.TryAddWithoutValidation(TestAuthHandler.TestRoleHeaderName, "Cliente");
+        request.Headers.TryAddWithoutValidation(TestAuthHandler.TestDocumentoHeaderName, "47654866801");
 
         var response = await _client.SendAsync(request);
 
@@ -40,13 +41,14 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
     }
 
     [Fact]
-    public async Task ObterStatus_DeveRetornarNotFoundQuandoTokenForInvalido()
+    public async Task ObterStatus_DeveRetornarNotFoundQuandoDocumentoNaoPertencerAoClienteDaOrdem()
     {
         _factory.ResetDatabase();
         var ordemCriada = await CriarOrdemAsync();
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/acompanhamento-os/{ordemCriada.CodigoAcompanhamento}");
-        request.Headers.TryAddWithoutValidation("X-Tracking-Token", "TOKEN-INVALIDO");
+        request.Headers.TryAddWithoutValidation(TestAuthHandler.TestRoleHeaderName, "Cliente");
+        request.Headers.TryAddWithoutValidation(TestAuthHandler.TestDocumentoHeaderName, "60617051000199");
 
         var response = await _client.SendAsync(request);
 
@@ -65,18 +67,31 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
     }
 
     [Fact]
+    public async Task ObterStatus_DeveRetornarForbiddenQuandoTokenNaoForDeCliente()
+    {
+        _factory.ResetDatabase();
+        var ordemCriada = await CriarOrdemAsync();
+
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/acompanhamento-os/{ordemCriada.CodigoAcompanhamento}");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public async Task ObterStatus_DataUltimaAtualizacao_DeveMudarSomenteQuandoStatusMudar()
     {
         _factory.ResetDatabase();
         var ordemCriada = await CriarOrdemAsync();
 
-        var acompanhamentoInicial = await ObterAcompanhamentoAsync(ordemCriada.CodigoAcompanhamento, ordemCriada.TokenAcompanhamento!);
+        var acompanhamentoInicial = await ObterAcompanhamentoAsync(ordemCriada.CodigoAcompanhamento);
         var dataInicial = acompanhamentoInicial.DataUltimaAtualizacao;
 
         var iniciarDiagnostico = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
         iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var acompanhamentoAposMudancaStatus = await ObterAcompanhamentoAsync(ordemCriada.CodigoAcompanhamento, ordemCriada.TokenAcompanhamento!);
+        var acompanhamentoAposMudancaStatus = await ObterAcompanhamentoAsync(ordemCriada.CodigoAcompanhamento);
         acompanhamentoAposMudancaStatus.DataUltimaAtualizacao.Should().BeAfter(dataInicial);
         var dataAposMudancaStatus = acompanhamentoAposMudancaStatus.DataUltimaAtualizacao;
 
@@ -85,7 +100,7 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
             new { pecaId = CustomWebApplicationFactory.PecaExistenteId, quantidade = 1 });
         adicionarPeca.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var acompanhamentoAposEventoSemMudancaStatus = await ObterAcompanhamentoAsync(ordemCriada.CodigoAcompanhamento, ordemCriada.TokenAcompanhamento!);
+        var acompanhamentoAposEventoSemMudancaStatus = await ObterAcompanhamentoAsync(ordemCriada.CodigoAcompanhamento);
         acompanhamentoAposEventoSemMudancaStatus.DataUltimaAtualizacao.Should().Be(dataAposMudancaStatus);
     }
 
@@ -110,14 +125,15 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
         var ordem = await response.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
         ordem.Should().NotBeNull();
         ordem!.CodigoAcompanhamento.Should().NotBeNullOrWhiteSpace();
-        ordem.TokenAcompanhamento.Should().NotBeNullOrWhiteSpace();
+        ordem.TokenAcompanhamento.Should().BeNull();
         return ordem;
     }
 
-    private async Task<AcompanhamentoOrdemDeServicoResponse> ObterAcompanhamentoAsync(string codigo, string token)
+    private async Task<AcompanhamentoOrdemDeServicoResponse> ObterAcompanhamentoAsync(string codigo)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/acompanhamento-os/{codigo}");
-        request.Headers.TryAddWithoutValidation("X-Tracking-Token", token);
+        request.Headers.TryAddWithoutValidation(TestAuthHandler.TestRoleHeaderName, "Cliente");
+        request.Headers.TryAddWithoutValidation(TestAuthHandler.TestDocumentoHeaderName, "47654866801");
 
         var response = await _client.SendAsync(request);
         response.StatusCode.Should().Be(HttpStatusCode.OK);

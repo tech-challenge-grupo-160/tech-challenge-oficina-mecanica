@@ -49,6 +49,13 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Ativo");
+
                     b.Property<string>("Telefone")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -60,6 +67,8 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                         .IsUnique();
 
                     b.HasIndex("Email");
+
+                    b.HasIndex("Status");
 
                     b.ToTable("Cliente", (string)null);
                 });

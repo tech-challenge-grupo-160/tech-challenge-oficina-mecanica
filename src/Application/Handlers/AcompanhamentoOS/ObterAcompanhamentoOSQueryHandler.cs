@@ -4,7 +4,8 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.AcompanhamentoOS;
 using Fiap.TechChallenge.OficinaMecanica.Application.Results.AcompanhamentoOS;
-using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
+using Fiap.TechChallenge.OficinaMecanica.Application.Security;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -16,15 +17,18 @@ public sealed class ObterAcompanhamentoOSQueryHandler : IRequestHandler<ObterAco
     private const string LoggerName = nameof(ObterAcompanhamentoOSQueryHandler);
     private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly IOrdemServicoHistoricoRepository _historicoRepository;
+    private readonly IUsuarioAutenticadoService _usuarioAutenticadoService;
     private readonly ILogger _logger;
 
     public ObterAcompanhamentoOSQueryHandler(
         IOrdemDeServicoRepository ordemRepository,
         IOrdemServicoHistoricoRepository historicoRepository,
+        IUsuarioAutenticadoService usuarioAutenticadoService,
         ILoggerFactory loggerFactory)
     {
         _ordemRepository = ordemRepository;
         _historicoRepository = historicoRepository;
+        _usuarioAutenticadoService = usuarioAutenticadoService;
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
@@ -33,7 +37,7 @@ public sealed class ObterAcompanhamentoOSQueryHandler : IRequestHandler<ObterAco
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
         {
-            var codigoNormalizado = query.Codigo.Trim().ToUpperInvariant();
+            var codigoNormalizado = query.CodigoAcompanhamento.Trim().ToUpperInvariant();
             var ordem = await _ordemRepository.ObterPorCodigoAcompanhamentoAsync(codigoNormalizado, cancellationToken);
             if (ordem is null)
             {
@@ -41,12 +45,7 @@ public sealed class ObterAcompanhamentoOSQueryHandler : IRequestHandler<ObterAco
                 throw new ServiceNotFoundException("Acompanhamento nao encontrado.");
             }
 
-            var tokenHash = StringHelper.ToSha256Hash(query.Token.Trim());
-            if (!StringHelper.FixedTimeEqualsHex(tokenHash, ordem.TokenAcompanhamentoHash))
-            {
-                _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(Handle), "Token de acompanhamento invalido");
-                throw new ServiceNotFoundException("Acompanhamento nao encontrado.");
-            }
+            ValidarClienteAutenticado(ordem);
 
             var historicos = await _historicoRepository.ObterPorOrdemDeServicoAsync(ordem.Id, cancellationToken);
             var ultimaMudancaStatus = historicos
@@ -62,6 +61,22 @@ public sealed class ObterAcompanhamentoOSQueryHandler : IRequestHandler<ObterAco
         {
             _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(Handle), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
+        }
+    }
+
+    private void ValidarClienteAutenticado(OrdemDeServico ordem)
+    {
+        var usuarioAtual = _usuarioAutenticadoService.ObterUsuarioAtual();
+        if (string.IsNullOrWhiteSpace(usuarioAtual.ClienteDocumento))
+        {
+            _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(ValidarClienteAutenticado), "Documento do cliente nao encontrado no token JWT");
+            throw new ServiceUnauthorizedException("Documento do cliente nao encontrado no token.");
+        }
+
+        if (ordem.Cliente?.CpfCnpj.Valor != usuarioAtual.ClienteDocumento)
+        {
+            _logger.LogWarning(LogTemplate.Warning, LoggerName, nameof(ValidarClienteAutenticado), "Cliente autenticado nao pertence a ordem consultada");
+            throw new ServiceNotFoundException("Acompanhamento nao encontrado.");
         }
     }
 }

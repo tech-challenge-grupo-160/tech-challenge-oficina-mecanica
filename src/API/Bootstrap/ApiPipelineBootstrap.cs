@@ -1,4 +1,5 @@
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.HealthChecks;
+using Fiap.TechChallenge.OficinaMecanica.API.Middleware;
 
 namespace Fiap.TechChallenge.OficinaMecanica.API.Bootstrap;
 
@@ -16,7 +17,9 @@ public static class ApiPipelineBootstrap
             app.UseHttpsRedirection();
         }
 
+        app.UseRouting();
         app.UseCors("AllowAll");
+        app.UseMiddleware<RequestLoggingMiddleware>();
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseRateLimiter();

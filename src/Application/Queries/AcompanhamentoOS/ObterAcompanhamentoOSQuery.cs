@@ -5,6 +5,5 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Queries.AcompanhamentoO
 
 public sealed class ObterAcompanhamentoOSQuery : IRequest<AcompanhamentoOrdemDeServicoResult>
 {
-    public string Codigo { get; init; } = null!;
-    public string Token { get; init; } = null!;
+    public string CodigoAcompanhamento { get; init; } = null!;
 }
