@@ -200,9 +200,18 @@ tf_init "$K8S/infra" "$AMBIENTE/rede.tfstate" "$BUCKET" "$REGIAO"
 VAR_LAMBDAS="-var=lambdas_publicadas=true"
 [ "$SO_INFRA" -eq 1 ] && VAR_LAMBDAS="-var=lambdas_publicadas=false"
 
+# Busca a chave do Datadog do ambiente ou do Secrets Manager caso exista
+VAR_DATADOG=""
+if [ -z "${TF_VAR_datadog_api_key:-}" ]; then
+  SECRET_DD_KEY="$(aws secretsmanager get-secret-value --secret-id "tc-grupo160/${AMBIENTE}/datadog-api-key" --region "$REGIAO" --query SecretString --output text 2>/dev/null || echo '')"
+  if [ -n "$SECRET_DD_KEY" ] && [ "$SECRET_DD_KEY" != "dummy_datadog_key_local" ]; then
+    VAR_DATADOG="-var=datadog_api_key=${SECRET_DD_KEY}"
+  fi
+fi
+
 # shellcheck disable=SC2086
 terraform -chdir="$K8S/infra" apply -auto-approve -input=false \
-  -var-file="inventories/$AMBIENTE/terraform.tfvars" $VAR_LAMBDAS
+  -var-file="inventories/$AMBIENTE/terraform.tfvars" $VAR_LAMBDAS $VAR_DATADOG
 verde "  Ambiente $AMBIENTE aplicado."
 
 # ------------------------------------------------------------------ banco
