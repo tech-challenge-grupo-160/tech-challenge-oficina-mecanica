@@ -84,6 +84,13 @@ bash scripts/sobe-tudo.sh
 bash scripts/derruba-tudo.sh
 ```
 
+Numa conta nova do Learner Lab, ou depois de derrubar o ambiente, exporte antes
+a chave do Datadog - ver [Chave do Datadog](docs/CICLO-DE-VIDA.md#chave-do-datadog):
+
+```bash
+export TF_VAR_datadog_api_key="<chave da organizacao>"
+```
+
 Renovar as credenciais do Learner Lab nos quatro repositórios, a cada sessão:
 
 ```bash
