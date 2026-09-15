@@ -46,6 +46,11 @@ RUN apk add --no-cache curl tar \
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
 WORKDIR /app
+
+# O Datadog Tracer (build musl) carrega libgssapi_krb5.so.2 em tempo de
+# execucao; a imagem alpine base do .NET nao inclui krb5.
+RUN apk add --no-cache krb5-libs
+
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 ENV CORECLR_ENABLE_PROFILING=1
