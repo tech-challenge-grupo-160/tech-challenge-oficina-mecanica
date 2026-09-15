@@ -77,7 +77,8 @@ public class OrdemDeServicoHandlersTests
         var historicoService = new OrdemDeServicoHistoricoService(
             _historicoRepositoryMock.Object,
             _usuarioAutenticadoServiceMock.Object,
-            _clockMock.Object);
+            _clockMock.Object,
+            Mock.Of<IBusinessMetrics>());
         var notificacaoService = new OrdemDeServicoNotificacaoService(
             _notificacaoClienteRepositoryMock.Object,
             _clockMock.Object);

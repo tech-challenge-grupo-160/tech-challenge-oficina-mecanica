@@ -21,23 +21,7 @@ public static class HealthCheckConfiguration
     {
         app.MapHealthChecks("/health", new HealthCheckOptions
         {
-            ResponseWriter = async (context, report) =>
-            {
-                context.Response.ContentType = "application/json";
-                var response = new
-                {
-                    status = report.Status.ToString(),
-                    checks = report.Entries.Select(x => new
-                    {
-                        name = x.Key,
-                        status = x.Value.Status.ToString(),
-                        description = x.Value.Description,
-                        duration = x.Value.Duration.TotalMilliseconds
-                    })
-                };
-
-                await context.Response.WriteAsJsonAsync(response);
-            }
+            ResponseWriter = WriteResponseAsync
         });
 
         app.MapHealthChecks("/health/live", new HealthCheckOptions
@@ -47,7 +31,26 @@ public static class HealthCheckConfiguration
 
         app.MapHealthChecks("/health/ready", new HealthCheckOptions
         {
-            Predicate = _ => true
+            Predicate = _ => true,
+            ResponseWriter = WriteResponseAsync
         });
+    }
+
+    private static async Task WriteResponseAsync(HttpContext context, HealthReport report)
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(x => new
+            {
+                name = x.Key,
+                status = x.Value.Status.ToString(),
+                description = x.Value.Description,
+                duration = x.Value.Duration.TotalMilliseconds
+            })
+        };
+
+        await context.Response.WriteAsJsonAsync(response);
     }
 }

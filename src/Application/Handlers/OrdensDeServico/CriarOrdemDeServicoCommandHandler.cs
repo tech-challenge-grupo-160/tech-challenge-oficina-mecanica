@@ -21,6 +21,7 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
     private readonly OrdemDeServicoAcompanhamentoService _acompanhamentoService;
     private readonly IClienteRepository _clienteRepository;
     private readonly IClock _clock;
+    private readonly IBusinessMetrics? _businessMetrics;
     private readonly OrdemDeServicoHistoricoService _historicoService;
     private readonly OrdemDeServicoNotificacaoService _notificacaoService;
     private readonly IOrdemDeServicoRepository _ordemRepository;
@@ -39,11 +40,13 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
         IPecaRepository pecaRepository,
         IServicoRepository servicoRepository,
         IVeiculoRepository veiculoRepository,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        IBusinessMetrics? businessMetrics = null)
     {
         _acompanhamentoService = acompanhamentoService;
         _clienteRepository = clienteRepository;
         _clock = clock;
+        _businessMetrics = businessMetrics;
         _historicoService = historicoService;
         _notificacaoService = notificacaoService;
         _ordemRepository = ordemRepository;
@@ -169,6 +172,7 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
                     cancellationToken);
             }
 
+            _businessMetrics?.RecordOrderCreated();
             await _notificacaoService.RegistrarAsync(
                 ordemAtualizada.Id,
                 TipoNotificacaoCliente.LinkAcompanhamentoEnviado,
@@ -178,12 +182,26 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Ordem de servico aberta com sucesso. Numero: {ordemAtualizada.Numero}");
             return OrdemDeServicoMapper.ToResult(ordemAtualizada);
         }
+        catch (Exception ex) when (ex is IServiceExceptionContract serviceException)
+        {
+            _businessMetrics?.RecordOrderCreationFailure(ClassifyBusinessFailure(serviceException.StatusCode));
+            _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarOrdemDeServicoAsync), LogTemplate.CurrentTraceId(), ex.Message);
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarOrdemDeServicoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
     }
+
+    private static string ClassifyBusinessFailure(int statusCode)
+    {
+        return statusCode switch
+        {
+            400 => "validation",
+            404 => "not_found",
+            _ => "business"
+        };
+    }
 }
-
-

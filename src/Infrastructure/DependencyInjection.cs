@@ -7,6 +7,7 @@ using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Security;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Time;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Observability;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,6 +59,7 @@ public static class DependencyInjection
         services.AddSingleton<IClock, BrazilClock>();
         services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
+        services.AddSingleton<IBusinessMetrics, DogStatsDBusinessMetrics>();
 
         return services;
     }
