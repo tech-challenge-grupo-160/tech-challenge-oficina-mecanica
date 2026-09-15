@@ -98,9 +98,13 @@ etapa 1 "$TOTAL" "Backend de state (S3 + DynamoDB)"
 # conta, reaproveita-lo faria o Terraform tentar reconciliar recursos que nao
 # existem aqui - por isso a checagem.
 STATE_BOOT="$K8S/bootstrap/terraform.tfstate"
-if [ -f "$STATE_BOOT" ] && ! grep -q "$BUCKET" "$STATE_BOOT" 2>/dev/null; then
-  amarelo "  State local do bootstrap e de outra conta. Movendo para .antigo."
-  mv "$STATE_BOOT" "$STATE_BOOT.antigo-$(date +%Y%m%d%H%M%S)"
+if [ -f "$STATE_BOOT" ]; then
+  # Se o state local existir mas nao contiver o bucket nem recursos registrados
+  # para a conta atual, move para antigo para forcar o Terraform a importar ou usar o correto.
+  if ! grep -q "$BUCKET" "$STATE_BOOT" 2>/dev/null || ! grep -q "aws_s3_bucket" "$STATE_BOOT" 2>/dev/null; then
+    amarelo "  State local do bootstrap invalido ou de outra conta. Movendo para .antigo."
+    mv "$STATE_BOOT" "$STATE_BOOT.antigo-$(date +%Y%m%d%H%M%S)"
+  fi
 fi
 
 terraform -chdir="$K8S/bootstrap" init -input=false >/dev/null
@@ -199,6 +203,33 @@ tf_init "$K8S/infra" "$AMBIENTE/rede.tfstate" "$BUCKET" "$REGIAO"
 # Sem as funcoes publicadas, as permissoes do gateway nao podem ser criadas.
 VAR_LAMBDAS="-var=lambdas_publicadas=true"
 [ "$SO_INFRA" -eq 1 ] && VAR_LAMBDAS="-var=lambdas_publicadas=false"
+
+# Chave do Datadog: do ambiente ou, na falta, do Secrets Manager.
+#
+# O comum.sh exporta uma chave dummy como padrao, para o Terraform validar sem
+# segredo nenhum. Ate 14/09 este bloco so testava variavel vazia - que nunca
+# estava vazia - e o Agent subia com a dummy: 403 no Datadog, readiness em 500
+# e o helm_release estourando o timeout de 15 minutos sem dizer por que.
+#
+# Vai por variavel de ambiente, e nao por -var, para a chave nao aparecer na
+# lista de processos.
+DD_DUMMY="dummy_datadog_key_local"
+if [ -z "${TF_VAR_datadog_api_key:-}" ] || [ "$TF_VAR_datadog_api_key" = "$DD_DUMMY" ]; then
+  SECRET_DD_KEY="$(aws secretsmanager get-secret-value --secret-id "tc-grupo160/${AMBIENTE}/datadog-api-key" --region "$REGIAO" --query SecretString --output text 2>/dev/null || echo '')"
+  if [ -n "$SECRET_DD_KEY" ] && [ "$SECRET_DD_KEY" != "$DD_DUMMY" ]; then
+    export TF_VAR_datadog_api_key="$SECRET_DD_KEY"
+  fi
+fi
+
+# Numa conta nova o segredo ainda nao existe - quem cria e este mesmo apply, a
+# partir da variavel. Melhor parar aqui do que esperar o Helm desistir.
+if grep -qE '^[[:space:]]*datadog_enabled[[:space:]]*=[[:space:]]*true' "$K8S/infra/inventories/$AMBIENTE/terraform.tfvars" \
+   && [ "$TF_VAR_datadog_api_key" = "$DD_DUMMY" ]; then
+  vermelho "  Datadog ligado em inventories/$AMBIENTE, mas sem chave real."
+  echo "  Exporte TF_VAR_datadog_api_key ou grave tc-grupo160/$AMBIENTE/datadog-api-key"
+  echo "  no Secrets Manager e rode de novo."
+  exit 1
+fi
 
 # shellcheck disable=SC2086
 terraform -chdir="$K8S/infra" apply -auto-approve -input=false \
@@ -314,10 +345,10 @@ kubectl apply -f "$K8S/k8s/nuvem/namespace.yaml" >/dev/null
 
 # O Secret e montado do Secrets Manager a cada deploy, nunca versionado. Sem jq
 # de proposito: ele nao vem no Git Bash do Windows.
-CONN="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_BANCO" \
+CONN="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_BANCO" --region "$REGIAO" \
   --query SecretString --output text \
   | grep -o '"connectionString":"[^"]*"' | sed 's/^"connectionString":"//; s/"$//')"
-JWT="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_JWT" \
+JWT="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_JWT" --region "$REGIAO" \
   --query SecretString --output text)"
 
 kubectl create secret generic api-secret --namespace oficina-mecanica \
