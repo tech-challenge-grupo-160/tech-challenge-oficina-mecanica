@@ -231,14 +231,17 @@ Sem a chave, o script para antes de qualquer apply:
 
 ```text
 Datadog ligado em inventories/dev, mas sem chave real.
-  Exporte TF_VAR_datadog_api_key ou grave tc-grupo160/dev/datadog-api-key
-  no Secrets Manager e rode de novo.
+  Carregue a chave no terminal e rode de novo:
+    read -rsp 'Chave do Datadog: ' TF_VAR_datadog_api_key && echo && export TF_VAR_datadog_api_key
+  Nao crie o segredo tc-grupo160/dev/datadog-api-key a mao: quem cria e o
+  apply, e um segredo ja existente faz o Terraform falhar.
+  Passo a passo: docs/CICLO-DE-VIDA.md, secao Chave do Datadog.
 ```
 
-> **Numa conta nova, não crie o segredo à mão**, apesar do que a mensagem
-> sugere. Quem cria o `tc-grupo160/<ambiente>/datadog-api-key` é o Terraform: se
-> ele já existir fora do state, o apply falha com `ResourceExistsException`.
-> Numa conta nova, ou depois de um `derruba-tudo.sh`, use a variável.
+> **Numa conta nova, não crie o segredo à mão.** Quem cria o
+> `tc-grupo160/<ambiente>/datadog-api-key` é o Terraform: se ele já existir fora
+> do state, o apply falha com `ResourceExistsException`. Numa conta nova, ou
+> depois de um `derruba-tudo.sh`, use a variável.
 
 #### Conferir o que está gravado, sem exibir a chave
 

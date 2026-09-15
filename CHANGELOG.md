@@ -36,6 +36,7 @@ observabilidade. O projeto passa a ter quatro repositorios - este, o
 - Funcoes Lambda publicadas antes do apply do gateway numa conta nova (#101)
 - Scripts deixam de apontar as pipelines do time para a conta de outra pessoa (#103)
 - `sobe-tudo.sh` usa a chave real do Datadog em vez da chave dummy (#111)
+- Mensagem do `sobe-tudo.sh` sem chave do Datadog deixa de sugerir criar o segredo a mao, o que fazia o apply falhar numa conta nova
 - Caixa da rota de login na collection do Postman (#102)
 
 ### Removed
