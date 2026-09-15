@@ -358,7 +358,9 @@ kubectl create secret generic api-secret --namespace oficina-mecanica \
 
 TMP="$(mktemp -d)"
 cp -r "$K8S/k8s/." "$TMP/"
-sed -i "s|newTag: .*|newTag: ${SHA}|; s|newName: .*|newName: ${ECR}|" "$TMP/nuvem/kustomization.yaml"
+# SHA pode ser formado apenas por algarismos. Sem aspas, o YAML o interpreta
+# como numero e o Kustomize rejeita `images[].newTag`, que precisa ser string.
+sed -i "s|newTag: .*|newTag: \"${SHA}\"|; s|newName: .*|newName: ${ECR}|" "$TMP/nuvem/kustomization.yaml"
 kubectl apply -k "$TMP/nuvem" >/dev/null
 
 # Garante a configuracao do tracer mesmo quando o overlay recebido do
