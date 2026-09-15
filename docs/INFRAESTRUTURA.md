@@ -87,6 +87,10 @@ cliente
   → RDS PostgreSQL                  Multi-AZ, em subnet privada, sem acesso público
 ```
 
+O endereço público é o do API Gateway **com o nome do ambiente no caminho** —
+`https://<id>.execute-api.us-east-1.amazonaws.com/dev/auth`. Sem o `/dev`, o
+gateway responde `404 {"message":"Not Found"}`, até no `/health/live`.
+
 A autenticação por CPF é uma Lambda fora do cluster, e um segundo Lambda
 authorizer valida o JWT na borda do gateway — o desenho e o porquê estão na
 [RFC-0002](rfcs/0002-autenticacao-por-cpf-e-api-gateway.md).

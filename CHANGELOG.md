@@ -29,6 +29,7 @@ observabilidade. O projeto passa a ter quatro repositorios - este, o
 ### Changed
 - Deploy pelo workflow `deploy-eks.yml`: build e testes, imagem no ECR com a tag do commit e rollout no EKS. `homolog` publica em homologacao e `master` em producao (#98, #104)
 - Documentacao do ciclo de vida: chave do Datadog e Node.js nos pre-requisitos (#113)
+- Guia do ciclo de vida para colaboradores: tempos de subida e derrubada, conferencia do ambiente, registro e troca da chave do Datadog, concorrencia com as pipelines e novos problemas conhecidos
 
 ### Fixed
 - Checagens de seguranca dos scripts de ciclo de vida (#100)
