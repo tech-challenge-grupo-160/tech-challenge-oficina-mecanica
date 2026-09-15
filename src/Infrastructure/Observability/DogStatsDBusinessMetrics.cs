@@ -52,7 +52,7 @@ public sealed class DogStatsDBusinessMetrics : IBusinessMetrics, IDisposable
             return;
         }
 
-        _client.Histogram(
+        _client.Distribution(
             OrderStageDurationMetric,
             durationSeconds,
             tags: [$"stage:{stage}"]);
