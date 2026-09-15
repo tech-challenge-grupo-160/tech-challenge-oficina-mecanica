@@ -6,6 +6,42 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-09-15
+
+Fase 3: autenticacao por CPF na borda, infraestrutura gerenciada na AWS e
+observabilidade. O projeto passa a ter quatro repositorios - este, o
+`tech-challenge-lambda-auth`, o `tech-challenge-infra-k8s` e o
+`tech-challenge-infra-database`, todos marcados com a versao 3.0.0.
+
+### Added
+- Status do cliente, consultado pela autenticacao por CPF (#89)
+- Cliente autenticado por CPF acessa os endpoints publicos com JWT (#90)
+- Chave de assinatura do JWT lida do Secrets Manager (#96)
+- Teste de contrato do JWT entre a Lambda de autenticacao e a API (#95)
+- Logs estruturados em JSON (#108)
+- Instrumentacao das funcoes Lambda com o Datadog (#107)
+- Scripts `sobe-tudo.sh`, `derruba-tudo.sh` e `renova-secrets.sh`, que sobem e derrubam a infraestrutura dos quatro repositorios com um comando (#99)
+- ADR do split em quatro repositorios, templates de RFC e ADR (#88)
+- RFC-0001 (escolha da nuvem), RFC-0002 (autenticacao por CPF e API Gateway) e RFC-0003 (ferramenta de observabilidade) (#91, #93, #97)
+- Matriz de autorizacao das rotas da API (#94)
+- Diagramas de componentes, de implantacao na AWS e de sequencia (#106)
+
+### Changed
+- Deploy pelo workflow `deploy-eks.yml`: build e testes, imagem no ECR com a tag do commit e rollout no EKS. `homolog` publica em homologacao e `master` em producao (#98, #104)
+- Documentacao do ciclo de vida: chave do Datadog e Node.js nos pre-requisitos (#113)
+
+### Fixed
+- Checagens de seguranca dos scripts de ciclo de vida (#100)
+- Funcoes Lambda publicadas antes do apply do gateway numa conta nova (#101)
+- Scripts deixam de apontar as pipelines do time para a conta de outra pessoa (#103)
+- `sobe-tudo.sh` usa a chave real do Datadog em vez da chave dummy (#111)
+- Caixa da rota de login na collection do Postman (#102)
+
+### Removed
+- Workflows `*-ci-cd-self-hosted.yml` e o cluster kind dos pipelines. O kind fica apenas como ambiente local, no `tech-challenge-infra-k8s` (#105)
+
+## [2.0.0] - 2026-07-13
+
 ### Added
 - Endpoint `PATCH /ordens-servico/{numero}/avancar-status` para avancar a OS para o proximo status do fluxo principal
 - CONTRIBUTING.md com guia de branches, commits, PRs e convencoes de codigo
