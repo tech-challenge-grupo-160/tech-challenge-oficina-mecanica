@@ -123,9 +123,24 @@ variável de ambiente para configurar.
 |---|---|
 | AWS CLI v2, Terraform | sempre |
 | kubectl, Docker, .NET SDK 10 | publicar as aplicações |
+| Node.js (`npx`) | instrumentar as Lambdas com o `datadog-ci`, quando o Datadog está ligado |
 | gh | atualizar `TF_STATE_BUCKET` nos repositórios (opcional) |
 
 Com `--so-infra`, apenas AWS CLI e Terraform bastam.
+
+### Chave do Datadog
+
+Com `datadog_enabled = true` no inventory - o padrão nos três ambientes -, a
+subida precisa da chave da API do Datadog. O script a busca no Secrets Manager
+da conta, mas numa conta nova, ou logo depois de um `derruba-tudo.sh`, o segredo
+não existe e a chave precisa vir do ambiente:
+
+```bash
+export TF_VAR_datadog_api_key="<chave da organizacao>"
+```
+
+Onde conseguir a chave, e por que ela só vale no site `datadoghq.com`, está no
+[README do infra-k8s](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s#onde-conseguir-a-chave).
 
 ## Subindo
 
