@@ -14,6 +14,7 @@ public static class ClienteMapper
             CpfCnpj = cliente.CpfCnpj.Valor,
             Telefone = cliente.Telefone.Valor,
             Email = cliente.Email.Valor,
+            Status = cliente.Status.ToString(),
             DataCadastro = cliente.DataCadastro
         };
     }

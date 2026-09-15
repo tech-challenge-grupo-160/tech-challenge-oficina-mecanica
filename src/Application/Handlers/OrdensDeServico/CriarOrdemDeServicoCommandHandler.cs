@@ -122,7 +122,7 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
             var pecas = command.Pecas.Select(p => (Peca: pecasDict[p.PecaId], p.Quantidade)).ToList();
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarOrdemDeServicoAsync), "Persistindo ordem de servico em status Recebida");
-            var (codigoAcompanhamento, tokenAcompanhamento, tokenAcompanhamentoHash) =
+            var (codigoAcompanhamento, _, tokenAcompanhamentoHash) =
                 await _acompanhamentoService.GerarCredenciaisAsync(cancellationToken);
 
             var ordem = OrdemDeServico.Criar(
@@ -173,12 +173,10 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
                 ordemAtualizada.Id,
                 TipoNotificacaoCliente.LinkAcompanhamentoEnviado,
                 CanalNotificacaoCliente.Email,
-                $"Link de acompanhamento da ordem {ordemAtualizada.Numero} enviado para o e-mail {cliente.Email}. Endpoint: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
+                $"Link de acompanhamento da ordem {ordemAtualizada.Numero} enviado para o e-mail {cliente.Email}. Acesso requer autenticacao do cliente por CPF/CNPJ. Endpoint: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
                 cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Ordem de servico aberta com sucesso. Numero: {ordemAtualizada.Numero}");
-            var resposta = OrdemDeServicoMapper.ToResult(ordemAtualizada);
-            resposta.TokenAcompanhamento = tokenAcompanhamento;
-            return resposta;
+            return OrdemDeServicoMapper.ToResult(ordemAtualizada);
         }
         catch (Exception ex)
         {

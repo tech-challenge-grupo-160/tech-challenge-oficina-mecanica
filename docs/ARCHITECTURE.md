@@ -501,7 +501,7 @@ Autenticacao:
 Estado atual da autorizacao:
 
 - protegidos: `Clientes`, `Veiculos`, `Servicos`, `Pecas`, `OrdensDeServico`, `PedidosCompra`;
-- publicos: `Auth`, acompanhamento publico de OS e resposta de OS pelo cliente (ambos requerem `X-Tracking-Token`).
+- publicos: `Auth`; os endpoints de acompanhamento e resposta da OS sao acessados pelo cliente autenticado com JWT.
 
 ## Observabilidade
 

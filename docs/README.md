@@ -8,7 +8,7 @@ Este diretório reúne a documentação viva do projeto, alinhada ao código atu
 2. [Setup e operação](SETUP.md)
 3. [Arquitetura](ARCHITECTURE.md)
 4. [Referência da API](API_REFERENCE.md)
-5. [Infraestrutura](docs/INFRAESTRUTURA.md)
+5. [Infraestrutura](INFRAESTRUTURA.md)
 
 ## Conteúdo
 
@@ -24,9 +24,17 @@ Organização em camadas, responsabilidades de cada módulo e fluxo principal da
 
 Rotas, autenticação, payloads principais, fluxo da OS, monitoramento e tratamento de erros.
  
-### [Infraestrutura](INFRAESTRUTURA.md)
+### [INFRAESTRUTURA.md](INFRAESTRUTURA.md)
 
-Infra do projeto, como executar terraform, explicação k8s e docker.
+Onde cada ambiente roda e onde cada coisa é definida: os três ambientes na AWS, o kind como opção de desenvolvimento local, o caminho da requisição até o banco, e por que a infraestrutura vive em outros dois repositórios.
+
+### [ROLLBACK-BANCO.md](ROLLBACK-BANCO.md)
+
+Como voltar atrás no banco gerenciado: por que `kubectl rollout undo` não desfaz migration, snapshot manual antes de operação arriscada, restore por snapshot ou point-in-time, e o caminho de emergência de volta ao PostgreSQL no cluster.
+
+### [MATRIZ_AUTORIZACAO.md](MATRIZ_AUTORIZACAO.md)
+
+Classificação das 53 rotas entre públicas, autenticadas, de cliente e internas, com o critério de sensibilidade e o que o API Gateway deve rotear.
 
 ## Convenções
 

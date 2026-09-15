@@ -65,9 +65,58 @@ Seed de desenvolvimento:
 
 - [Índice da documentação](docs/README.md)
 - [Setup e operação](docs/SETUP.md)
+- [Ciclo de vida da infraestrutura](docs/CICLO-DE-VIDA.md)
 - [Arquitetura](docs/ARCHITECTURE.md)
 - [Infraestrutura](docs/INFRAESTRUTURA.md)
 - [Referência da API](docs/API_REFERENCE.md)
+
+## Infraestrutura na AWS
+
+Os scripts que sobem e derrubam o ambiente inteiro ficam neste repositório,
+porque orquestram os quatro — o porquê está em
+[docs/CICLO-DE-VIDA.md](docs/CICLO-DE-VIDA.md).
+
+```bash
+bash scripts/sobe-tudo.sh
+```
+
+```bash
+bash scripts/derruba-tudo.sh
+```
+
+Numa conta nova do Learner Lab, ou depois de derrubar o ambiente, exporte antes
+a chave do Datadog - ver [Chave do Datadog](docs/CICLO-DE-VIDA.md#chave-do-datadog):
+
+```bash
+export TF_VAR_datadog_api_key="<chave da organizacao>"
+```
+
+Renovar as credenciais do Learner Lab nos quatro repositórios, a cada sessão:
+
+```bash
+bash scripts/renova-secrets.sh
+```
+
+> **O cluster cobra sozinho.** O control plane do EKS custa US$ 0,10/hora
+> enquanto existir e **não** é suspenso junto com a sessão do lab. Um ambiente
+> de pé custa cerca de US$ 5/dia. Para ver o que está cobrando agora, sem
+> destruir nada:
+>
+> ```bash
+> bash scripts/derruba-tudo.sh --so-conferir
+> ```
+
+### Desenvolvimento local
+
+Para rodar só a API, o Docker Compose do [início rápido](#com-docker) resolve.
+
+Para mexer nos manifests do Kubernetes sem cluster na nuvem, existe um ambiente
+kind em [`local/`](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s/tree/develop/local),
+no `infra-k8s`. **É só desenvolvimento** — nenhum pipeline usa kind desde 04/09,
+quando os workflows por runner self-hosted foram aposentados.
+
+O mapa completo de onde cada ambiente roda está em
+[docs/INFRAESTRUTURA.md](docs/INFRAESTRUTURA.md).
 
 ## Estrutura do repositório
 
@@ -91,8 +140,19 @@ docs/
 dotnet test
 ```
 
+## Logs e observabilidade
+
+A API escreve um objeto JSON por linha no stdout, pronto para coleta pelo
+Datadog Agent. Cada evento contém `timestamp`, `nivel`, `mensagem`, `servico`,
+`ambiente`, `rota`, `status`, `duracao` e `traceId`. CPF, JWT, tokens, senhas
+e chaves de API são mascarados antes da escrita.
+
+O nível pode ser configurado por ambiente com as seções `Logging:LogLevel` dos
+arquivos `appsettings.Development.json` e `appsettings.Production.json`, ou
+por variáveis como `Logging__LogLevel__Default`.
+
 ## Observações
 
 - Swagger só é exposto em `Development`.
 - `Clientes`, `Veiculos`, `Servicos`, `Pecas`, `OrdensDeServico` e `PedidosCompra` exigem token JWT.
-- `Auth` e o acompanhamento público de OS estão públicos no estado atual do código.
+- `Auth` administrativo permanece na API. O acompanhamento e a resposta da OS sao acessados pelo cliente com JWT emitido pela Lambda.

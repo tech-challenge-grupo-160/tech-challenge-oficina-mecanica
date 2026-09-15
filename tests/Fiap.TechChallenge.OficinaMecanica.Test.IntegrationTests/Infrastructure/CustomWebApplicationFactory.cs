@@ -79,6 +79,15 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         await _postgresContainer.DisposeAsync();
     }
 
+    // Sobrescritos pela JwtWebApplicationFactory, que precisa dos mesmos valores
+    // que a Lambda usa para assinar. Os testes existentes nao dependem destes
+    // valores: o TestAuthHandler abaixo substitui a validacao de token.
+    protected virtual string JwtIssuer => "TestIssuer";
+
+    protected virtual string JwtAudience => "TestAudience";
+
+    protected virtual string JwtSecretKey => "TestSecretKey_Should_Be_Long_Enough_123";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("IntegrationTesting");
@@ -87,9 +96,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         {
             var settings = new Dictionary<string, string?>
             {
-                ["Jwt:Issuer"] = "TestIssuer",
-                ["Jwt:Audience"] = "TestAudience",
-                ["Jwt:SecretKey"] = "TestSecretKey_Should_Be_Long_Enough_123",
+                ["Jwt:Issuer"] = JwtIssuer,
+                ["Jwt:Audience"] = JwtAudience,
+                ["Jwt:SecretKey"] = JwtSecretKey,
                 ["ConnectionStrings:DefaultConnection"] = GetTestConnectionString()
             };
 
@@ -103,15 +112,25 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             services.AddDbContext<OficinaDbContext>(options =>
                 options.UseNpgsql(GetTestConnectionString()));
 
-            services.AddAuthentication("Test")
-                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
+            ConfigureAuthenticationForTests(services);
+        });
+    }
 
-            services.PostConfigure<AuthenticationOptions>(options =>
-            {
-                options.DefaultAuthenticateScheme = "Test";
-                options.DefaultChallengeScheme = "Test";
-            });
+    /// <summary>
+    /// Troca a autenticacao real por um handler que aceita qualquer requisicao.
+    /// Isolar autorizacao de autenticacao mantem os testes de endpoint focados
+    /// no comportamento do recurso. A <c>JwtWebApplicationFactory</c> sobrescreve
+    /// este metodo para manter o JWT Bearer real e exercitar a validacao de token.
+    /// </summary>
+    protected virtual void ConfigureAuthenticationForTests(IServiceCollection services)
+    {
+        services.AddAuthentication("Test")
+            .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
 
+        services.PostConfigure<AuthenticationOptions>(options =>
+        {
+            options.DefaultAuthenticateScheme = "Test";
+            options.DefaultChallengeScheme = "Test";
         });
     }
 
@@ -219,6 +238,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
 public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
+    public const string TestRoleHeaderName = "X-Test-Role";
+    public const string TestDocumentoHeaderName = "X-Test-Documento";
+
     public TestAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
@@ -229,12 +251,23 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        var claims = new[]
+        var role = Request.Headers.TryGetValue(TestRoleHeaderName, out var roleHeader)
+            ? roleHeader.ToString()
+            : "Administrador";
+        var documento = Request.Headers.TryGetValue(TestDocumentoHeaderName, out var documentoHeader)
+            ? documentoHeader.ToString()
+            : null;
+
+        var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, CustomWebApplicationFactory.UsuarioAutenticadoId),
             new Claim(ClaimTypes.Name, CustomWebApplicationFactory.UsuarioAutenticadoNome),
-            new Claim(ClaimTypes.Role, "Administrador")
+            new Claim(ClaimTypes.Role, role)
         };
+        if (!string.IsNullOrWhiteSpace(documento))
+        {
+            claims.Add(new Claim("documento", documento));
+        }
 
         var identity = new ClaimsIdentity(claims, Scheme.Name);
         var principal = new ClaimsPrincipal(identity);

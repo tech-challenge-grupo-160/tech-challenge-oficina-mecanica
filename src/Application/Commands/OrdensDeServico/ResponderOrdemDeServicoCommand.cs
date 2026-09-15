@@ -6,7 +6,6 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServic
 public sealed class ResponderOrdemDeServicoCommand : IRequest<OrdemDeServicoResult>
 {
     public int Id { get; init; }
-    public string TrackingToken { get; init; } = null!;
     public bool Aprovado { get; init; }
     public string? MotivoRecusa { get; init; }
 }
