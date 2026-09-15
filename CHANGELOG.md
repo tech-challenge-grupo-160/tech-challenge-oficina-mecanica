@@ -29,12 +29,14 @@ observabilidade. O projeto passa a ter quatro repositorios - este, o
 ### Changed
 - Deploy pelo workflow `deploy-eks.yml`: build e testes, imagem no ECR com a tag do commit e rollout no EKS. `homolog` publica em homologacao e `master` em producao (#98, #104)
 - Documentacao do ciclo de vida: chave do Datadog e Node.js nos pre-requisitos (#113)
+- Guia do ciclo de vida para colaboradores: tempos de subida e derrubada, conferencia do ambiente, registro e troca da chave do Datadog, concorrencia com as pipelines e novos problemas conhecidos
 
 ### Fixed
 - Checagens de seguranca dos scripts de ciclo de vida (#100)
 - Funcoes Lambda publicadas antes do apply do gateway numa conta nova (#101)
 - Scripts deixam de apontar as pipelines do time para a conta de outra pessoa (#103)
 - `sobe-tudo.sh` usa a chave real do Datadog em vez da chave dummy (#111)
+- Mensagem do `sobe-tudo.sh` sem chave do Datadog deixa de sugerir criar o segredo a mao, o que fazia o apply falhar numa conta nova
 - Caixa da rota de login na collection do Postman (#102)
 
 ### Removed
