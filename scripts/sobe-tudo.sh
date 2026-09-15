@@ -223,11 +223,19 @@ fi
 
 # Numa conta nova o segredo ainda nao existe - quem cria e este mesmo apply, a
 # partir da variavel. Melhor parar aqui do que esperar o Helm desistir.
+#
+# A mensagem nao oferece "grave o segredo no Secrets Manager" como saida, e ate
+# 15/09 oferecia: numa conta nova o segredo criado a mao colide com o
+# aws_secretsmanager_secret do Terraform, e o apply falha com
+# ResourceExistsException. A unica saida segura aqui e a variavel.
 if grep -qE '^[[:space:]]*datadog_enabled[[:space:]]*=[[:space:]]*true' "$K8S/infra/inventories/$AMBIENTE/terraform.tfvars" \
    && [ "$TF_VAR_datadog_api_key" = "$DD_DUMMY" ]; then
   vermelho "  Datadog ligado em inventories/$AMBIENTE, mas sem chave real."
-  echo "  Exporte TF_VAR_datadog_api_key ou grave tc-grupo160/$AMBIENTE/datadog-api-key"
-  echo "  no Secrets Manager e rode de novo."
+  echo "  Carregue a chave no terminal e rode de novo:"
+  echo "    read -rsp 'Chave do Datadog: ' TF_VAR_datadog_api_key && echo && export TF_VAR_datadog_api_key"
+  echo "  Nao crie o segredo tc-grupo160/$AMBIENTE/datadog-api-key a mao: quem cria e o"
+  echo "  apply, e um segredo ja existente faz o Terraform falhar."
+  echo "  Passo a passo: docs/CICLO-DE-VIDA.md, secao Chave do Datadog."
   exit 1
 fi
 
