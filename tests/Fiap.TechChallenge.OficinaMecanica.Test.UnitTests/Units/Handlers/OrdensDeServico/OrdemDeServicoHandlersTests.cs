@@ -65,6 +65,9 @@ public class OrdemDeServicoHandlersTests
         _historicoRepositoryMock
             .Setup(x => x.CriarAsync(It.IsAny<OrdemServicoHistorico>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemServicoHistorico historico, CancellationToken _) => historico);
+        _historicoRepositoryMock
+            .Setup(x => x.ObterPorOrdemDeServicoAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<OrdemServicoHistorico>());
         _notificacaoClienteRepositoryMock
             .Setup(x => x.CriarAsync(It.IsAny<NotificacaoCliente>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((NotificacaoCliente notificacao, CancellationToken _) => notificacao);
@@ -74,11 +77,12 @@ public class OrdemDeServicoHandlersTests
         _ordemRepositoryMock
             .Setup(x => x.ObterPorCodigoAcompanhamentoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico?)null);
+        var businessMetrics = Mock.Of<IBusinessMetrics>();
         var historicoService = new OrdemDeServicoHistoricoService(
             _historicoRepositoryMock.Object,
             _usuarioAutenticadoServiceMock.Object,
             _clockMock.Object,
-            Mock.Of<IBusinessMetrics>());
+            businessMetrics);
         var notificacaoService = new OrdemDeServicoNotificacaoService(
             _notificacaoClienteRepositoryMock.Object,
             _clockMock.Object);
@@ -106,7 +110,8 @@ public class OrdemDeServicoHandlersTests
             acompanhamentoService,
             historicoService,
             notificacaoService,
-            estoqueService);
+            estoqueService,
+            businessMetrics);
     }
 
     [Fact]
@@ -863,6 +868,7 @@ public class OrdemDeServicoHandlersTests
         private readonly OrdemDeServicoHistoricoService _historicoService;
         private readonly OrdemDeServicoNotificacaoService _notificacaoService;
         private readonly OrdemDeServicoEstoqueService _estoqueService;
+        private readonly IBusinessMetrics _businessMetrics;
 
         public OrdemDeServicoHandlerHarness(
             IOrdemDeServicoRepository ordemRepository,
@@ -880,7 +886,8 @@ public class OrdemDeServicoHandlersTests
             OrdemDeServicoAcompanhamentoService acompanhamentoService,
             OrdemDeServicoHistoricoService historicoService,
             OrdemDeServicoNotificacaoService notificacaoService,
-            OrdemDeServicoEstoqueService estoqueService)
+            OrdemDeServicoEstoqueService estoqueService,
+            IBusinessMetrics businessMetrics)
         {
             _ordemRepository = ordemRepository;
             _clienteRepository = clienteRepository;
@@ -898,6 +905,7 @@ public class OrdemDeServicoHandlersTests
             _historicoService = historicoService;
             _notificacaoService = notificacaoService;
             _estoqueService = estoqueService;
+            _businessMetrics = businessMetrics;
         }
 
         public Task<OrdemDeServicoResult> CriarOrdemDeServicoAsync(CriarOrdemDeServicoDto dto, CancellationToken cancellationToken)
@@ -912,7 +920,8 @@ public class OrdemDeServicoHandlersTests
                 _pecaRepository,
                 _servicoRepository,
                 _veiculoRepository,
-                _loggerFactory).Handle(new CriarOrdemDeServicoCommand
+                _loggerFactory,
+                _businessMetrics).Handle(new CriarOrdemDeServicoCommand
             {
                 ClienteId = dto.ClienteId,
                 VeiculoId = dto.VeiculoId,

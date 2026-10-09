@@ -13,7 +13,7 @@ public sealed class OrdemDeServicoHistoricoService
     private readonly IOrdemServicoHistoricoRepository _historicoRepository;
     private readonly IUsuarioAutenticadoService _usuarioAutenticadoService;
     private readonly IClock _clock;
-    private readonly IBusinessMetrics? _businessMetrics;
+    private readonly IBusinessMetrics _businessMetrics;
 
     public OrdemDeServicoHistoricoService(
         IOrdemServicoHistoricoRepository historicoRepository,
@@ -38,7 +38,7 @@ public sealed class OrdemDeServicoHistoricoService
         var usuarioAtual = _usuarioAutenticadoService.ObterUsuarioAtual();
         var dataEvento = _clock.Now;
 
-        if (statusAnterior.HasValue && statusNovo.HasValue)
+        if (statusAnterior.HasValue && statusNovo.HasValue && statusAnterior != statusNovo)
         {
             var etapa = GetStage(statusAnterior.Value);
             if (etapa is not null)
@@ -47,13 +47,13 @@ public sealed class OrdemDeServicoHistoricoService
                     ordem.Id,
                     cancellationToken);
                 var inicioEtapa = historico
-                    .Where(item => item.StatusNovo == statusAnterior)
+                    .Where(item => item.StatusNovo == statusAnterior && item.StatusAnterior != item.StatusNovo)
                     .OrderByDescending(item => item.DataEvento)
                     .FirstOrDefault();
 
                 if (inicioEtapa is not null)
                 {
-                    _businessMetrics?.RecordOrderStageDuration(
+                    _businessMetrics.RecordOrderStageDuration(
                         etapa,
                         (dataEvento - inicioEtapa.DataEvento).TotalSeconds);
                 }

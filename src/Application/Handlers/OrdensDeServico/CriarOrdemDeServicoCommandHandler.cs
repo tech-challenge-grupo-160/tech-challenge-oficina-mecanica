@@ -21,7 +21,7 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
     private readonly OrdemDeServicoAcompanhamentoService _acompanhamentoService;
     private readonly IClienteRepository _clienteRepository;
     private readonly IClock _clock;
-    private readonly IBusinessMetrics? _businessMetrics;
+    private readonly IBusinessMetrics _businessMetrics;
     private readonly OrdemDeServicoHistoricoService _historicoService;
     private readonly OrdemDeServicoNotificacaoService _notificacaoService;
     private readonly IOrdemDeServicoRepository _ordemRepository;
@@ -41,7 +41,7 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
         IServicoRepository servicoRepository,
         IVeiculoRepository veiculoRepository,
         ILoggerFactory loggerFactory,
-        IBusinessMetrics? businessMetrics = null)
+        IBusinessMetrics businessMetrics)
     {
         _acompanhamentoService = acompanhamentoService;
         _clienteRepository = clienteRepository;
@@ -172,24 +172,25 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
                     cancellationToken);
             }
 
-            _businessMetrics?.RecordOrderCreated();
             await _notificacaoService.RegistrarAsync(
                 ordemAtualizada.Id,
                 TipoNotificacaoCliente.LinkAcompanhamentoEnviado,
                 CanalNotificacaoCliente.Email,
                 $"Link de acompanhamento da ordem {ordemAtualizada.Numero} enviado para o e-mail {cliente.Email}. Acesso requer autenticacao do cliente por CPF/CNPJ. Endpoint: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
                 cancellationToken);
+            _businessMetrics.RecordOrderCreated();
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Ordem de servico aberta com sucesso. Numero: {ordemAtualizada.Numero}");
             return OrdemDeServicoMapper.ToResult(ordemAtualizada);
         }
         catch (Exception ex) when (ex is IServiceExceptionContract serviceException)
         {
-            _businessMetrics?.RecordOrderCreationFailure(ClassifyBusinessFailure(serviceException.StatusCode));
+            _businessMetrics.RecordOrderCreationFailure(ClassifyBusinessFailure(serviceException.StatusCode));
             _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarOrdemDeServicoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
         catch (Exception ex)
         {
+            _businessMetrics.RecordOrderCreationFailure("unexpected");
             _logger.LogError(ex, LogTemplate.Error, LoggerName, nameof(CriarOrdemDeServicoAsync), LogTemplate.CurrentTraceId(), ex.Message);
             throw;
         }
