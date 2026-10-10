@@ -6,6 +6,26 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-10
+
+Metricas de negocio e APM do Datadog na API. A telemetria chega ao Agent com
+o hostPort do dogstatsd e o unified service tagging do
+`tech-challenge-infra-k8s` (#44 daquele repositorio).
+
+### Added
+- Metricas de negocio via DogStatsD: `orders.created`, `orders.creation_failed` (tag `reason`) e `orders.stage_duration` (distribution, tag `stage`), medida so em troca real de status (#121)
+- Datadog .NET Tracer na imagem da API (#121)
+- Testes de integracao de liveness e readiness (#121)
+
+### Changed
+- `/health/ready` devolve a resposta detalhada; o `docker-compose` usa `/health/live` e desliga o tracer, ja que nao sobe Agent local (#121)
+- `LogTemplate` troca a propriedade `{service}` por `{componente}`, para nao sobrescrever o `service` do Datadog nos logs (#121)
+- `DD_ENV` do `patch-api` resolvido pelo `sobe-tudo.sh` e pelo `deploy-eks.yml` a partir do ambiente (#121)
+
+### Fixed
+- Container da API caia ao carregar o tracer por falta da `libgssapi_krb5`; a imagem passa a instalar `krb5-libs` (#121)
+- `sobe-tudo.sh` passa o `newTag` entre aspas, para o Kustomize aceitar SHA formado so por algarismos (#121)
+
 ## [3.0.0] - 2026-09-15
 
 Fase 3: autenticacao por CPF na borda, infraestrutura gerenciada na AWS e
