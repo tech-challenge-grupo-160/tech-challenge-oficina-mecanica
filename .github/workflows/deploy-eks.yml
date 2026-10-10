@@ -235,6 +235,9 @@ jobs:
           # o kubectl ja embute o motor, entao a substituicao e feita no arquivo.
           sed -i "s|newTag: .*|newTag: ${GITHUB_SHA::12}|" kustomization.yaml
           sed -i "s|newName: .*|newName: ${{ steps.amb.outputs.imagem }}|" kustomization.yaml
+          # DD_ENV do patch-api.yaml (unified service tagging) usa o mesmo
+          # sufixo (dev/hom/prod) resolvido no passo "Resolver ambiente".
+          sed -i "s|__AMBIENTE__|${{ steps.amb.outputs.sufixo }}|g" patch-api.yaml
           kubectl apply -k .
 
       # A migration roda no startup da API, entao o primeiro rollout de um banco

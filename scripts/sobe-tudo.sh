@@ -366,7 +366,12 @@ kubectl create secret generic api-secret --namespace oficina-mecanica \
 
 TMP="$(mktemp -d)"
 cp -r "$K8S/k8s/." "$TMP/"
-sed -i "s|newTag: .*|newTag: ${SHA}|; s|newName: .*|newName: ${ECR}|" "$TMP/nuvem/kustomization.yaml"
+# SHA pode ser formado apenas por algarismos. Sem aspas, o YAML o interpreta
+# como numero e o Kustomize rejeita `images[].newTag`, que precisa ser string.
+sed -i "s|newTag: .*|newTag: \"${SHA}\"|; s|newName: .*|newName: ${ECR}|" "$TMP/nuvem/kustomization.yaml"
+# DD_ENV do patch-api.yaml (unified service tagging) vem com o mesmo
+# placeholder resolvido aqui pelo motivo do newTag acima.
+sed -i "s|__AMBIENTE__|${AMBIENTE}|g" "$TMP/nuvem/patch-api.yaml"
 kubectl apply -k "$TMP/nuvem" >/dev/null
 
 # O Cluster Autoscaler vive em kube-system, fora do overlay da aplicacao. E ele
