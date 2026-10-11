@@ -6,6 +6,9 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Parametro `--sem-datadog` no `sobe-tudo.sh`, para subir um ambiente sem o Agent e sem a chave do Datadog
+
 ## [3.1.0] - 2026-10-10
 
 Metricas de negocio e APM do Datadog na API. A telemetria chega ao Agent com
