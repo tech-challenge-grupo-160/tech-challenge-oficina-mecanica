@@ -6,9 +6,6 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Unreleased]
 
-### Added
-- Parametro `--sem-datadog` no `sobe-tudo.sh`, para subir um ambiente sem o Agent e sem a chave do Datadog
-
 ## [3.1.0] - 2026-10-10
 
 Metricas de negocio e APM do Datadog na API. A telemetria chega ao Agent com
@@ -19,6 +16,7 @@ o hostPort do dogstatsd e o unified service tagging do
 - Metricas de negocio via DogStatsD: `orders.created`, `orders.creation_failed` (tag `reason`) e `orders.stage_duration` (distribution, tag `stage`), medida so em troca real de status (#121)
 - Datadog .NET Tracer na imagem da API (#121)
 - Testes de integracao de liveness e readiness (#121)
+- Parametro `--sem-datadog` no `sobe-tudo.sh`, para subir um ambiente sem o Agent e sem a chave do Datadog
 
 ### Changed
 - `/health/ready` devolve a resposta detalhada; o `docker-compose` usa `/health/live` e desliga o tracer, ja que nao sobe Agent local (#121)
