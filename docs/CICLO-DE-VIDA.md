@@ -525,7 +525,7 @@ esforço:
 | Nome do bucket de state | `tc-grupo160-tfstate-<id-da-conta>`, derivado em tempo de execução |
 | ARNs da LabRole e das Lambdas | montados com `data.aws_caller_identity` |
 | State remoto entre repositórios | o `infra-database` monta o nome do bucket do mesmo jeito |
-| State local do bootstrap | fora do Git, e o script move o de outra conta para `.antigo` |
+| Bucket e tabela de lock | `garantir_backend_state` cria por AWS CLI, por conta, sem state proprio |
 
 O procedimento é:
 
