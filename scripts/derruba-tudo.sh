@@ -181,11 +181,8 @@ fi
 
 if [ "$COM_BOOTSTRAP" -eq 1 ]; then
   etapa 4 "$TOTAL" "Backend de state"
-  # force_destroy ja esta ligado no bucket, entao as versoes antigas nao travam
-  # a remocao. Ver bootstrap/main.tf.
-  terraform -chdir="$K8S/bootstrap" init -input=false >/dev/null
-  terraform -chdir="$K8S/bootstrap" destroy -auto-approve -input=false
-  verde "  Bucket e tabela de lock removidos."
+  # Via AWS CLI, nao Terraform: ver destruir_backend_state em comum.sh.
+  destruir_backend_state "$BUCKET"
   PASSO=5
 else
   PASSO=4

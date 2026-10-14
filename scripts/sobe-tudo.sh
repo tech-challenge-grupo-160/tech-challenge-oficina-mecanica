@@ -96,40 +96,10 @@ fi
 titulo "Infraestrutura"
 etapa 1 "$TOTAL" "Backend de state (S3 + DynamoDB)"
 
-# O state do bootstrap e local e fica fora do git. Numa conta nova ele nao
-# existe, e o apply cria o bucket do zero. Se existir apontando para OUTRA
-# conta, reaproveita-lo faria o Terraform tentar reconciliar recursos que nao
-# existem aqui - por isso a checagem.
-STATE_BOOT="$K8S/bootstrap/terraform.tfstate"
-if [ -f "$STATE_BOOT" ]; then
-  # Se o state local existir mas nao contiver o bucket nem recursos registrados
-  # para a conta atual, move para antigo para forcar o Terraform a importar ou usar o correto.
-  if ! grep -q "$BUCKET" "$STATE_BOOT" 2>/dev/null || ! grep -q "aws_s3_bucket" "$STATE_BOOT" 2>/dev/null; then
-    amarelo "  State local do bootstrap invalido ou de outra conta. Movendo para .antigo."
-    mv "$STATE_BOOT" "$STATE_BOOT.antigo-$(date +%Y%m%d%H%M%S)"
-  fi
-fi
-
-terraform -chdir="$K8S/bootstrap" init -input=false >/dev/null
-
-# Com o bucket ja de pe, o apply roda SEM refresh. Nao e teimosia: em 04/09 o
-# SCP do Learner Lab passou a negar `s3:GetBucketObjectLockConfiguration`, e o
-# provider da AWS faz essa leitura toda vez que atualiza um aws_s3_bucket. O
-# apply morria com AccessDenied antes de chegar em qualquer outra etapa.
-#
-#   AccessDenied: ... explicit deny in a service control policy
-#
-# Nao ha o que perder aqui. Bucket e tabela de lock sao criados uma vez e nunca
-# mudam, e o `plan -refresh=false` confirma que o state ja bate com a
-# configuracao. O caminho de conta nova continua igual, com refresh, porque la
-# ha recurso a criar de verdade - se o SCP tambem barrar aquele fluxo, o erro
-# aparece na cara e nao escondido atras de um -refresh=false.
-if aws s3api head-bucket --bucket "$BUCKET" >/dev/null 2>&1; then
-  terraform -chdir="$K8S/bootstrap" apply -auto-approve -input=false -refresh=false >/dev/null
-else
-  terraform -chdir="$K8S/bootstrap" apply -auto-approve -input=false >/dev/null
-fi
-verde "  Backend pronto: s3://$BUCKET"
+# Criado via AWS CLI, nao Terraform: ver garantir_backend_state em comum.sh
+# para o motivo (o SCP do Learner Lab nega a leitura que o provider da AWS faz
+# ao criar um aws_s3_bucket, inclusive em conta nova - nao so no refresh).
+garantir_backend_state "$BUCKET" "$REGIAO"
 
 # As pipelines precisam saber em que bucket esta o state, e a variavel vive nos
 # repositorios da organizacao - compartilhada por todo mundo.
