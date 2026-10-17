@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposta |
+| **Status** | Aceita em 2026-10-17 |
 | **Data** | 2026-10-12 |
 | **Decisores** | Grupo 160 |
 | **Issue** | [#135](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/135) |
@@ -28,8 +28,8 @@ O planejamento inicial propunha o DynamoDB na Execução. Com a divisão da ADR-
 | Serviço | Banco | Onde é provisionado |
 |---|---|---|
 | **OS Service** | PostgreSQL — o RDS atual | `tech-challenge-infra-database` (sem mudança) |
-| **Execução** | PostgreSQL — **instância RDS própria** | Pasta `infra/` do repositório da Execução, reaproveitando o módulo do `infra-database` |
-| **Billing** | **Amazon DynamoDB** | Pasta `infra/` do repositório do Billing |
+| **Execução** | PostgreSQL — **instância RDS própria** | Pasta `infra/` do `tech-challenge-oficina-mecanica-execucao`, reaproveitando o módulo do `infra-database` |
+| **Billing** | **Amazon DynamoDB** | Pasta `infra/` do `tech-challenge-oficina-mecanica-billing` |
 
 Cada serviço tem **credenciais próprias no Secrets Manager**, e nenhum serviço recebe credencial do banco de outro.
 
@@ -116,15 +116,15 @@ Teria suporte de outbox no MassTransit, eliminando código próprio. Não foi es
 
 ## Impacto no board
 
-Se esta ADR for aceita, duas issues trocam de serviço:
+Com esta ADR aceita, duas issues trocaram de serviço:
 
 - [F4-12](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/143) "Terraform do banco do Billing (PostgreSQL)" passa a ser o RDS da Execução
 - [F4-13](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/144) "Terraform das tabelas DynamoDB da Execução" passa a ser a tabela do Billing
 
-## Pontos para decidir na reunião
+## Decisões da reunião (2026-10-17)
 
-1. DynamoDB no Billing e PostgreSQL na Execução (proposta), ou a divisão original?
-2. Instância RDS própria para a Execução (proposta) ou database separado na instância atual?
+1. **DynamoDB no Billing e PostgreSQL na Execução**, invertendo o planejamento original.
+2. **Instância RDS própria** para a Execução; o database compartilhado fica como alternativa se o custo apertar.
 
 ## Referências
 

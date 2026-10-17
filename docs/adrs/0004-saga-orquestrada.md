@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposta |
+| **Status** | Aceita em 2026-10-17 |
 | **Data** | 2026-10-12 |
 | **Decisores** | Grupo 160 |
 | **Issue** | [#133](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/133) |
@@ -147,12 +147,12 @@ Não atende o requisito (o enunciado pede Saga), exige que os bancos participem 
 | Compensação que também falha | Retentativa com backoff, DLQ e reprocessamento manual documentado |
 | Mudança de regra de negócio sem formalização | O momento do pagamento fica em aberto até decisão formal (Opção A como padrão) |
 
-## Pontos para decidir na reunião
+## Decisões da reunião (2026-10-17)
 
-1. Orquestração (proposta) ou coreografia?
-2. Momento do pagamento: Opção A (proposta) ou B?
-3. Timeout de aprovação do orçamento: 7 dias está bom?
-4. Cancelamento manual durante a execução deve ser permitido?
+1. Saga **orquestrada**, no OS Service.
+2. Pagamento **no fim** (Opção A): a regra de negócio não muda e o estorno ([F4-21](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/152)) sai do escopo.
+3. Timeout de aprovação do orçamento: 7 dias, configurável.
+4. Cancelamento manual durante a execução: definido na implementação da compensação ([F4-28](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/159)).
 
 ## Referências
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposta |
+| **Status** | Aceita em 2026-10-17 |
 | **Data** | 2026-10-12 |
 | **Decisores** | Grupo 160 |
 | **Issue** | [#132](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/132) |
@@ -36,8 +36,8 @@ Dividir em **três serviços, um por etapa do atendimento**: o **OS Service** cu
 | Serviço | Repositório | Responsabilidade |
 |---|---|---|
 | **OS Service** | `tech-challenge-oficina-mecanica` (atual, mantido) | Clientes, veículos, abertura da OS, status e histórico, acompanhamento público, notificações ao cliente, login de funcionários e **orquestração da Saga** |
-| **Billing** | `tech-challenge-billing` _(nome a confirmar)_ | Orçamento (geração, envio, aprovação e recusa), pagamento via Mercado Pago, estorno |
-| **Execução** | `tech-challenge-execucao` _(nome a confirmar)_ | Diagnóstico e reparo, fila de execução, catálogo de serviços e peças, estoque, reserva de peças e pedidos de compra |
+| **Billing** | `tech-challenge-oficina-mecanica-billing` | Orçamento (geração, envio, aprovação e recusa), pagamento via Mercado Pago, estorno |
+| **Execução** | `tech-challenge-oficina-mecanica-execucao` | Diagnóstico e reparo, fila de execução, catálogo de serviços e peças, estoque, reserva de peças e pedidos de compra |
 
 O repositório atual **não é renomeado**: ele vira o OS Service. Renomear quebraria automações, URLs e referências da Fase 3 sem ganho para a avaliação.
 
@@ -143,16 +143,18 @@ Mesmo argumento da alternativa anterior. Além disso, cliente e veículo são li
 | Evento perdido deixa o status da OS divergente | Outbox transacional e consumidor idempotente (F4-15); DLQ monitorada |
 | Cópias de dados pessoais em vários bancos | Copiar só o necessário; CPF fica só no OS Service; logs com CPF mascarado |
 | Reserva de estoque concorrente para duas OS | Reserva em transação com concorrência otimista na Execução (F4-23, [ADR-0006](0006-banco-por-servico.md)) |
-| Fronteira errada descoberta durante a extração | Esta ADR fica como **Proposta** até o fim da Sprint 3; ajustes entram aqui antes de virar **Aceita** |
+| Fronteira errada descoberta durante a extração | Registrar o ajuste numa nova ADR que substitui esta, conforme a convenção do projeto |
 | Chamada síncrona ao catálogo indisponível na abertura | Timeout curto e abertura sem serviços pré-selecionados como alternativa |
 
-## Pontos para decidir na reunião
+## Decisões da reunião (2026-10-17)
 
-1. Diagnóstico na Execução (proposta) ou no OS Service?
-2. Catálogo de serviços e peças com preço na Execução (proposta) ou no Billing?
-3. Notificações ao cliente centralizadas no OS Service (proposta)?
-4. Nomes dos repositórios novos.
-5. O endpoint `avancar-status` é removido ou mantido só para uso administrativo?
+Proposta aprovada pelo grupo sem alterações de fronteira:
+
+1. Diagnóstico fica na Execução.
+2. Catálogo de serviços e peças, com preço, fica na Execução.
+3. Notificações ao cliente ficam centralizadas no OS Service.
+4. Repositórios novos: `tech-challenge-oficina-mecanica-billing` e `tech-challenge-oficina-mecanica-execucao`, mantendo o prefixo do repositório atual.
+5. O destino do endpoint `avancar-status` fica para a extração do OS Service ([F4-16](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/147)).
 
 ## Referências
 

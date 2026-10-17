@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposta |
+| **Status** | Aceita em 2026-10-17 |
 | **Data** | 2026-10-12 |
 | **Decisores** | Grupo 160 |
 | **Issue** | [#134](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/134) |
@@ -160,11 +160,11 @@ Não atende o enunciado e acoplaria a disponibilidade dos serviços: se o Billin
 | Contrato de mensagem quebrado entre serviços | Campo `version`, catálogo versionado e testes de contrato no CI |
 | Filas acumulando mensagens sem ninguém perceber | Monitores no Datadog para idade da mensagem mais antiga e DLQ não vazia |
 
-## Pontos para decidir na reunião
+## Decisões da reunião (2026-10-17)
 
-1. SNS + SQS (proposta) ou RabbitMQ no cluster?
-2. MassTransit (proposta, sujeito à confirmação da licença) ou AWS SDK direto?
-3. A topologia (filas e tópicos) é criada pelo Terraform ou pela biblioteca?
+1. **SNS + SQS**, com RabbitMQ no cluster como plano B se o spike ([F4-05](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/136)) falhar.
+2. **MassTransit**, condicionado a confirmar que a versão adotada é open source; se não for, AWS SDK direto.
+3. Quem cria a topologia (Terraform ou biblioteca) fica para a [F4-11](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/142).
 
 ## Referências
 
