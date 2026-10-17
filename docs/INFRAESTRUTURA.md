@@ -11,7 +11,7 @@ Onde cada coisa roda, e onde cada coisa é definida.
 
 | | Onde roda | Banco | Quem publica |
 |---|---|---|---|
-| `dev`, `hom`, `prod` | EKS, na AWS | RDS PostgreSQL gerenciado | workflow `Deploy EKS` ou `scripts/sobe-tudo.sh` |
+| `dev`, `hom`, `prod` | EKS, na AWS | RDS PostgreSQL gerenciado | workflow `Pipeline` (disparo manual) ou `scripts/sobe-tudo.sh` |
 | Desenvolvimento local | kind, na sua máquina | PostgreSQL dentro do cluster | você, à mão |
 | Só rodar a API | Docker Compose | contêiner do Compose | você, à mão |
 

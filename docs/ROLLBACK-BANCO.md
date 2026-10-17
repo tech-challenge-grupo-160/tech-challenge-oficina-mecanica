@@ -21,7 +21,7 @@ o pod sobe saudável e quebra depois, no primeiro acesso à coluna que mudou.
 
 | Camada | Rollback | Onde |
 |---|---|---|
-| Imagem da API | `kubectl rollout undo` | resumo do workflow Deploy EKS |
+| Imagem da API | `kubectl rollout undo` | resumo do job Deploy do workflow Pipeline |
 | Schema | migration de down, explícita | seção abaixo |
 | Dados | snapshot ou PITR do RDS | seção abaixo |
 
