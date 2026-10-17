@@ -12,6 +12,7 @@
 #   ./scripts/sobe-tudo.sh --so-infra         # para antes das aplicacoes
 #   ./scripts/sobe-tudo.sh --sim              # nao pergunta nada
 #   ./scripts/sobe-tudo.sh --assumir-pipelines  # aponta as pipelines para a sua conta
+#   ./scripts/sobe-tudo.sh --sem-datadog      # sobe sem Agent nem chave do Datadog
 #
 # CUSTO: o cluster EKS cobra US$ 0,10/hora enquanto existir e NAO e suspenso
 # junto com a sessao do lab, diferente das instancias EC2. Com o NAT Gateway,
@@ -29,6 +30,7 @@ REGIAO="${AWS_REGION:-us-east-1}"
 SO_INFRA=0
 SEM_PERGUNTAR=0
 ASSUMIR_PIPELINES=0
+SEM_DATADOG=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -36,7 +38,8 @@ while [ $# -gt 0 ]; do
     --so-infra) SO_INFRA=1; shift ;;
     --sim)      SEM_PERGUNTAR=1; shift ;;
     --assumir-pipelines) ASSUMIR_PIPELINES=1; shift ;;
-    -h|--help)  sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --sem-datadog) SEM_DATADOG=1; shift ;;
+    -h|--help)  sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) vermelho "Argumento desconhecido: $1"; exit 1 ;;
   esac
 done
@@ -93,40 +96,10 @@ fi
 titulo "Infraestrutura"
 etapa 1 "$TOTAL" "Backend de state (S3 + DynamoDB)"
 
-# O state do bootstrap e local e fica fora do git. Numa conta nova ele nao
-# existe, e o apply cria o bucket do zero. Se existir apontando para OUTRA
-# conta, reaproveita-lo faria o Terraform tentar reconciliar recursos que nao
-# existem aqui - por isso a checagem.
-STATE_BOOT="$K8S/bootstrap/terraform.tfstate"
-if [ -f "$STATE_BOOT" ]; then
-  # Se o state local existir mas nao contiver o bucket nem recursos registrados
-  # para a conta atual, move para antigo para forcar o Terraform a importar ou usar o correto.
-  if ! grep -q "$BUCKET" "$STATE_BOOT" 2>/dev/null || ! grep -q "aws_s3_bucket" "$STATE_BOOT" 2>/dev/null; then
-    amarelo "  State local do bootstrap invalido ou de outra conta. Movendo para .antigo."
-    mv "$STATE_BOOT" "$STATE_BOOT.antigo-$(date +%Y%m%d%H%M%S)"
-  fi
-fi
-
-terraform -chdir="$K8S/bootstrap" init -input=false >/dev/null
-
-# Com o bucket ja de pe, o apply roda SEM refresh. Nao e teimosia: em 04/09 o
-# SCP do Learner Lab passou a negar `s3:GetBucketObjectLockConfiguration`, e o
-# provider da AWS faz essa leitura toda vez que atualiza um aws_s3_bucket. O
-# apply morria com AccessDenied antes de chegar em qualquer outra etapa.
-#
-#   AccessDenied: ... explicit deny in a service control policy
-#
-# Nao ha o que perder aqui. Bucket e tabela de lock sao criados uma vez e nunca
-# mudam, e o `plan -refresh=false` confirma que o state ja bate com a
-# configuracao. O caminho de conta nova continua igual, com refresh, porque la
-# ha recurso a criar de verdade - se o SCP tambem barrar aquele fluxo, o erro
-# aparece na cara e nao escondido atras de um -refresh=false.
-if aws s3api head-bucket --bucket "$BUCKET" >/dev/null 2>&1; then
-  terraform -chdir="$K8S/bootstrap" apply -auto-approve -input=false -refresh=false >/dev/null
-else
-  terraform -chdir="$K8S/bootstrap" apply -auto-approve -input=false >/dev/null
-fi
-verde "  Backend pronto: s3://$BUCKET"
+# Criado via AWS CLI, nao Terraform: ver garantir_backend_state em comum.sh
+# para o motivo (o SCP do Learner Lab nega a leitura que o provider da AWS faz
+# ao criar um aws_s3_bucket, inclusive em conta nova - nao so no refresh).
+garantir_backend_state "$BUCKET" "$REGIAO"
 
 # As pipelines precisam saber em que bucket esta o state, e a variavel vive nos
 # repositorios da organizacao - compartilhada por todo mundo.
@@ -204,6 +177,18 @@ tf_init "$K8S/infra" "$AMBIENTE/rede.tfstate" "$BUCKET" "$REGIAO"
 VAR_LAMBDAS="-var=lambdas_publicadas=true"
 [ "$SO_INFRA" -eq 1 ] && VAR_LAMBDAS="-var=lambdas_publicadas=false"
 
+# --sem-datadog desliga o Datadog so nesta subida, sem editar o inventory: o
+# -var tem precedencia sobre o -var-file. Serve para quando nao ha chave valida
+# a mao - em 10/10 uma chave recusada com 403 deixou o Agent em 2/3 e o Helm
+# estourou o timeout. Num ambiente que ja tinha o Datadog, o apply remove o
+# Agent e o segredo da chave; as Lambdas ficam sem instrumentacao, porque o
+# segredo deixa de existir.
+VAR_DATADOG=""
+if [ "$SEM_DATADOG" -eq 1 ]; then
+  VAR_DATADOG="-var=datadog_enabled=false"
+  amarelo "  Subindo sem Datadog (--sem-datadog): sem Agent, APM nem metricas."
+fi
+
 # Chave do Datadog: do ambiente ou, na falta, do Secrets Manager.
 #
 # O comum.sh exporta uma chave dummy como padrao, para o Terraform validar sem
@@ -214,7 +199,8 @@ VAR_LAMBDAS="-var=lambdas_publicadas=true"
 # Vai por variavel de ambiente, e nao por -var, para a chave nao aparecer na
 # lista de processos.
 DD_DUMMY="dummy_datadog_key_local"
-if [ -z "${TF_VAR_datadog_api_key:-}" ] || [ "$TF_VAR_datadog_api_key" = "$DD_DUMMY" ]; then
+if [ "$SEM_DATADOG" -eq 0 ] \
+   && { [ -z "${TF_VAR_datadog_api_key:-}" ] || [ "$TF_VAR_datadog_api_key" = "$DD_DUMMY" ]; }; then
   SECRET_DD_KEY="$(aws secretsmanager get-secret-value --secret-id "tc-grupo160/${AMBIENTE}/datadog-api-key" --region "$REGIAO" --query SecretString --output text 2>/dev/null || echo '')"
   if [ -n "$SECRET_DD_KEY" ] && [ "$SECRET_DD_KEY" != "$DD_DUMMY" ]; then
     export TF_VAR_datadog_api_key="$SECRET_DD_KEY"
@@ -228,11 +214,13 @@ fi
 # 15/09 oferecia: numa conta nova o segredo criado a mao colide com o
 # aws_secretsmanager_secret do Terraform, e o apply falha com
 # ResourceExistsException. A unica saida segura aqui e a variavel.
-if grep -qE '^[[:space:]]*datadog_enabled[[:space:]]*=[[:space:]]*true' "$K8S/infra/inventories/$AMBIENTE/terraform.tfvars" \
+if [ "$SEM_DATADOG" -eq 0 ] \
+   && grep -qE '^[[:space:]]*datadog_enabled[[:space:]]*=[[:space:]]*true' "$K8S/infra/inventories/$AMBIENTE/terraform.tfvars" \
    && [ "$TF_VAR_datadog_api_key" = "$DD_DUMMY" ]; then
   vermelho "  Datadog ligado em inventories/$AMBIENTE, mas sem chave real."
   echo "  Carregue a chave no terminal e rode de novo:"
   echo "    read -rsp 'Chave do Datadog: ' TF_VAR_datadog_api_key && echo && export TF_VAR_datadog_api_key"
+  echo "  Ou suba sem Datadog: bash scripts/sobe-tudo.sh --ambiente $AMBIENTE --sem-datadog"
   echo "  Nao crie o segredo tc-grupo160/$AMBIENTE/datadog-api-key a mao: quem cria e o"
   echo "  apply, e um segredo ja existente faz o Terraform falhar."
   echo "  Passo a passo: docs/CICLO-DE-VIDA.md, secao Chave do Datadog."
@@ -241,7 +229,7 @@ fi
 
 # shellcheck disable=SC2086
 terraform -chdir="$K8S/infra" apply -auto-approve -input=false \
-  -var-file="inventories/$AMBIENTE/terraform.tfvars" $VAR_LAMBDAS
+  -var-file="inventories/$AMBIENTE/terraform.tfvars" $VAR_LAMBDAS $VAR_DATADOG
 verde "  Ambiente $AMBIENTE aplicado."
 
 # ------------------------------------------------------------------ banco
@@ -366,7 +354,12 @@ kubectl create secret generic api-secret --namespace oficina-mecanica \
 
 TMP="$(mktemp -d)"
 cp -r "$K8S/k8s/." "$TMP/"
-sed -i "s|newTag: .*|newTag: ${SHA}|; s|newName: .*|newName: ${ECR}|" "$TMP/nuvem/kustomization.yaml"
+# SHA pode ser formado apenas por algarismos. Sem aspas, o YAML o interpreta
+# como numero e o Kustomize rejeita `images[].newTag`, que precisa ser string.
+sed -i "s|newTag: .*|newTag: \"${SHA}\"|; s|newName: .*|newName: ${ECR}|" "$TMP/nuvem/kustomization.yaml"
+# DD_ENV do patch-api.yaml (unified service tagging) vem com o mesmo
+# placeholder resolvido aqui pelo motivo do newTag acima.
+sed -i "s|__AMBIENTE__|${AMBIENTE}|g" "$TMP/nuvem/patch-api.yaml"
 kubectl apply -k "$TMP/nuvem" >/dev/null
 
 # O Cluster Autoscaler vive em kube-system, fora do overlay da aplicacao. E ele

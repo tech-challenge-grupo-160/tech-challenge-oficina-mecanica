@@ -32,6 +32,7 @@ Ambos, sem argumento, agem sobre o ambiente **`dev`**.
 | `-h`, `--help` | ambos | Mostra o cabeçalho do script |
 | `--so-infra` | subir | Para depois da conferência, sem publicar as aplicações. Dispensa Docker, kubectl e .NET |
 | `--assumir-pipelines` | subir | Aponta as pipelines do time para a **sua** conta. Ver a seção sobre várias pessoas |
+| `--sem-datadog` | subir | Sobe sem Datadog, sem pedir a chave. Ver [Subir sem Datadog](#subir-sem-datadog) |
 | `--so-conferir` | derrubar | Só lista o que está cobrando. **Não destrói nada** |
 | `--com-bootstrap` | derrubar | Remove também o bucket de state, com todo o histórico |
 
@@ -315,6 +316,30 @@ gh secret list -R tech-challenge-grupo-160/tech-challenge-infra-k8s
 O `derruba-tudo.sh` destrói o segredo junto com o ambiente. Na subida seguinte,
 repita os passos 2 a 4.
 
+#### Subir sem Datadog
+
+Sem uma chave válida à mão — o passo 3 devolveu `403` e quem administra a
+organização não está por perto —, o ambiente sobe assim mesmo:
+
+```bash
+bash scripts/sobe-tudo.sh --ambiente hom --sem-datadog
+```
+
+O parâmetro desliga o Datadog só nessa subida, sem editar o inventory: o
+script passa `-var=datadog_enabled=false` no apply do `infra-k8s`, e não pede
+nem procura a chave. O que muda:
+
+- Não há Agent no cluster: a API funciona, mas sem traces nem métricas de
+  negócio no Datadog.
+- As Lambdas não são instrumentadas.
+- Num ambiente que já tinha o Datadog, o apply **remove** o Agent e o segredo
+  da chave.
+- O deploy da API pelas pipelines não depende do Datadog e passa normalmente.
+
+Para religar, carregue a chave (passos 2 e 3) e rode o `sobe-tudo.sh` de novo,
+sem o parâmetro. Um merge no `infra-k8s` também religa: a pipeline aplica o
+inventory como está no Git, com o secret do GitHub.
+
 ## Subindo
 
 O `sobe-tudo.sh` executa oito etapas, nesta ordem:
@@ -500,7 +525,7 @@ esforço:
 | Nome do bucket de state | `tc-grupo160-tfstate-<id-da-conta>`, derivado em tempo de execução |
 | ARNs da LabRole e das Lambdas | montados com `data.aws_caller_identity` |
 | State remoto entre repositórios | o `infra-database` monta o nome do bucket do mesmo jeito |
-| State local do bootstrap | fora do Git, e o script move o de outra conta para `.antigo` |
+| Bucket e tabela de lock | `garantir_backend_state` cria por AWS CLI, por conta, sem state proprio |
 
 O procedimento é:
 
@@ -530,9 +555,9 @@ para o bucket da conta antiga.
 |---|---|---|
 | `a credencial existe mas esta sendo negada` | sessão do lab encerrada (`voc-cancel-cred`) | Start Lab e cole a credencial nova |
 | `Error acquiring the state lock` | outro plan ou apply no mesmo ambiente — inclusive pipeline disparada por merge ou PR —, ou sessão que expirou no meio de um apply | espere o que estiver rodando; só use `terraform force-unlock <ID>` se tiver certeza de que nada está rodando |
-| `Datadog ligado em inventories/<ambiente>, mas sem chave real` | conta nova, ou subida logo depois de um derruba | carregue a chave ([Chave do Datadog](#chave-do-datadog), passos 2 e 3) e rode de novo |
+| `Datadog ligado em inventories/<ambiente>, mas sem chave real` | conta nova, ou subida logo depois de um derruba | carregue a chave ([Chave do Datadog](#chave-do-datadog), passos 2 e 3) e rode de novo, ou suba com `--sem-datadog` |
 | `ResourceExistsException` ao criar `tc-grupo160/<ambiente>/datadog-api-key` | segredo criado à mão antes do primeiro apply | `aws secretsmanager delete-secret --secret-id tc-grupo160/<ambiente>/datadog-api-key --force-delete-without-recovery` e suba com a variável |
-| `helm_release.datadog_agent`: `context deadline exceeded` | o Agent não consegue falar com o Datadog: chave inválida ou dummy, ou `datadog_site` diferente de `datadoghq.com` | corrija a chave ou o site. Se o release ficou travado, `aws eks update-kubeconfig --name tc-grupo160-<ambiente>`, `helm uninstall datadog -n datadog` e rode de novo |
+| `helm_release.datadog_agent`: `context deadline exceeded` | o Agent não consegue falar com o Datadog: chave inválida ou dummy, ou `datadog_site` diferente de `datadoghq.com` | corrija a chave ou o site. Se o release ficou travado, `aws eks update-kubeconfig --name tc-grupo160-<ambiente>`, `helm uninstall datadog -n datadog` e rode de novo. Sem chave válida, rode com `--sem-datadog`: o apply remove o release travado |
 | `ERRO: 'npx' nao encontrado no PATH` na etapa 6 | Node.js ausente, ou terminal aberto antes da instalação | instale o Node.js LTS, abra um terminal novo e rode de novo |
 | `404 {"message":"Not Found"}` no `/auth` ou no `/health/live` | endereço sem o nome do ambiente | use `https://<id>.execute-api.us-east-1.amazonaws.com/<ambiente>/auth` |
 | `POST /auth` devolve 503 logo após subir | VPC Link ainda propagando | espere ~3 min |

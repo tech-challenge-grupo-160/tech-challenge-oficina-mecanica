@@ -46,7 +46,58 @@ Ao iniciar em `Development`, a aplicação:
 - API: `http://localhost:8080`
 - Swagger: `http://localhost:8080/swagger`
 - Health: `http://localhost:8080/health`
+- Liveness: `http://localhost:8080/health/live`
+- Readiness: `http://localhost:8080/health/ready`
 - PostgreSQL: `localhost:5432`
+
+### Datadog APM
+
+A imagem da API instala o Datadog .NET Tracer e habilita a instrumentação
+automática. Em Kubernetes, o Deployment precisa fornecer o endereço do Agent
+no node:
+
+```yaml
+env:
+  - name: DD_AGENT_HOST
+    valueFrom:
+      fieldRef:
+        fieldPath: status.hostIP
+  - name: DD_ENV
+    value: dev
+  - name: DD_VERSION
+    value: "sha-do-deploy"
+```
+
+O `DD_SERVICE` padrão é `oficina-mecanica-api`. A API key continua sendo
+configuração exclusiva do Datadog Agent e não deve ser colocada na imagem ou
+nas variáveis da aplicação.
+
+### Métricas de negócio
+
+A API envia métricas pelo DogStatsD para o Agent:
+
+- `oficina_mecanica.orders.created`: contador de ordens criadas com sucesso;
+- `oficina_mecanica.orders.creation_failed`: contador de falhas de regra de
+  negócio na criação, com a tag `reason` (`validation` ou `not_found`);
+- `oficina_mecanica.orders.stage_duration`: distribution com a duração (em
+  segundos) de cada etapa da ordem, com a tag `stage` (`diagnostico`,
+  `execucao` ou `finalizacao`).
+
+No Kubernetes, o Agent deve receber DogStatsD na porta `8125`. As métricas
+ficam disponíveis no Datadog após a criação da primeira ordem e podem ser
+consultadas, por exemplo:
+
+```text
+sum:oficina_mecanica.orders.created{service:oficina-mecanica-api,env:dev}.as_count()
+sum:oficina_mecanica.orders.creation_failed{service:oficina-mecanica-api,env:dev} by {reason}.as_count()
+avg:oficina_mecanica.orders.stage_duration{service:oficina-mecanica-api,env:dev} by {stage}
+```
+
+`stage_duration` é enviada como `distribution` (e não `histogram`), então o
+nome da métrica fica disponível no Datadog exatamente como
+`oficina_mecanica.orders.stage_duration`, sem sufixos (`.avg`, `.count`,
+etc.) — diferente do que ocorre com métricas do tipo `histogram`, cuja
+agregação local no Agent só gera as variantes sufixadas.
 
 ### Credenciais iniciais
 
