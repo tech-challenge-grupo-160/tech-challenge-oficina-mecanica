@@ -17,6 +17,7 @@ o hostPort do dogstatsd e o unified service tagging do
 - Datadog .NET Tracer na imagem da API (#121)
 - Testes de integracao de liveness e readiness (#121)
 - Parametro `--sem-datadog` no `sobe-tudo.sh`, para subir um ambiente sem o Agent e sem a chave do Datadog
+- ADRs 0003 a 0006 da Fase 4: divisao em tres microsservicos, Saga orquestrada, mensageria com SNS e SQS e banco por servico (#185)
 
 ### Changed
 - `/health/ready` devolve a resposta detalhada; o `docker-compose` usa `/health/live` e desliga o tracer, ja que nao sobe Agent local (#121)
@@ -26,6 +27,7 @@ o hostPort do dogstatsd e o unified service tagging do
 ### Fixed
 - Container da API caia ao carregar o tracer por falta da `libgssapi_krb5`; a imagem passa a instalar `krb5-libs` (#121)
 - `sobe-tudo.sh` passa o `newTag` entre aspas, para o Kustomize aceitar SHA formado so por algarismos (#121)
+- Etapa 1 do `sobe-tudo.sh` morria no SCP do Learner Lab, que nega `s3:GetBucketObjectLockConfiguration` ate em conta nova. Bucket e tabela de lock do state passam a ser criados e removidos por AWS CLI (`garantir_backend_state` e `destruir_backend_state`), fora do Terraform (#186)
 
 ## [3.0.0] - 2026-09-15
 
