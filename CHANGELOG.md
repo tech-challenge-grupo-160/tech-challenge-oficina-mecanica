@@ -6,6 +6,9 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- CI/CD pelo pipeline reutilizavel `servico-dotnet.yml@v1` do `tech-challenge-pipelines`, no lugar do `deploy-eks.yml` e do `pr-develop-ci.yml`. Mesmo comportamento: build e testes em todo PR (agora tambem para `homolog` e `master`), deploy no push da `homolog` e da `master`, dev pelo disparo manual (F4-08)
+
 ## [3.1.0] - 2026-10-10
 
 Metricas de negocio e APM do Datadog na API. A telemetria chega ao Agent com

@@ -1,0 +1,44 @@
+# CI/CD do servico: chama o pipeline reutilizavel do tech-challenge-pipelines
+# (F4-08). Substitui o deploy-eks.yml e o pr-develop-ci.yml. PR roda so build e testes; push na homolog/master publica
+# no ambiente da branch; o disparo manual publica no ambiente escolhido - e
+# assim que se publica em dev.
+name: Pipeline
+
+on:
+  pull_request:
+    branches: [develop, homolog, master]
+  push:
+    branches: [homolog, master]
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: "Ambiente de destino"
+        type: choice
+        options: [desenvolvimento, homologacao, producao]
+        default: desenvolvimento
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline:
+    name: Pipeline
+    uses: tech-challenge-grupo-160/tech-challenge-pipelines/.github/workflows/servico-dotnet.yml@v1
+    with:
+      servico: oficina-mecanica-api
+      solucao: Fiap.TechChallenge.OficinaMecanica.slnx
+      imagem: api
+      regiao_aws: ${{ vars.AWS_REGION || 'us-east-1' }}
+      ambiente: ${{ github.event_name == 'workflow_dispatch' && inputs.ambiente || (github.event_name == 'push' && (github.ref_name == 'master' && 'producao' || 'homologacao')) || '' }}
+      # Os manifests do OS Service ainda vivem no tech-challenge-infra-k8s
+      # (overlay k8s/nuvem, tambem usado pelo sobe-tudo.sh).
+      manifestos_repositorio: tech-challenge-grupo-160/tech-challenge-infra-k8s
+      manifestos_caminho: k8s/nuvem
+      # Connection string do RDS e chave do JWT, montadas no api-secret a cada
+      # deploy a partir do Secrets Manager (RFC-0002).
+      segredos: |
+        ConnectionStrings__DefaultConnection=tc-grupo160/{sufixo}/banco#connectionString
+        Jwt__SecretKey=tc-grupo160/{sufixo}/jwt-signing-key
+      nome_secret: api-secret
+      cluster_autoscaler: true
+    secrets: inherit
