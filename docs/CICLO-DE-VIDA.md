@@ -73,7 +73,7 @@ Dois scripts escrevem neles:
 | Script | O que grava | Onde |
 |---|---|---|
 | `sobe-tudo.sh` | `TF_STATE_BUCKET` | variável dos 4 repositórios |
-| `renova-secrets.sh` | credenciais da AWS | secrets dos 4 repositórios |
+| `renova-secrets.sh` | credenciais da AWS | secrets dos 6 repositórios (os 4 da Fase 3, mais Billing e Execução) |
 
 Se duas pessoas rodarem, **a última ganha**: as pipelines passam a aplicar na
 conta dela. Os merges de todo o time vão para o ambiente de uma pessoa só — sem
