@@ -133,6 +133,88 @@ exigir_lab_role() {
 # O nome do bucket carrega o id da conta, entao trocar de conta troca de bucket
 # sem ninguem editar nada. E o que torna o projeto portavel.
 nome_do_bucket() { echo "tc-grupo160-tfstate-$(conta_atual)"; }
+nome_da_tabela_lock() { echo "tc-grupo160-tflock"; }
+
+# Backend de state via AWS CLI puro, nao Terraform.
+#
+# Ate 14/09 isto era um modulo Terraform (tech-challenge-infra-k8s/bootstrap).
+# Em 14/10 o SCP do Learner Lab passou a negar `s3:GetBucketObjectLockConfiguration`
+# tambem para contas novas - nao so no refresh de um bucket existente. O
+# provider da AWS le essa configuracao de forma incondicional sempre que cria
+# OU atualiza um aws_s3_bucket, e trata AccessDenied como erro fatal em
+# qualquer particao aws (resourceBucketRead, provider hashicorp/aws). Nao ha
+# -refresh=false, -var ou versao de provider que evite essa leitura.
+#
+# Bucket e tabela de lock sao criados uma vez e nunca mudam, entao gerenciar os
+# dois por fora do Terraform nao perde nada - so tira a unica chamada que o
+# SCP bloqueia do caminho critico.
+garantir_backend_state() {
+  local bucket="$1" regiao="$2" tabela
+  tabela="$(nome_da_tabela_lock)"
+
+  if aws s3api head-bucket --bucket "$bucket" >/dev/null 2>&1; then
+    cinza "  Bucket ja existe: s3://$bucket"
+  else
+    if [ "$regiao" = "us-east-1" ]; then
+      aws s3api create-bucket --bucket "$bucket" --region "$regiao" >/dev/null
+    else
+      aws s3api create-bucket --bucket "$bucket" --region "$regiao" \
+        --create-bucket-configuration "LocationConstraint=$regiao" >/dev/null
+    fi
+    aws s3api put-bucket-versioning --bucket "$bucket" \
+      --versioning-configuration Status=Enabled
+    aws s3api put-bucket-encryption --bucket "$bucket" \
+      --server-side-encryption-configuration \
+      '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+    aws s3api put-public-access-block --bucket "$bucket" \
+      --public-access-block-configuration \
+      BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+    verde "  Bucket criado: s3://$bucket"
+  fi
+
+  if aws dynamodb describe-table --table-name "$tabela" >/dev/null 2>&1; then
+    cinza "  Tabela de lock ja existe: $tabela"
+  else
+    aws dynamodb create-table --table-name "$tabela" \
+      --attribute-definitions AttributeName=LockID,AttributeType=S \
+      --key-schema AttributeName=LockID,KeyType=HASH \
+      --billing-mode PAY_PER_REQUEST >/dev/null
+    aws dynamodb wait table-exists --table-name "$tabela"
+    verde "  Tabela de lock criada: $tabela"
+  fi
+}
+
+# Bucket tem versionamento ligado - delete-bucket sozinho falha com
+# BucketNotEmpty. E preciso apagar cada versao e marcador de delecao antes.
+destruir_backend_state() {
+  local bucket="$1" tabela
+  tabela="$(nome_da_tabela_lock)"
+
+  if aws s3api head-bucket --bucket "$bucket" >/dev/null 2>&1; then
+    local versoes marcadores
+    versoes="$(aws s3api list-object-versions --bucket "$bucket" --output json \
+      --query '{Objects: Versions[].{Key:Key,VersionId:VersionId}}')"
+    [ "$(echo "$versoes" | grep -c '"Key"')" -eq 0 ] || \
+      aws s3api delete-objects --bucket "$bucket" --delete "$versoes" >/dev/null
+
+    marcadores="$(aws s3api list-object-versions --bucket "$bucket" --output json \
+      --query '{Objects: DeleteMarkers[].{Key:Key,VersionId:VersionId}}')"
+    [ "$(echo "$marcadores" | grep -c '"Key"')" -eq 0 ] || \
+      aws s3api delete-objects --bucket "$bucket" --delete "$marcadores" >/dev/null
+
+    aws s3api delete-bucket --bucket "$bucket"
+    verde "  Bucket removido: s3://$bucket"
+  else
+    cinza "  Bucket ja nao existia: $bucket"
+  fi
+
+  if aws dynamodb describe-table --table-name "$tabela" >/dev/null 2>&1; then
+    aws dynamodb delete-table --table-name "$tabela" >/dev/null
+    verde "  Tabela de lock removida: $tabela"
+  else
+    cinza "  Tabela de lock ja nao existia: $tabela"
+  fi
+}
 
 tf_init() {
   local dir="$1" chave="$2" bucket="$3" regiao="$4"
@@ -140,7 +222,7 @@ tf_init() {
     -backend-config="bucket=$bucket" \
     -backend-config="key=$chave" \
     -backend-config="region=$regiao" \
-    -backend-config="dynamodb_table=tc-grupo160-tflock" >/dev/null
+    -backend-config="dynamodb_table=$(nome_da_tabela_lock)" >/dev/null
 }
 
 confirmar() {
