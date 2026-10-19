@@ -40,7 +40,7 @@ Sem a decisão registrada, nenhum Terraform pode ser escrito — e hoje **10 iss
 | IaC | Terraform, state remoto em S3 com lock em DynamoDB |
 | Região | `us-east-1` (imposta pelo ambiente) |
 
-A arquitetura resultante está desenhada em [`docs/diagrams/C4_04_AWS_Deployment_Diagram.puml`](../diagrams/C4_04_AWS_Deployment_Diagram.puml).
+A arquitetura resultante está desenhada em [`docs/diagrams/fase-3/aws-deployment.md`](../diagrams/fase-3/aws-deployment.md).
 
 ## Restrições do ambiente: AWS Academy Learner Lab
 

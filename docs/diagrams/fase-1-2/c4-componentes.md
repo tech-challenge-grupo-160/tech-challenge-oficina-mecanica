@@ -1,5 +1,9 @@
 # C4 Model - Nível 3: Components Diagram
 
+> O GitHub não desenha PlantUML: a imagem abaixo é o PNG exportado do bloco `plantuml` deste arquivo.
+
+![C4 - componentes](c4-componentes.png)
+
 ## Visão Geral
 O diagrama de componentes detalha a arquitetura interna da API REST, mostrando como os componentes se relacionam seguindo os princípios de Clean Architecture e CQRS.
 

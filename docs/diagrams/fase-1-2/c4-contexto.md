@@ -1,5 +1,9 @@
 # C4 Model - Nível 1: Context Diagram
 
+> O GitHub não desenha PlantUML: a imagem abaixo é o PNG exportado do bloco `plantuml` deste arquivo.
+
+![C4 - contexto](c4-contexto.png)
+
 ## Visão Geral
 O diagrama de contexto mostra o sistema de Gestão de Oficina Mecânica e seus atores/usuários externos, bem como os sistemas com os quais ele interage.
 

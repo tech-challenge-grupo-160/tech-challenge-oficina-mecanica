@@ -1,10 +1,14 @@
 # Arquitetura AWS — Fase 3
 
+> O GitHub não desenha PlantUML: a imagem abaixo é o PNG exportado do bloco `plantuml` deste arquivo.
+
+![Arquitetura AWS - Fase 3](aws-deployment.png)
+
 ## Visão Geral
 
 Diagrama de implantação da aplicação na AWS, cobrindo os requisitos obrigatórios da Fase 3: API Gateway, Function Serverless para autenticação por CPF, banco de dados gerenciado, cluster Kubernetes com escalabilidade e camada de observabilidade.
 
-> **Status:** proposta. A escolha da nuvem depende da RFC [#56](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/56) (`F3-22`) e a ferramenta de observabilidade da RFC [#66](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/66) (`F3-32`). Este diagrama assume **AWS** e **Datadog**.
+> **Status:** implementado na Fase 3 (AWS pela [RFC-0001](../../rfcs/0001-escolha-da-nuvem.md), Datadog pela [RFC-0003](../../rfcs/0003-escolha-da-ferramenta-de-observabilidade.md)). Na Fase 4 a API vira três serviços com mensageria: ver [fase-4/arquitetura-microsservicos.md](../fase-4/arquitetura-microsservicos.md).
 
 ```plantuml
 @startuml AWS Deployment - Sistema de Gestao de Oficina Mecanica

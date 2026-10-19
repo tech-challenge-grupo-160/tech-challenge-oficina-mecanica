@@ -1,5 +1,9 @@
 # C4 Model - Nível 2: Container Diagram
 
+> O GitHub não desenha PlantUML: a imagem abaixo é o PNG exportado do bloco `plantuml` deste arquivo.
+
+![C4 - containers](c4-containers.png)
+
 ## Visão Geral
 O diagrama de containers mostra a estrutura de alto nível do sistema de Gestão de Oficina Mecânica, incluindo a API, banco de dados e componentes externos.
 
