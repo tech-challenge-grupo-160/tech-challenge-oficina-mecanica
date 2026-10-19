@@ -23,7 +23,7 @@ permissions:
 jobs:
   pipeline:
     name: Pipeline
-    uses: tech-challenge-grupo-160/tech-challenge-pipelines/.github/workflows/servico-dotnet.yml@v1
+    uses: tech-challenge-grupo-160/tech-challenge-pipelines/.github/workflows/servico-dotnet.yml@develop
     with:
       servico: oficina-mecanica-api
       solucao: Fiap.TechChallenge.OficinaMecanica.slnx
@@ -41,4 +41,6 @@ jobs:
         Jwt__SecretKey=tc-grupo160/{sufixo}/jwt-signing-key
       nome_secret: api-secret
       cluster_autoscaler: true
+      # Migrations do EF Core sao codigo gerado: fora da analise e da cobertura.
+      sonar_exclusoes: "**/Migrations/**"
     secrets: inherit
