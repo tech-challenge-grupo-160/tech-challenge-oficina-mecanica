@@ -4,6 +4,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Common;
 using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Catalogo;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Security;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Time;
@@ -49,6 +50,21 @@ public static class DependencyInjection
         services.AddScoped<IVeiculoRepository, VeiculoRepository>();
         services.AddScoped<IServicoRepository, ServicoRepository>();
         services.AddScoped<IPecaRepository, PecaRepository>();
+        var execucaoBaseUrl = configuration["Services:Execucao:BaseUrl"]
+            ?? "http://localhost:8082";
+        services
+            .AddHttpClient<ICatalogoExecucao, CatalogoExecucaoHttpClient>(client =>
+            {
+                client.BaseAddress = new Uri(execucaoBaseUrl, UriKind.Absolute);
+                client.Timeout = Timeout.InfiniteTimeSpan;
+            })
+            .AddStandardResilienceHandler(options =>
+            {
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(5);
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(2);
+                options.Retry.MaxRetryAttempts = 2;
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(10);
+            });
         services.AddScoped<IOrdemDeServicoRepository, OrdemDeServicoRepository>();
         services.AddScoped<IOrdemServicoHistoricoRepository, OrdemServicoHistoricoRepository>();
         services.AddScoped<INotificacaoClienteRepository, NotificacaoClienteRepository>();

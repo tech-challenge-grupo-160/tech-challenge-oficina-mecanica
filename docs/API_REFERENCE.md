@@ -86,6 +86,7 @@ O filtro global traduz excecoes em respostas padronizadas:
 | `InvalidOperationException` | `400 Bad Request` |
 | `ArgumentException` | `400 Bad Request` |
 | `UnauthorizedAccessException` | `401 Unauthorized` |
+| `ServiceUnavailableException` | `503 Service Unavailable` |
 | Demais excecoes | `500 Internal Server Error` |
 
 Formato padrao:
@@ -381,6 +382,8 @@ Request:
 ```
 
 `servicos` e obrigatorio e deve conter ao menos um item. `pecas` e opcional e pode ser enviado como array vazio.
+
+Os IDs sao consultados em lote no catalogo da Execucao por `ICatalogoExecucao`. Preco e tempo sao copiados para a OS como snapshot. A abertura nao reserva nem baixa estoque, e suas gravacoes locais sao atomicas. Falhas tecnicas na Execucao retornam `503 Service Unavailable`.
 
 Exemplo com pecas informadas na abertura:
 
