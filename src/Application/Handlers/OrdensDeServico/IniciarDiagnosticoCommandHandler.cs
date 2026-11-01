@@ -19,16 +19,22 @@ public sealed class IniciarDiagnosticoCommandHandler : IRequestHandler<IniciarDi
 {
     private const string LoggerName = nameof(IniciarDiagnosticoCommandHandler);
     private readonly OrdemDeServicoHistoricoService _historicoService;
+    private readonly IDiagnosticoExecucao _diagnosticoExecucao;
     private readonly IOrdemDeServicoRepository _ordemRepository;
+    private readonly ITransactionManager _transactionManager;
     private readonly ILogger _logger;
 
     public IniciarDiagnosticoCommandHandler(
         OrdemDeServicoHistoricoService historicoService,
+        IDiagnosticoExecucao diagnosticoExecucao,
         IOrdemDeServicoRepository ordemRepository,
+        ITransactionManager transactionManager,
         ILoggerFactory loggerFactory)
     {
         _historicoService = historicoService;
+        _diagnosticoExecucao = diagnosticoExecucao;
         _ordemRepository = ordemRepository;
+        _transactionManager = transactionManager;
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
@@ -50,16 +56,39 @@ public sealed class IniciarDiagnosticoCommandHandler : IRequestHandler<IniciarDi
                 throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
             }
 
-            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(IniciarDiagnosticoAsync), "Alterando status da ordem para EmDiagnostico");
-            var eventoDiagnosticoIniciado = ordem.IniciarDiagnostico();
-            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
-            await _historicoService.RegistrarAsync(
-                ordemAtualizada,
-                eventoDiagnosticoIniciado.TipoEvento,
-                eventoDiagnosticoIniciado.StatusAnterior,
-                eventoDiagnosticoIniciado.StatusNovo,
-                eventoDiagnosticoIniciado.Descricao,
+            var repeticaoIdempotente = ordem.Status == StatusOrdemDeServico.EmDiagnostico;
+            if (!repeticaoIdempotente)
+            {
+                ordem.ValidarInicioDiagnostico();
+            }
+            await _diagnosticoExecucao.IniciarAsync(
+                ordem.Id,
+                ordem.VeiculoId,
+                ordem.DescricaoSolicitacao,
+                ordem.Servicos.Select(servico => servico.ServicoId),
+                ordem.Pecas.Select(peca => peca.PecaId),
                 cancellationToken);
+
+            if (repeticaoIdempotente)
+            {
+                _logger.LogInformation(LogTemplate.End, LoggerName, $"Diagnostico ja iniciado para a ordem {ordem.Numero}");
+                return OrdemDeServicoMapper.ToResult(ordem);
+            }
+
+            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(IniciarDiagnosticoAsync), "Alterando status da ordem para EmDiagnostico");
+            var ordemAtualizada = await _transactionManager.ExecuteAsync(async token =>
+            {
+                var eventoDiagnosticoIniciado = ordem.IniciarDiagnostico();
+                var atualizada = await _ordemRepository.AtualizarAsync(ordem, token);
+                await _historicoService.RegistrarAsync(
+                    atualizada,
+                    eventoDiagnosticoIniciado.TipoEvento,
+                    eventoDiagnosticoIniciado.StatusAnterior,
+                    eventoDiagnosticoIniciado.StatusNovo,
+                    eventoDiagnosticoIniciado.Descricao,
+                    token);
+                return atualizada;
+            }, cancellationToken);
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Diagnostico iniciado com sucesso para a ordem {ordemAtualizada.Numero}");
             return OrdemDeServicoMapper.ToResult(ordemAtualizada);
         }

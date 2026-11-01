@@ -673,7 +673,8 @@ Resposta `200 OK`:
 | Endpoint | Status | Cenario |
 |---|---|---|
 | `PATCH .../iniciar-diagnostico` | `404` | OS nao encontrada |
-| `PATCH .../iniciar-diagnostico` | `400` | Status atual nao permite iniciar diagnostico (requer `Recebida`) |
+| `PATCH .../iniciar-diagnostico` | `400` | Status atual diferente de `Recebida` ou `EmDiagnostico` |
+| `PATCH .../iniciar-diagnostico` | `503` | Execucao indisponivel ou resposta remota invalida |
 | `PATCH .../finalizar-diagnostico` | `404` | OS nao encontrada |
 | `PATCH .../finalizar-diagnostico` | `400` | Status atual nao e `EmDiagnostico` |
 | `PATCH .../finalizar-diagnostico` | `400` | OS sem servicos ou orcamento zerado |

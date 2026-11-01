@@ -124,6 +124,7 @@ public class OrdemDeServico
 
     public OrdemDeServicoEventoDominio IniciarDiagnostico()
     {
+        ValidarInicioDiagnostico();
         var statusAnterior = Status;
         AlterarStatus(StatusOrdemDeServico.EmDiagnostico);
         return new OrdemDeServicoEventoDominio(
@@ -131,6 +132,15 @@ public class OrdemDeServico
             statusAnterior,
             Status,
             "Diagnostico iniciado.");
+    }
+
+    public void ValidarInicioDiagnostico()
+    {
+        if (Status != StatusOrdemDeServico.Recebida)
+        {
+            throw new InvalidOperationException(
+                $"Nao e possivel iniciar o diagnostico no status atual: {Status}.");
+        }
     }
 
     public void AdicionarServico(Servico servico)

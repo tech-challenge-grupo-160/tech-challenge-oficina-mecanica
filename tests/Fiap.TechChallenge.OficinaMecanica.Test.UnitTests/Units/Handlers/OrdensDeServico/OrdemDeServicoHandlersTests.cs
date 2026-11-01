@@ -30,6 +30,7 @@ public class OrdemDeServicoHandlersTests
     private readonly Mock<IServicoRepository> _servicoRepositoryMock;
     private readonly Mock<IPecaRepository> _pecaRepositoryMock;
     private readonly Mock<ICatalogoExecucao> _catalogoMock;
+    private readonly Mock<IDiagnosticoExecucao> _diagnosticoExecucaoMock;
     private readonly Mock<IPedidoCompraRepository> _pedidoCompraRepositoryMock;
     private readonly Mock<IMovimentacaoEstoqueRepository> _movimentacaoEstoqueRepositoryMock;
     private readonly Mock<IOrdemServicoHistoricoRepository> _historicoRepositoryMock;
@@ -47,6 +48,7 @@ public class OrdemDeServicoHandlersTests
         _servicoRepositoryMock = new Mock<IServicoRepository>(MockBehavior.Strict);
         _pecaRepositoryMock = new Mock<IPecaRepository>(MockBehavior.Strict);
         _catalogoMock = new Mock<ICatalogoExecucao>(MockBehavior.Strict);
+        _diagnosticoExecucaoMock = new Mock<IDiagnosticoExecucao>(MockBehavior.Strict);
         _pedidoCompraRepositoryMock = new Mock<IPedidoCompraRepository>(MockBehavior.Strict);
         _movimentacaoEstoqueRepositoryMock = new Mock<IMovimentacaoEstoqueRepository>(MockBehavior.Strict);
         _historicoRepositoryMock = new Mock<IOrdemServicoHistoricoRepository>(MockBehavior.Strict);
@@ -76,6 +78,16 @@ public class OrdemDeServicoHandlersTests
         _transactionManagerMock
             .Setup(x => x.ExecuteAsync(It.IsAny<Func<CancellationToken, Task<OrdemDeServico>>>(), It.IsAny<CancellationToken>()))
             .Returns((Func<CancellationToken, Task<OrdemDeServico>> action, CancellationToken ct) => action(ct));
+        _diagnosticoExecucaoMock
+            .Setup(x => x.IniciarAsync(
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<string>(),
+                It.IsAny<IEnumerable<int>>(),
+                It.IsAny<IEnumerable<int>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((int ordemId, int _, string _, IEnumerable<int> _, IEnumerable<int> _, CancellationToken _) =>
+                new DiagnosticoExecucao(ordemId, ordemId, "EmDiagnostico", DateTimeOffset.UtcNow));
         _ordemRepositoryMock
             .Setup(x => x.ObterPorCodigoAcompanhamentoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico?)null);
@@ -103,6 +115,7 @@ public class OrdemDeServicoHandlersTests
             _servicoRepositoryMock.Object,
             _pecaRepositoryMock.Object,
             _catalogoMock.Object,
+            _diagnosticoExecucaoMock.Object,
             _movimentacaoEstoqueRepositoryMock.Object,
             _historicoRepositoryMock.Object,
             _notificacaoClienteRepositoryMock.Object,
@@ -395,6 +408,50 @@ public class OrdemDeServicoHandlersTests
 
         await acao.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*nao pode ser zerado*");
+    }
+
+    [Fact]
+    public async Task IniciarDiagnostico_DeveManterOsRecebidaQuandoExecucaoFalhar()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Recebida, clienteId: 1, veiculoId: 10);
+        ordem.Servicos.Add(OrdemDeServicoServico.Criar(ordem.Id, 1000, 150m, 30));
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+        _diagnosticoExecucaoMock
+            .Setup(x => x.IniciarAsync(
+                ordem.Id,
+                ordem.VeiculoId,
+                ordem.DescricaoSolicitacao,
+                It.IsAny<IEnumerable<int>>(),
+                It.IsAny<IEnumerable<int>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ServiceUnavailableException("Execucao indisponivel."));
+
+        var action = () => _handlers.IniciarDiagnosticoAsync(ordem.Id, CancellationToken.None);
+
+        await action.Should().ThrowAsync<ServiceUnavailableException>();
+        ordem.Status.Should().Be(StatusOrdemDeServico.Recebida);
+        _ordemRepositoryMock.Verify(
+            x => x.AtualizarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task IniciarDiagnostico_DeveSerIdempotenteQuandoOsJaEstiverEmDiagnostico()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.EmDiagnostico, clienteId: 1, veiculoId: 10);
+        ordem.Servicos.Add(OrdemDeServicoServico.Criar(ordem.Id, 1000, 150m, 30));
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+
+        var result = await _handlers.IniciarDiagnosticoAsync(ordem.Id, CancellationToken.None);
+
+        result.Status.Should().Be(nameof(StatusOrdemDeServico.EmDiagnostico));
+        _ordemRepositoryMock.Verify(
+            x => x.AtualizarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -865,6 +922,7 @@ public class OrdemDeServicoHandlersTests
         private readonly IServicoRepository _servicoRepository;
         private readonly IPecaRepository _pecaRepository;
         private readonly ICatalogoExecucao _catalogo;
+        private readonly IDiagnosticoExecucao _diagnosticoExecucao;
         private readonly IMovimentacaoEstoqueRepository _movimentacaoEstoqueRepository;
         private readonly IOrdemServicoHistoricoRepository _historicoRepository;
         private readonly INotificacaoClienteRepository _notificacaoClienteRepository;
@@ -885,6 +943,7 @@ public class OrdemDeServicoHandlersTests
             IServicoRepository servicoRepository,
             IPecaRepository pecaRepository,
             ICatalogoExecucao catalogo,
+            IDiagnosticoExecucao diagnosticoExecucao,
             IMovimentacaoEstoqueRepository movimentacaoEstoqueRepository,
             IOrdemServicoHistoricoRepository historicoRepository,
             INotificacaoClienteRepository notificacaoClienteRepository,
@@ -904,6 +963,7 @@ public class OrdemDeServicoHandlersTests
             _servicoRepository = servicoRepository;
             _pecaRepository = pecaRepository;
             _catalogo = catalogo;
+            _diagnosticoExecucao = diagnosticoExecucao;
             _movimentacaoEstoqueRepository = movimentacaoEstoqueRepository;
             _historicoRepository = historicoRepository;
             _notificacaoClienteRepository = notificacaoClienteRepository;
@@ -1002,7 +1062,9 @@ public class OrdemDeServicoHandlersTests
         {
             return new IniciarDiagnosticoCommandHandler(
                 _historicoService,
+                _diagnosticoExecucao,
                 _ordemRepository,
+                _transactionManager,
                 _loggerFactory).Handle(new IniciarDiagnosticoCommand { Id = id }, cancellationToken);
         }
 
