@@ -2,6 +2,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
+using Polly.CircuitBreaker;
+using Polly.Timeout;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Catalogo;
 
@@ -56,7 +58,9 @@ public sealed class CatalogoExecucaoHttpClient(HttpClient httpClient) : ICatalog
         {
             throw;
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
+        catch (Exception exception) when (
+            exception is HttpRequestException or TaskCanceledException or JsonException or
+                TimeoutRejectedException or BrokenCircuitException)
         {
             throw new ServiceUnavailableException("Nao foi possivel consultar o catalogo da Execucao.");
         }

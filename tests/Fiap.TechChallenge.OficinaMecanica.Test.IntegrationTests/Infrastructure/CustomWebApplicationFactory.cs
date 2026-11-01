@@ -114,6 +114,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
                 options.UseNpgsql(GetTestConnectionString()));
             services.RemoveAll<ICatalogoExecucao>();
             services.AddScoped<ICatalogoExecucao, CatalogoExecucaoLocal>();
+            services.RemoveAll<IDiagnosticoExecucao>();
+            services.AddScoped<IDiagnosticoExecucao, DiagnosticoExecucaoLocal>();
 
             ConfigureAuthenticationForTests(services);
         });
