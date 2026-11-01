@@ -6,6 +6,8 @@ A solucao e uma API REST em Clean Architecture, organizada por camadas e orienta
 
 O dominio principal e a ordem de servico, integrado a clientes, veiculos, servicos, pecas, estoque, notificacoes e pedidos de compra.
 
+A primeira etapa da extracao para o OS Service preserva a abertura com pelo menos um servico e pecas opcionais. O caso de uso consulta `ICatalogoExecucao` por um cliente HTTP resiliente e recebe somente os snapshots necessarios de servico e peca, sem consultar ou alterar estoque. As escritas da OS, itens, historico e notificacao participam da mesma transacao local. O adaptador local permanece restrito aos testes do legado. As chaves estrangeiras locais para catalogo ainda permanecem nesta etapa e serao removidas junto com a extracao das jornadas de diagnostico e estoque.
+
 ## Camadas
 
 ```text

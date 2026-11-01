@@ -29,6 +29,7 @@ public class OrdemDeServicoHandlersTests
     private readonly Mock<IVeiculoRepository> _veiculoRepositoryMock;
     private readonly Mock<IServicoRepository> _servicoRepositoryMock;
     private readonly Mock<IPecaRepository> _pecaRepositoryMock;
+    private readonly Mock<ICatalogoExecucao> _catalogoMock;
     private readonly Mock<IPedidoCompraRepository> _pedidoCompraRepositoryMock;
     private readonly Mock<IMovimentacaoEstoqueRepository> _movimentacaoEstoqueRepositoryMock;
     private readonly Mock<IOrdemServicoHistoricoRepository> _historicoRepositoryMock;
@@ -45,6 +46,7 @@ public class OrdemDeServicoHandlersTests
         _veiculoRepositoryMock = new Mock<IVeiculoRepository>(MockBehavior.Strict);
         _servicoRepositoryMock = new Mock<IServicoRepository>(MockBehavior.Strict);
         _pecaRepositoryMock = new Mock<IPecaRepository>(MockBehavior.Strict);
+        _catalogoMock = new Mock<ICatalogoExecucao>(MockBehavior.Strict);
         _pedidoCompraRepositoryMock = new Mock<IPedidoCompraRepository>(MockBehavior.Strict);
         _movimentacaoEstoqueRepositoryMock = new Mock<IMovimentacaoEstoqueRepository>(MockBehavior.Strict);
         _historicoRepositoryMock = new Mock<IOrdemServicoHistoricoRepository>(MockBehavior.Strict);
@@ -100,6 +102,7 @@ public class OrdemDeServicoHandlersTests
             _veiculoRepositoryMock.Object,
             _servicoRepositoryMock.Object,
             _pecaRepositoryMock.Object,
+            _catalogoMock.Object,
             _movimentacaoEstoqueRepositoryMock.Object,
             _historicoRepositoryMock.Object,
             _notificacaoClienteRepositoryMock.Object,
@@ -131,12 +134,14 @@ public class OrdemDeServicoHandlersTests
         _ordemRepositoryMock
             .Setup(x => x.ExisteOrdemAtivaPorClienteEVeiculoAsync(dto.ClienteId, dto.VeiculoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        _servicoRepositoryMock
-            .Setup(x => x.ObterPorIdsAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Servico> { servico });
-        _pecaRepositoryMock
-            .Setup(x => x.ObterPorIdsAsync(It.IsAny<IEnumerable<int>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Peca>());
+        _catalogoMock
+            .Setup(x => x.ObterItensAsync(
+                It.IsAny<IEnumerable<int>>(),
+                It.IsAny<IEnumerable<int>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CatalogoExecucao(
+                [new ServicoCatalogo(servico.Id, servico.Nome, servico.Preco, servico.TempoEstimado)],
+                []));
         _ordemRepositoryMock
             .Setup(x => x.CriarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico ordem, CancellationToken _) =>
@@ -153,6 +158,8 @@ public class OrdemDeServicoHandlersTests
         resultado.Numero.Should().Be($"OS-{resultado.DataAbertura:yyyyMMdd}-3002");
         resultado.ValorTotal.Should().Be(150m);
         resultado.Servicos.Should().ContainSingle(x => x.ServicoId == servico.Id);
+        _servicoRepositoryMock.VerifyNoOtherCalls();
+        _pecaRepositoryMock.VerifyNoOtherCalls();
         _historicoRepositoryMock.Verify(
             x => x.CriarAsync(
                 It.Is<OrdemServicoHistorico>(h =>
@@ -857,6 +864,7 @@ public class OrdemDeServicoHandlersTests
         private readonly IVeiculoRepository _veiculoRepository;
         private readonly IServicoRepository _servicoRepository;
         private readonly IPecaRepository _pecaRepository;
+        private readonly ICatalogoExecucao _catalogo;
         private readonly IMovimentacaoEstoqueRepository _movimentacaoEstoqueRepository;
         private readonly IOrdemServicoHistoricoRepository _historicoRepository;
         private readonly INotificacaoClienteRepository _notificacaoClienteRepository;
@@ -876,6 +884,7 @@ public class OrdemDeServicoHandlersTests
             IVeiculoRepository veiculoRepository,
             IServicoRepository servicoRepository,
             IPecaRepository pecaRepository,
+            ICatalogoExecucao catalogo,
             IMovimentacaoEstoqueRepository movimentacaoEstoqueRepository,
             IOrdemServicoHistoricoRepository historicoRepository,
             INotificacaoClienteRepository notificacaoClienteRepository,
@@ -894,6 +903,7 @@ public class OrdemDeServicoHandlersTests
             _veiculoRepository = veiculoRepository;
             _servicoRepository = servicoRepository;
             _pecaRepository = pecaRepository;
+            _catalogo = catalogo;
             _movimentacaoEstoqueRepository = movimentacaoEstoqueRepository;
             _historicoRepository = historicoRepository;
             _notificacaoClienteRepository = notificacaoClienteRepository;
@@ -917,8 +927,8 @@ public class OrdemDeServicoHandlersTests
                 _historicoService,
                 _notificacaoService,
                 _ordemRepository,
-                _pecaRepository,
-                _servicoRepository,
+                _catalogo,
+                _transactionManager,
                 _veiculoRepository,
                 _loggerFactory,
                 _businessMetrics).Handle(new CriarOrdemDeServicoCommand

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Security;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
@@ -111,6 +112,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             services.RemoveAll<OficinaDbContext>();
             services.AddDbContext<OficinaDbContext>(options =>
                 options.UseNpgsql(GetTestConnectionString()));
+            services.RemoveAll<ICatalogoExecucao>();
+            services.AddScoped<ICatalogoExecucao, CatalogoExecucaoLocal>();
 
             ConfigureAuthenticationForTests(services);
         });

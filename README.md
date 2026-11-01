@@ -20,6 +20,8 @@ O domínio principal do projeto é a ordem de serviço. A API permite:
 - consultar histórico e movimentações de estoque;
 - autenticar usuários com JWT.
 
+Na transicao para o OS Service, a abertura mantem o contrato existente: exige ao menos um servico e aceita pecas opcionais. A consulta de itens passa por `ICatalogoExecucao` e pelo cliente HTTP resiliente do microsservico de Execucao. Consulte [Abertura do OS Service](docs/OS-SERVICE-ABERTURA.md).
+
 ## Stack
 
 - .NET 10
