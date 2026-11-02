@@ -26,4 +26,26 @@ public class DateTimeHelperTests
         resultado.Should().Be(new DateTimeOffset(horarioUtc));
         resultado.Offset.Should().Be(TimeSpan.Zero);
     }
+
+    [Fact]
+    public void BrazilToUtc_DeveConverterHorarioComKindLocal()
+    {
+        var horarioLocal = new DateTime(2026, 11, 1, 21, 33, 54, DateTimeKind.Local);
+
+        var resultado = DateTimeHelper.BrazilToUtc(horarioLocal);
+
+        resultado.Should().Be(new DateTimeOffset(horarioLocal.ToUniversalTime()));
+        resultado.Offset.Should().Be(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public void UTCToBrazil_DeveAplicarOffsetDeMenosTresHoras()
+    {
+        var horarioUtc = new DateTime(2026, 11, 2, 0, 33, 54, DateTimeKind.Utc);
+
+        var resultado = DateTimeHelper.UTCToBrazil(horarioUtc);
+
+        resultado.Should().Be(new DateTime(2026, 11, 1, 21, 33, 54, DateTimeKind.Unspecified));
+        resultado.Kind.Should().Be(DateTimeKind.Unspecified);
+    }
 }
