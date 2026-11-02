@@ -578,6 +578,17 @@ public class OrdemDeServicoHandlersTests
     }
 
     [Fact]
+    public void ConfirmarDiagnosticoConcluido_DeveRejeitarStatusDiferenteDeEmDiagnostico()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Recebida);
+
+        var acao = ordem.ConfirmarDiagnosticoConcluido;
+
+        acao.Should().Throw<InvalidOperationException>()
+            .WithMessage("*status atual: Recebida*");
+    }
+
+    [Fact]
     public async Task RegistrarPagamentoAsync_DeveLancarQuandoPagamentoJaRegistrado()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Finalizada);
