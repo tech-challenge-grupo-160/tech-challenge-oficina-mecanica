@@ -72,6 +72,7 @@ services:
       AWS_SECRET_ACCESS_KEY: ${LOCALSTACK_SECRET_ACCESS_KEY:?Defina LOCALSTACK_SECRET_ACCESS_KEY no arquivo .env}
       Messaging__ExecucaoCommandQueueUrl: http://host.docker.internal:4566/000000000000/execucao-iniciar-diagnostico
       Messaging__DiagnosticoIniciadoQueueUrl: http://host.docker.internal:4566/000000000000/os-diagnostico-iniciado
+      Messaging__DiagnosticoConcluidoQueueUrl: http://host.docker.internal:4566/000000000000/os-diagnostico-concluido
       Jwt__SecretKey: ${JWT_SECRET:-local-development-secret-key-32chars}
       Jwt__Issuer: ${JWT_ISSUER:-Fiap.TechChallenge.OficinaMecanica}
       Jwt__Audience: ${JWT_AUDIENCE:-Fiap.TechChallenge.OficinaMecanica}

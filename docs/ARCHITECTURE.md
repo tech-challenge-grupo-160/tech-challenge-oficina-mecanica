@@ -17,6 +17,13 @@ Service recebe o evento, cuja Inbox impede duplicidade, e somente entao a OS e o
 historico mudam para `EmDiagnostico` e a Saga fica `Concluida`. As filas possuem
 DLQ e os contratos carregam `messageId`, `correlationId` e versao.
 
+Depois do registro e da conclusao do resultado tecnico, a Execucao grava
+`DiagnosticoConcluidoMessage` na Outbox e o publica no mesmo topico SNS. Uma
+segunda fila SQS, filtrada pelo tipo do evento, entrega a mensagem ao OS Service.
+O consumidor valida a Saga e usa Inbox antes de alterar a OS de `EmDiagnostico`
+para `AguardandoOrcamento`. Assim, o limite entre diagnostico e orcamento permanece
+assincrono e idempotente.
+
 ## Camadas
 
 ```text

@@ -143,6 +143,23 @@ public class OrdemDeServico
         }
     }
 
+    public OrdemDeServicoEventoDominio ConfirmarDiagnosticoConcluido()
+    {
+        if (Status != StatusOrdemDeServico.EmDiagnostico)
+        {
+            throw new InvalidOperationException(
+                $"Nao e possivel concluir o diagnostico no status atual: {Status}.");
+        }
+
+        var statusAnterior = Status;
+        AlterarStatus(StatusOrdemDeServico.AguardandoOrcamento);
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.DiagnosticoFinalizado,
+            statusAnterior,
+            Status,
+            "Diagnostico concluido; aguardando geracao do orcamento.");
+    }
+
     public void AdicionarServico(Servico servico)
     {
         if (Status != StatusOrdemDeServico.EmDiagnostico)
@@ -524,6 +541,8 @@ public class OrdemDeServico
         return (statusAtual, novoStatus) switch
         {
             (StatusOrdemDeServico.Recebida, StatusOrdemDeServico.EmDiagnostico) => true,
+            (StatusOrdemDeServico.EmDiagnostico, StatusOrdemDeServico.AguardandoOrcamento) => true,
+            (StatusOrdemDeServico.AguardandoOrcamento, StatusOrdemDeServico.AguardandoAprovacao) => true,
             (StatusOrdemDeServico.EmDiagnostico, StatusOrdemDeServico.AguardandoAprovacao) => true,
             (StatusOrdemDeServico.AguardandoAprovacao, StatusOrdemDeServico.EmExecucao) => true,
             (StatusOrdemDeServico.AguardandoAprovacao, StatusOrdemDeServico.AguardandoEstoque) => true,
@@ -533,6 +552,7 @@ public class OrdemDeServico
             (StatusOrdemDeServico.Finalizada, StatusOrdemDeServico.Entregue) => true,
             (StatusOrdemDeServico.Recebida, StatusOrdemDeServico.Cancelada) => true,
             (StatusOrdemDeServico.EmDiagnostico, StatusOrdemDeServico.Cancelada) => true,
+            (StatusOrdemDeServico.AguardandoOrcamento, StatusOrdemDeServico.Cancelada) => true,
             (StatusOrdemDeServico.AguardandoAprovacao, StatusOrdemDeServico.Cancelada) => true,
             (StatusOrdemDeServico.AguardandoEstoque, StatusOrdemDeServico.Cancelada) => true,
             _ => false

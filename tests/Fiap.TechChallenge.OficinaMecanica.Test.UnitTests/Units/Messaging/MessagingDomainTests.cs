@@ -1,5 +1,6 @@
 using Fiap.TechChallenge.OficinaMecanica.Application.Messaging;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Messaging;
 using FluentAssertions;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units.Messaging;
@@ -118,5 +119,73 @@ public class MessagingDomainTests
         iniciado.CorrelationId.Should().Be(correlationId);
         iniciado.Status.Should().Be("EmDiagnostico");
         iniciado.Versao.Should().Be(1);
+    }
+
+    [Fact]
+    public void DiagnosticoConcluidoMessage_DevePreservarContratoCompleto()
+    {
+        var messageId = Guid.NewGuid();
+        var correlationId = Guid.NewGuid();
+        var concluidoEm = DateTimeOffset.UtcNow;
+        var servico = new ServicoDiagnosticoConcluidoMessage(
+            1000,
+            "Alinhamento",
+            150m,
+            30);
+        var peca = new PecaDiagnosticoConcluidoMessage(
+            1000,
+            "Pastilha de Freio",
+            2,
+            45m);
+
+        var evento = new DiagnosticoConcluidoMessage(
+            messageId,
+            correlationId,
+            concluidoEm,
+            3007,
+            1,
+            "Concluido",
+            "Pastilhas desgastadas.",
+            [servico],
+            [peca],
+            concluidoEm);
+
+        evento.MessageId.Should().Be(messageId);
+        evento.CorrelationId.Should().Be(correlationId);
+        evento.OcorridoEm.Should().Be(concluidoEm);
+        evento.OrdemServicoId.Should().Be(3007);
+        evento.DiagnosticoId.Should().Be(1);
+        evento.Status.Should().Be("Concluido");
+        evento.ParecerTecnico.Should().Be("Pastilhas desgastadas.");
+        evento.Servicos.Should().ContainSingle().Which.Should().Be(servico);
+        evento.Pecas.Should().ContainSingle().Which.Should().Be(peca);
+        evento.ConcluidoEm.Should().Be(concluidoEm);
+        evento.Versao.Should().Be(1);
+        servico.Should().BeEquivalentTo(new
+        {
+            ServicoId = 1000,
+            Nome = "Alinhamento",
+            Preco = 150m,
+            TempoEstimado = 30
+        });
+        peca.Should().BeEquivalentTo(new
+        {
+            PecaId = 1000,
+            Nome = "Pastilha de Freio",
+            Quantidade = 2,
+            Preco = 45m
+        });
+    }
+
+    [Fact]
+    public void MessagingOptions_DevePreservarFilaDeDiagnosticoConcluido()
+    {
+        var options = new MessagingOptions
+        {
+            DiagnosticoConcluidoQueueUrl = "http://localhost:4566/os-diagnostico-concluido"
+        };
+
+        options.DiagnosticoConcluidoQueueUrl.Should()
+            .Be("http://localhost:4566/os-diagnostico-concluido");
     }
 }

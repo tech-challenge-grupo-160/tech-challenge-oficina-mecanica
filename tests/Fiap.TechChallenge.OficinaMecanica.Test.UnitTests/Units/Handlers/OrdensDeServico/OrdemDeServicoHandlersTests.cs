@@ -551,6 +551,44 @@ public class OrdemDeServicoHandlersTests
     }
 
     [Fact]
+    public async Task ConfirmarDiagnosticoConcluido_DeveAguardarOrcamentoESerIdempotente()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.EmDiagnostico);
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+        _ordemRepositoryMock
+            .Setup(x => x.AtualizarAsync(ordem, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+
+        await _handlers.ConfirmarDiagnosticoConcluidoAsync(ordem.Id, CancellationToken.None);
+        await _handlers.ConfirmarDiagnosticoConcluidoAsync(ordem.Id, CancellationToken.None);
+
+        ordem.Status.Should().Be(StatusOrdemDeServico.AguardandoOrcamento);
+        _ordemRepositoryMock.Verify(
+            x => x.AtualizarAsync(ordem, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _historicoRepositoryMock.Verify(
+            x => x.CriarAsync(
+                It.Is<OrdemServicoHistorico>(historico =>
+                    historico.TipoEvento == TipoEventoOrdemServico.DiagnosticoFinalizado &&
+                    historico.StatusNovo == StatusOrdemDeServico.AguardandoOrcamento),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public void ConfirmarDiagnosticoConcluido_DeveRejeitarStatusDiferenteDeEmDiagnostico()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Recebida);
+
+        var acao = ordem.ConfirmarDiagnosticoConcluido;
+
+        acao.Should().Throw<InvalidOperationException>()
+            .WithMessage("*status atual: Recebida*");
+    }
+
+    [Fact]
     public async Task RegistrarPagamentoAsync_DeveLancarQuandoPagamentoJaRegistrado()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Finalizada);
@@ -1098,6 +1136,15 @@ public class OrdemDeServicoHandlersTests
                 _historicoService,
                 _ordemRepository).Handle(
                     new ConfirmarDiagnosticoIniciadoCommand(id, id),
+                    cancellationToken);
+        }
+
+        public Task<Unit> ConfirmarDiagnosticoConcluidoAsync(int id, CancellationToken cancellationToken)
+        {
+            return new ConfirmarDiagnosticoConcluidoCommandHandler(
+                _historicoService,
+                _ordemRepository).Handle(
+                    new ConfirmarDiagnosticoConcluidoCommand(id, id),
                     cancellationToken);
         }
 
