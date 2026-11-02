@@ -4,7 +4,7 @@ services:
     image: localstack/localstack:4.14.0
     container_name: oficina-mecanica-localstack-dev
     environment:
-      SERVICES: sqs,sns
+      SERVICES: sqs,sns,dynamodb
       AWS_DEFAULT_REGION: us-east-1
       DEBUG: "0"
     ports:
