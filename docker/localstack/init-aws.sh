@@ -89,4 +89,38 @@ awslocal sns set-subscription-attributes \
   --attribute-name FilterPolicy \
   --attribute-value '{"tipo":["DiagnosticoConcluidoMessage"]}'
 
+BILLING_DLQ_URL=$(awslocal sqs create-queue \
+  --queue-name billing-diagnostico-concluido-dlq \
+  --query QueueUrl --output text)
+BILLING_DLQ_ARN=$(awslocal sqs get-queue-attributes \
+  --queue-url "$BILLING_DLQ_URL" \
+  --attribute-names QueueArn \
+  --query Attributes.QueueArn --output text)
+BILLING_QUEUE_INPUT=$(printf \
+  '{"QueueName":"billing-diagnostico-concluido","Attributes":{"RedrivePolicy":"{\\"deadLetterTargetArn\\":\\"%s\\",\\"maxReceiveCount\\":\\"3\\"}"}}' \
+  "$BILLING_DLQ_ARN")
+BILLING_QUEUE_URL=$(awslocal sqs create-queue \
+  --cli-input-json "$BILLING_QUEUE_INPUT" \
+  --query QueueUrl --output text)
+BILLING_QUEUE_ARN=$(awslocal sqs get-queue-attributes \
+  --queue-url "$BILLING_QUEUE_URL" \
+  --attribute-names QueueArn \
+  --query Attributes.QueueArn --output text)
+
+BILLING_POLICY_INPUT=$(printf \
+  '{"QueueUrl":"%s","Attributes":{"Policy":"{\\"Version\\":\\"2012-10-17\\",\\"Statement\\":[{\\"Effect\\":\\"Allow\\",\\"Principal\\":\\"*\\",\\"Action\\":\\"sqs:SendMessage\\",\\"Resource\\":\\"%s\\",\\"Condition\\":{\\"ArnEquals\\":{\\"aws:SourceArn\\":\\"%s\\"}}}]}"}}' \
+  "$BILLING_QUEUE_URL" "$BILLING_QUEUE_ARN" "$TOPIC_ARN")
+awslocal sqs set-queue-attributes --cli-input-json "$BILLING_POLICY_INPUT"
+
+BILLING_SUBSCRIPTION_ARN=$(awslocal sns subscribe \
+  --topic-arn "$TOPIC_ARN" \
+  --protocol sqs \
+  --notification-endpoint "$BILLING_QUEUE_ARN" \
+  --attributes RawMessageDelivery=true \
+  --query SubscriptionArn --output text)
+awslocal sns set-subscription-attributes \
+  --subscription-arn "$BILLING_SUBSCRIPTION_ARN" \
+  --attribute-name FilterPolicy \
+  --attribute-value '{"tipo":["DiagnosticoConcluidoMessage"]}'
+
 echo "SNS/SQS locais configurados na regiao $REGION para a conta $ACCOUNT_ID."
