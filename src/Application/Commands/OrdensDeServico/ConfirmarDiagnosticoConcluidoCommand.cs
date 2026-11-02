@@ -4,4 +4,16 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServic
 
 public sealed record ConfirmarDiagnosticoConcluidoCommand(
     int OrdemServicoId,
-    int DiagnosticoId) : IRequest<Unit>;
+    int DiagnosticoId,
+    IReadOnlyCollection<ServicoDiagnosticoConcluidoCommand> Servicos,
+    IReadOnlyCollection<PecaDiagnosticoConcluidoCommand> Pecas) : IRequest<Unit>;
+
+public sealed record ServicoDiagnosticoConcluidoCommand(
+    int ServicoId,
+    decimal Preco,
+    int TempoEstimado);
+
+public sealed record PecaDiagnosticoConcluidoCommand(
+    int PecaId,
+    int Quantidade,
+    decimal Preco);

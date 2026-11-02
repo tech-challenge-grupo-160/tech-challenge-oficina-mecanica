@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using Amazon.SQS;
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Messaging;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +21,9 @@ public sealed class DiagnosticoConcluidoConsumerWorker(
     ILogger<DiagnosticoConcluidoConsumerWorker> logger)
     : SqsConsumerWorker<DiagnosticoConcluidoMessage>(scopeFactory, sqs, logger)
 {
+    private const string BillingDestination = "BillingGerarOrcamento";
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     protected override bool Enabled => options.Value.Enabled;
     protected override string QueueUrl => options.Value.DiagnosticoConcluidoQueueUrl;
 
@@ -43,6 +48,49 @@ public sealed class DiagnosticoConcluidoConsumerWorker(
         var mediator = serviceProvider.GetRequiredService<ISender>();
         await mediator.Send(new ConfirmarDiagnosticoConcluidoCommand(
             evento.OrdemServicoId,
-            evento.DiagnosticoId), cancellationToken);
+            evento.DiagnosticoId,
+            evento.Servicos.Select(item => new ServicoDiagnosticoConcluidoCommand(
+                item.ServicoId,
+                item.Preco,
+                item.TempoEstimado)).ToArray(),
+            evento.Pecas.Select(item => new PecaDiagnosticoConcluidoCommand(
+                item.PecaId,
+                item.Quantidade,
+                item.Preco)).ToArray()), cancellationToken);
+
+        var comandoJaCriado = await context.OutboxMessages.AnyAsync(
+            item => item.CorrelationId == saga.CorrelationId &&
+                    item.Tipo == nameof(GerarOrcamentoMessage) &&
+                    item.Destino == BillingDestination,
+            cancellationToken);
+        if (comandoJaCriado)
+            return;
+
+        var comando = new GerarOrcamentoMessage(
+            Guid.NewGuid(),
+            saga.CorrelationId,
+            DateTimeOffset.UtcNow,
+            evento.OrdemServicoId,
+            evento.DiagnosticoId,
+            evento.ParecerTecnico,
+            evento.Servicos.Select(item => new ServicoGerarOrcamentoMessage(
+                item.ServicoId,
+                item.Nome,
+                item.Preco,
+                item.TempoEstimado)).ToArray(),
+            evento.Pecas.Select(item => new PecaGerarOrcamentoMessage(
+                item.PecaId,
+                item.Nome,
+                item.Quantidade,
+                item.Preco)).ToArray(),
+            evento.ConcluidoEm);
+
+        context.OutboxMessages.Add(OutboxMessage.Criar(
+            comando.MessageId,
+            comando.CorrelationId,
+            nameof(GerarOrcamentoMessage),
+            BillingDestination,
+            JsonSerializer.Serialize(comando, JsonOptions),
+            comando.OcorridoEm));
     }
 }

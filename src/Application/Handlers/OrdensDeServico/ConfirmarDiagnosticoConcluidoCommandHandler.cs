@@ -2,6 +2,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Exceptions;
 using Fiap.TechChallenge.OficinaMecanica.Application.Services.OrdensDeServico;
+using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Enums;
 using MediatR;
 
@@ -23,7 +24,15 @@ public sealed class ConfirmarDiagnosticoConcluidoCommandHandler(
         if (ordem.Status == StatusOrdemDeServico.AguardandoOrcamento)
             return Unit.Value;
 
-        var evento = ordem.ConfirmarDiagnosticoConcluido();
+        var evento = ordem.ConfirmarDiagnosticoConcluido(
+            request.Servicos.Select(item => new ServicoDiagnosticoSnapshot(
+                item.ServicoId,
+                item.Preco,
+                item.TempoEstimado)),
+            request.Pecas.Select(item => new PecaDiagnosticoSnapshot(
+                item.PecaId,
+                item.Quantidade,
+                item.Preco)));
         var atualizada = await ordemRepository.AtualizarAsync(ordem, cancellationToken);
         await historicoService.RegistrarAsync(
             atualizada,
