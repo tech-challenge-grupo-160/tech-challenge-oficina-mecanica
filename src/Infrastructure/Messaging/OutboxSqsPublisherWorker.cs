@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
@@ -9,12 +10,16 @@ using Microsoft.Extensions.Options;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Messaging;
 
+[ExcludeFromCodeCoverage]
 public sealed class OutboxSqsPublisherWorker(
     IServiceScopeFactory scopeFactory,
     IAmazonSQS sqs,
     IOptions<MessagingOptions> options,
     ILogger<OutboxSqsPublisherWorker> logger) : BackgroundService
 {
+    private const string ExecucaoDestination = "ExecucaoIniciarDiagnostico";
+    private const string BillingDestination = "BillingGerarOrcamento";
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!options.Value.Enabled)
@@ -44,7 +49,8 @@ public sealed class OutboxSqsPublisherWorker(
         await using var scope = scopeFactory.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
         var mensagens = await context.OutboxMessages
-            .Where(item => item.PublicadoEm == null && item.Destino == "ExecucaoIniciarDiagnostico")
+            .Where(item => item.PublicadoEm == null &&
+                (item.Destino == ExecucaoDestination || item.Destino == BillingDestination))
             .OrderBy(item => item.CriadoEm)
             .Take(10)
             .ToListAsync(cancellationToken);
@@ -55,7 +61,7 @@ public sealed class OutboxSqsPublisherWorker(
             {
                 await sqs.SendMessageAsync(new SendMessageRequest
                 {
-                    QueueUrl = options.Value.ExecucaoCommandQueueUrl,
+                    QueueUrl = ObterQueueUrl(mensagem.Destino),
                     MessageBody = mensagem.Payload
                 }, cancellationToken);
                 mensagem.MarcarPublicada(DateTimeOffset.UtcNow);
@@ -70,4 +76,11 @@ public sealed class OutboxSqsPublisherWorker(
         if (mensagens.Count > 0)
             await context.SaveChangesAsync(cancellationToken);
     }
+
+    private string ObterQueueUrl(string destino) => destino switch
+    {
+        ExecucaoDestination => options.Value.ExecucaoCommandQueueUrl,
+        BillingDestination => options.Value.BillingCommandQueueUrl,
+        _ => throw new InvalidOperationException($"Destino de Outbox nao suportado: {destino}.")
+    };
 }

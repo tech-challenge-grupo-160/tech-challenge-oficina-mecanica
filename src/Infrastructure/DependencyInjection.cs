@@ -77,6 +77,7 @@ public static class DependencyInjection
         services.AddHostedService<OutboxSqsPublisherWorker>();
         services.AddHostedService<DiagnosticoIniciadoConsumerWorker>();
         services.AddHostedService<DiagnosticoConcluidoConsumerWorker>();
+        services.AddHostedService<OrcamentoGeradoConsumerWorker>();
         services.AddScoped<IOrdemDeServicoRepository, OrdemDeServicoRepository>();
         services.AddScoped<IOrdemServicoHistoricoRepository, OrdemServicoHistoricoRepository>();
         services.AddScoped<INotificacaoClienteRepository, NotificacaoClienteRepository>();

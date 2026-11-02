@@ -554,6 +554,10 @@ public class OrdemDeServicoHandlersTests
     public async Task ConfirmarDiagnosticoConcluido_DeveAguardarOrcamentoESerIdempotente()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.EmDiagnostico);
+        ordem.Servicos.Add(OrdemDeServicoServico.Criar(ordem.Id, 1000, 10m, 5));
+        ordem.Servicos.Add(OrdemDeServicoServico.Criar(ordem.Id, 9999, 20m, 10));
+        ordem.Pecas.Add(OrdemDeServicoPeca.Criar(ordem.Id, 1000, 1, 5m));
+        ordem.Pecas.Add(OrdemDeServicoPeca.Criar(ordem.Id, 9999, 1, 10m));
         _ordemRepositoryMock
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ordem);
@@ -565,6 +569,11 @@ public class OrdemDeServicoHandlersTests
         await _handlers.ConfirmarDiagnosticoConcluidoAsync(ordem.Id, CancellationToken.None);
 
         ordem.Status.Should().Be(StatusOrdemDeServico.AguardandoOrcamento);
+        ordem.ValorTotal.Should().Be(240m);
+        ordem.Servicos.Should().ContainSingle(item =>
+            item.ServicoId == 1000 && item.Preco == 150m && item.TempoEstimado == 30);
+        ordem.Pecas.Should().ContainSingle(item =>
+            item.PecaId == 1000 && item.Quantidade == 2 && item.Preco == 45m);
         _ordemRepositoryMock.Verify(
             x => x.AtualizarAsync(ordem, It.IsAny<CancellationToken>()),
             Times.Once);
@@ -582,10 +591,129 @@ public class OrdemDeServicoHandlersTests
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Recebida);
 
-        var acao = ordem.ConfirmarDiagnosticoConcluido;
+        var acao = () => ordem.ConfirmarDiagnosticoConcluido(
+            [new ServicoDiagnosticoSnapshot(1000, 150m, 30)],
+            [new PecaDiagnosticoSnapshot(1000, 2, 45m)]);
 
         acao.Should().Throw<InvalidOperationException>()
             .WithMessage("*status atual: Recebida*");
+    }
+
+    [Theory]
+    [InlineData(0, "ao menos um servico")]
+    [InlineData(1, "Dados de servico")]
+    [InlineData(2, "servicos duplicados")]
+    [InlineData(3, "Dados de peca")]
+    [InlineData(4, "pecas duplicadas")]
+    public void ConfirmarDiagnosticoConcluido_DeveValidarSnapshots(
+        int cenario,
+        string mensagem)
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.EmDiagnostico);
+        ServicoDiagnosticoSnapshot[] servicos = cenario switch
+        {
+            0 => [],
+            1 => [new ServicoDiagnosticoSnapshot(0, 150m, 30)],
+            2 =>
+            [
+                new ServicoDiagnosticoSnapshot(1000, 150m, 30),
+                new ServicoDiagnosticoSnapshot(1000, 150m, 30)
+            ],
+            _ => [new ServicoDiagnosticoSnapshot(1000, 150m, 30)]
+        };
+        PecaDiagnosticoSnapshot[] pecas = cenario switch
+        {
+            3 => [new PecaDiagnosticoSnapshot(0, 2, 45m)],
+            4 =>
+            [
+                new PecaDiagnosticoSnapshot(1000, 2, 45m),
+                new PecaDiagnosticoSnapshot(1000, 2, 45m)
+            ],
+            _ => []
+        };
+
+        var acao = () => ordem.ConfirmarDiagnosticoConcluido(servicos, pecas);
+
+        acao.Should().Throw<Exception>().WithMessage($"*{mensagem}*");
+    }
+
+    [Fact]
+    public async Task ConfirmarOrcamentoGerado_DeveAguardarAprovacaoESerIdempotente()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoOrcamento);
+        ordem.SetPrivateProperty(nameof(OrdemDeServico.ValorTotal), 240m);
+        var orcamentoId = Guid.NewGuid();
+        var orcamentoGeradoEm = new DateTime(2026, 11, 2, 19, 42, 53);
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+        _ordemRepositoryMock
+            .Setup(x => x.AtualizarAsync(ordem, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+
+        await _handlers.ConfirmarOrcamentoGeradoAsync(
+            ordem.Id, orcamentoId, 240m, orcamentoGeradoEm, CancellationToken.None);
+        await _handlers.ConfirmarOrcamentoGeradoAsync(
+            ordem.Id, orcamentoId, 240m, orcamentoGeradoEm.AddMinutes(1), CancellationToken.None);
+
+        ordem.Status.Should().Be(StatusOrdemDeServico.AguardandoAprovacao);
+        ordem.OrcamentoEnviadoEm.Should().Be(orcamentoGeradoEm);
+        _ordemRepositoryMock.Verify(
+            x => x.AtualizarAsync(ordem, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _historicoRepositoryMock.Verify(
+            x => x.CriarAsync(
+                It.Is<OrdemServicoHistorico>(historico =>
+                    historico.TipoEvento == TipoEventoOrdemServico.OrcamentoGerado &&
+                    historico.StatusAnterior == StatusOrdemDeServico.AguardandoOrcamento &&
+                    historico.StatusNovo == StatusOrdemDeServico.AguardandoAprovacao),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Theory]
+    [InlineData(true, 240, "Identificador do orcamento")]
+    [InlineData(false, -1, "Valor total do orcamento")]
+    [InlineData(false, 200, "difere do total da ordem")]
+    public void ConfirmarOrcamentoGerado_DeveValidarDadosDoEvento(
+        bool orcamentoVazio,
+        decimal valorTotal,
+        string mensagem)
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoOrcamento);
+        ordem.SetPrivateProperty(nameof(OrdemDeServico.ValorTotal), 240m);
+
+        var acao = () => ordem.ConfirmarOrcamentoGerado(
+            orcamentoVazio ? Guid.Empty : Guid.NewGuid(),
+            valorTotal,
+            new DateTime(2026, 11, 2, 19, 42, 53));
+
+        acao.Should().Throw<Exception>().WithMessage($"*{mensagem}*");
+    }
+
+    [Fact]
+    public void ConfirmarOrcamentoGerado_DeveRejeitarStatusInvalido()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.EmDiagnostico);
+
+        var acao = () => ordem.ConfirmarOrcamentoGerado(
+            Guid.NewGuid(),
+            0m,
+            new DateTime(2026, 11, 2, 19, 42, 53));
+
+        acao.Should().Throw<InvalidOperationException>()
+            .WithMessage("*status atual: EmDiagnostico*");
+    }
+
+    [Fact]
+    public void ConfirmarOrcamentoGerado_DeveExigirDataDeGeracao()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoOrcamento);
+
+        var acao = () => ordem.ConfirmarOrcamentoGerado(Guid.NewGuid(), 0m, default);
+
+        acao.Should().Throw<ArgumentException>()
+            .WithMessage("*Data de geracao do orcamento*");
     }
 
     [Fact]
@@ -1144,7 +1272,30 @@ public class OrdemDeServicoHandlersTests
             return new ConfirmarDiagnosticoConcluidoCommandHandler(
                 _historicoService,
                 _ordemRepository).Handle(
-                    new ConfirmarDiagnosticoConcluidoCommand(id, id),
+                    new ConfirmarDiagnosticoConcluidoCommand(
+                        id,
+                        id,
+                        [new ServicoDiagnosticoConcluidoCommand(1000, 150m, 30)],
+                        [new PecaDiagnosticoConcluidoCommand(1000, 2, 45m)]),
+                    cancellationToken);
+        }
+
+        public Task<Unit> ConfirmarOrcamentoGeradoAsync(
+            int id,
+            Guid orcamentoId,
+            decimal valorTotal,
+            DateTime orcamentoGeradoEm,
+            CancellationToken cancellationToken)
+        {
+            return new ConfirmarOrcamentoGeradoCommandHandler(
+                _historicoService,
+                _ordemRepository).Handle(
+                    new ConfirmarOrcamentoGeradoCommand(
+                        id,
+                        id,
+                        orcamentoId,
+                        valorTotal,
+                        orcamentoGeradoEm),
                     cancellationToken);
         }
 

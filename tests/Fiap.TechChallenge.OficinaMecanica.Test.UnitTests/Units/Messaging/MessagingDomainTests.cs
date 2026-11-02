@@ -188,4 +188,41 @@ public class MessagingDomainTests
         options.DiagnosticoConcluidoQueueUrl.Should()
             .Be("http://localhost:4566/os-diagnostico-concluido");
     }
+
+    [Fact]
+    public void ContratosDeOrcamento_DevemPreservarComandoEEvento()
+    {
+        var correlationId = Guid.NewGuid();
+        var agora = DateTimeOffset.UtcNow;
+        var comando = new GerarOrcamentoMessage(
+            Guid.NewGuid(), correlationId, agora, 3007, 1, "Parecer tecnico",
+            [new ServicoGerarOrcamentoMessage(1000, "Alinhamento", 150m, 30)],
+            [new PecaGerarOrcamentoMessage(1000, "Pastilha", 2, 45m)],
+            agora);
+        var evento = new OrcamentoGeradoMessage(
+            Guid.NewGuid(), correlationId, agora, Guid.NewGuid(), 3007, 1,
+            "Gerado", 150m, 90m, 240m);
+
+        comando.CorrelationId.Should().Be(correlationId);
+        comando.Servicos.Should().ContainSingle();
+        comando.Pecas.Should().ContainSingle();
+        comando.Versao.Should().Be(1);
+        evento.CorrelationId.Should().Be(correlationId);
+        evento.Status.Should().Be("Gerado");
+        evento.ValorTotal.Should().Be(240m);
+        evento.Versao.Should().Be(1);
+    }
+
+    [Fact]
+    public void MessagingOptions_DevePreservarFilasDoBilling()
+    {
+        var options = new MessagingOptions
+        {
+            BillingCommandQueueUrl = "http://localhost:4566/billing-gerar-orcamento",
+            OrcamentoGeradoQueueUrl = "http://localhost:4566/os-orcamento-gerado"
+        };
+
+        options.BillingCommandQueueUrl.Should().EndWith("billing-gerar-orcamento");
+        options.OrcamentoGeradoQueueUrl.Should().EndWith("os-orcamento-gerado");
+    }
 }

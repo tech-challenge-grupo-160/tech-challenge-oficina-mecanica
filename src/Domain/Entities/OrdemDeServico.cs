@@ -143,13 +143,83 @@ public class OrdemDeServico
         }
     }
 
-    public OrdemDeServicoEventoDominio ConfirmarDiagnosticoConcluido()
+    public OrdemDeServicoEventoDominio ConfirmarDiagnosticoConcluido(
+        IEnumerable<ServicoDiagnosticoSnapshot> servicos,
+        IEnumerable<PecaDiagnosticoSnapshot> pecas)
     {
         if (Status != StatusOrdemDeServico.EmDiagnostico)
         {
             throw new InvalidOperationException(
                 $"Nao e possivel concluir o diagnostico no status atual: {Status}.");
         }
+
+        var servicosFinais = servicos?.ToArray()
+            ?? throw new ArgumentNullException(nameof(servicos));
+        var pecasFinais = pecas?.ToArray()
+            ?? throw new ArgumentNullException(nameof(pecas));
+
+        if (servicosFinais.Length == 0)
+            throw new InvalidOperationException("O diagnostico deve possuir ao menos um servico.");
+        if (servicosFinais.Any(item =>
+                item.ServicoId <= 0 || item.Preco < 0 || item.TempoEstimado <= 0))
+            throw new ArgumentException("Dados de servico do diagnostico invalidos.");
+        if (servicosFinais.Select(item => item.ServicoId).Distinct().Count() != servicosFinais.Length)
+            throw new ArgumentException("O diagnostico possui servicos duplicados.");
+        if (pecasFinais.Any(item => item.PecaId <= 0 || item.Quantidade <= 0 || item.Preco < 0))
+            throw new ArgumentException("Dados de peca do diagnostico invalidos.");
+        if (pecasFinais.Select(item => item.PecaId).Distinct().Count() != pecasFinais.Length)
+            throw new ArgumentException("O diagnostico possui pecas duplicadas.");
+
+        var servicoIdsFinais = servicosFinais.Select(item => item.ServicoId).ToHashSet();
+        foreach (var servicoRemovido in Servicos
+                     .Where(item => !servicoIdsFinais.Contains(item.ServicoId))
+                     .ToArray())
+        {
+            Servicos.Remove(servicoRemovido);
+        }
+
+        foreach (var servico in servicosFinais)
+        {
+            var existente = Servicos.FirstOrDefault(item => item.ServicoId == servico.ServicoId);
+            if (existente is null)
+            {
+                Servicos.Add(OrdemDeServicoServico.Criar(
+                    Id,
+                    servico.ServicoId,
+                    servico.Preco,
+                    servico.TempoEstimado));
+            }
+            else
+            {
+                existente.AtualizarSnapshot(servico.Preco, servico.TempoEstimado);
+            }
+        }
+
+        var pecaIdsFinais = pecasFinais.Select(item => item.PecaId).ToHashSet();
+        foreach (var pecaRemovida in Pecas
+                     .Where(item => !pecaIdsFinais.Contains(item.PecaId))
+                     .ToArray())
+        {
+            Pecas.Remove(pecaRemovida);
+        }
+
+        foreach (var peca in pecasFinais)
+        {
+            var existente = Pecas.FirstOrDefault(item => item.PecaId == peca.PecaId);
+            if (existente is null)
+            {
+                Pecas.Add(OrdemDeServicoPeca.Criar(
+                    Id,
+                    peca.PecaId,
+                    peca.Quantidade,
+                    peca.Preco));
+            }
+            else
+            {
+                existente.AtualizarSnapshot(peca.Quantidade, peca.Preco);
+            }
+        }
+        RecalcularTotal();
 
         var statusAnterior = Status;
         AlterarStatus(StatusOrdemDeServico.AguardandoOrcamento);
@@ -158,6 +228,42 @@ public class OrdemDeServico
             statusAnterior,
             Status,
             "Diagnostico concluido; aguardando geracao do orcamento.");
+    }
+
+    public OrdemDeServicoEventoDominio ConfirmarOrcamentoGerado(
+        Guid orcamentoId,
+        decimal valorTotal,
+        DateTime orcamentoGeradoEm)
+    {
+        if (orcamentoId == Guid.Empty)
+            throw new ArgumentException("Identificador do orcamento e obrigatorio.");
+
+        if (valorTotal < 0)
+            throw new ArgumentException("Valor total do orcamento nao pode ser negativo.");
+
+        if (orcamentoGeradoEm == default)
+            throw new ArgumentException("Data de geracao do orcamento e obrigatoria.");
+
+        if (Status != StatusOrdemDeServico.AguardandoOrcamento)
+        {
+            throw new InvalidOperationException(
+                $"Nao e possivel confirmar o orcamento no status atual: {Status}.");
+        }
+
+        if (ValorTotal != valorTotal)
+        {
+            throw new InvalidOperationException(
+                $"Valor do orcamento ({valorTotal}) difere do total da ordem ({ValorTotal}).");
+        }
+
+        var statusAnterior = Status;
+        AlterarStatus(StatusOrdemDeServico.AguardandoAprovacao);
+        OrcamentoEnviadoEm = orcamentoGeradoEm;
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.OrcamentoGerado,
+            statusAnterior,
+            Status,
+            $"Orcamento {orcamentoId} gerado; aguardando aprovacao do cliente.");
     }
 
     public void AdicionarServico(Servico servico)
@@ -612,6 +718,16 @@ public sealed record OrdemDeServicoEventoDominio(
     StatusOrdemDeServico? StatusNovo,
     string Descricao);
 
+public sealed record ServicoDiagnosticoSnapshot(
+    int ServicoId,
+    decimal Preco,
+    int TempoEstimado);
+
+public sealed record PecaDiagnosticoSnapshot(
+    int PecaId,
+    int Quantidade,
+    decimal Preco);
+
 public class OrdemDeServicoServico
 {
     private OrdemDeServicoServico()
@@ -635,6 +751,12 @@ public class OrdemDeServicoServico
             Preco = preco,
             TempoEstimado = tempoEstimado
         };
+    }
+
+    public void AtualizarSnapshot(decimal preco, int tempoEstimado)
+    {
+        Preco = preco;
+        TempoEstimado = tempoEstimado;
     }
 }
 
@@ -661,6 +783,12 @@ public class OrdemDeServicoPeca
             Quantidade = quantidade,
             Preco = preco
         };
+    }
+
+    public void AtualizarSnapshot(int quantidade, decimal preco)
+    {
+        Quantidade = quantidade;
+        Preco = preco;
     }
 
     public void SomarQuantidade(int quantidade, decimal preco)

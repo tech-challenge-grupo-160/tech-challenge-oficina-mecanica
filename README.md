@@ -27,8 +27,11 @@ da Saga e um comando na Outbox e o publica na fila SQS da Execucao. A Execucao
 consome o comando de forma idempotente, cria o diagnostico e publica o evento no
 SNS. Somente ao consumir esse evento pela sua fila SQS o OS Service altera a OS
 para `EmDiagnostico`. Ao concluir o resultado tecnico, a Execucao publica
-`DiagnosticoConcluidoMessage` e o OS Service avanca para `AguardandoOrcamento`.
-O ambiente Docker inclui LocalStack, filas, filtros de assinatura, topico e DLQs.
+`DiagnosticoConcluidoMessage`; o OS Service avanca para `AguardandoOrcamento` e
+envia `GerarOrcamentoMessage` para a fila do Billing. Depois que o Billing
+publica `OrcamentoGeradoMessage`, o OS Service avanca para
+`AguardandoAprovacao`. O ambiente Docker inclui LocalStack, filas, filtros de
+assinatura, topico e DLQs.
 
 ## Stack
 
