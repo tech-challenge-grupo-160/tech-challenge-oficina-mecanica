@@ -76,6 +76,7 @@ public static class DependencyInjection
         services.AddScoped<IInicioDiagnosticoScheduler, InicioDiagnosticoScheduler>();
         services.AddHostedService<OutboxSqsPublisherWorker>();
         services.AddHostedService<DiagnosticoIniciadoConsumerWorker>();
+        services.AddHostedService<DiagnosticoConcluidoConsumerWorker>();
         services.AddScoped<IOrdemDeServicoRepository, OrdemDeServicoRepository>();
         services.AddScoped<IOrdemServicoHistoricoRepository, OrdemServicoHistoricoRepository>();
         services.AddScoped<INotificacaoClienteRepository, NotificacaoClienteRepository>();
