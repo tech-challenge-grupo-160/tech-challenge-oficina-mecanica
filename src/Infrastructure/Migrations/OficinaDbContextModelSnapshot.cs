@@ -73,6 +73,30 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                     b.ToTable("Cliente", (string)null);
                 });
 
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.InboxMessage", b =>
+                {
+                    b.Property<Guid>("MessageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CorrelationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ProcessadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("MessageId");
+
+                    b.HasIndex("ProcessadoEm");
+
+                    b.ToTable("InboxMessage", (string)null);
+                });
+
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.MovimentacaoEstoque", b =>
                 {
                     b.Property<int>("Id")
@@ -345,6 +369,49 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                     b.ToTable("OrdemServicoHistorico", (string)null);
                 });
 
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CorrelationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Destino")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset?>("PublicadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("UltimoErro")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PublicadoEm", "CriadoEm");
+
+                    b.ToTable("OutboxMessage", (string)null);
+                });
+
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Peca", b =>
                 {
                     b.Property<int>("Id")
@@ -423,6 +490,37 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                     b.HasIndex("OrdemDeServicoId", "PecaId", "Status");
 
                     b.ToTable("PedidoCompra", (string)null);
+                });
+
+            modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.SagaInicioDiagnostico", b =>
+                {
+                    b.Property<Guid>("CorrelationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AtualizadaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CriadaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DiagnosticoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OrdemServicoId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("CorrelationId");
+
+                    b.HasIndex("OrdemServicoId")
+                        .IsUnique();
+
+                    b.ToTable("SagaInicioDiagnostico", (string)null);
                 });
 
             modelBuilder.Entity("Fiap.TechChallenge.OficinaMecanica.Domain.Entities.Servico", b =>

@@ -22,8 +22,11 @@ O domínio principal do projeto é a ordem de serviço. A API permite:
 
 Na transicao para o OS Service, a abertura mantem o contrato existente: exige ao menos um servico e aceita pecas opcionais. A consulta de itens passa por `ICatalogoExecucao` e pelo cliente HTTP resiliente do microsservico de Execucao. Consulte [Abertura do OS Service](docs/OS-SERVICE-ABERTURA.md).
 
-Ao iniciar o diagnostico, o OS Service cria de forma idempotente o diagnostico na
-Execucao e somente depois altera seu estado local para `EmDiagnostico`.
+Ao iniciar o diagnostico, o OS Service responde `202 Accepted`, persiste o estado
+da Saga e um comando na Outbox e o publica na fila SQS da Execucao. A Execucao
+consome o comando de forma idempotente, cria o diagnostico e publica o evento no
+SNS. Somente ao consumir esse evento pela sua fila SQS o OS Service altera a OS
+para `EmDiagnostico`. O ambiente Docker inclui LocalStack, filas, topico e DLQs.
 
 ## Stack
 
@@ -36,6 +39,7 @@ Execucao e somente depois altera seu estado local para `EmDiagnostico`.
 - FluentValidation
 - xUnit
 - Docker e Docker Compose
+- Amazon SNS e SQS (LocalStack no desenvolvimento)
 
 ## Início rápido
 

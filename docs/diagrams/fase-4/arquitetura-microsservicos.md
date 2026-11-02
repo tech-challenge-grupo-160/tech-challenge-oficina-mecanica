@@ -1,6 +1,6 @@
 # Arquitetura da Fase 4 — microsserviços
 
-> **Status:** desenho aceito na Sprint 1 (ADRs [0003](../../adrs/0003-divisao-em-microsservicos.md) a [0006](../../adrs/0006-banco-por-servico.md), 2026-10-17). Ainda não implementado por inteiro: mensageria, bancos novos e Saga entram nas Sprints 2 a 4. É a base do diagrama geral da entrega ([F4-40](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/171)).
+> **Status:** desenho aceito na Sprint 1 (ADRs [0003](../../adrs/0003-divisao-em-microsservicos.md) a [0006](../../adrs/0006-banco-por-servico.md), 2026-10-17). O primeiro corte vertical da Saga está implementado no início do diagnóstico, com Outbox/Inbox, SNS, SQS e DLQs entre OS Service e Execução. Billing e as jornadas posteriores ainda estão pendentes. É a base do diagrama geral da entrega ([F4-40](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/171)).
 
 ## Visão geral
 

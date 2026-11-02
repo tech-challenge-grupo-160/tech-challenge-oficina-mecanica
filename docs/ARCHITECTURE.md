@@ -8,12 +8,14 @@ O dominio principal e a ordem de servico, integrado a clientes, veiculos, servic
 
 A primeira etapa da extracao para o OS Service preserva a abertura com pelo menos um servico e pecas opcionais. O caso de uso consulta `ICatalogoExecucao` por um cliente HTTP resiliente e recebe somente os snapshots necessarios de servico e peca, sem consultar ou alterar estoque. As escritas da OS, itens, historico e notificacao participam da mesma transacao local. O adaptador local permanece restrito aos testes do legado. As chaves estrangeiras locais para catalogo ainda permanecem nesta etapa e serao removidas junto com a extracao das jornadas de diagnostico e estoque.
 
-O inicio do diagnostico e o primeiro comando distribuido: o OS Service valida a
-transicao, solicita um diagnostico idempotente na Execucao e so entao grava
-`EmDiagnostico` e o historico em uma transacao local. Timeout, circuit breaker e
-retry nao duplicam o diagnostico porque a Execucao garante unicidade por OS e por
-chave de idempotencia. Uma falha depois da gravacao remota pode deixar a OS
-temporariamente em `Recebida`; repetir o comando reconcilia o estado.
+O inicio do diagnostico e o primeiro passo implementado da Saga orquestrada. O OS
+Service valida a transicao e grava a Saga e o comando na Outbox na mesma transacao
+local. Um worker publica o comando na fila SQS da Execucao. A Execucao registra o
+comando na Inbox, cria o diagnostico e grava o evento `DiagnosticoIniciado` na sua
+Outbox em uma transacao; outro worker publica o evento no SNS. A fila SQS do OS
+Service recebe o evento, cuja Inbox impede duplicidade, e somente entao a OS e o
+historico mudam para `EmDiagnostico` e a Saga fica `Concluida`. As filas possuem
+DLQ e os contratos carregam `messageId`, `correlationId` e versao.
 
 ## Camadas
 

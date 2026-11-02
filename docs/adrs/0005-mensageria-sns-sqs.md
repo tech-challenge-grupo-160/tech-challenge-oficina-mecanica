@@ -26,6 +26,12 @@ Mensageria sem cuidado gera dois problemas clássicos que a Saga não tolera:
 
 Usar **Amazon SNS** (tópicos) e **Amazon SQS** (filas), com **outbox transacional** na publicação e **consumo idempotente**, usando **MassTransit** como biblioteca no .NET.
 
+> **Nota de implementação (2026-11-01):** o primeiro corte vertical, início do
+> diagnóstico, usa diretamente o AWS SDK for .NET v4. Outbox, Inbox, entrega
+> *at-least-once*, SNS/SQS e DLQ permanecem conforme esta decisão. A adoção do
+> MassTransit fica para reavaliação antes de ampliar a Saga; não é necessário
+> misturar dois mecanismos enquanto este corte estiver isolado.
+
 ### Topologia
 
 - **Eventos** (algo aconteceu): publicados num **tópico SNS do produtor**. Cada interessado tem **sua própria fila SQS** assinada no tópico. Quem publica não sabe quem consome.

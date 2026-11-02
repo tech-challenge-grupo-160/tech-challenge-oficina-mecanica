@@ -316,6 +316,8 @@ Resposta `201 Created`:
 
 ### Ordens de servico
 
+Os campos de data e hora das respostas de ordens de serviço e de seu histórico são serializados em ISO 8601 UTC, com offset explícito (`+00:00`). O armazenamento legado permanece no horário de Brasília e é normalizado no limite HTTP.
+
 #### Operacoes CRUD e listagem
 
 | Metodo | Rota | Autenticacao | Descricao |
@@ -328,7 +330,7 @@ Resposta `201 Created`:
 
 | Metodo | Rota | Autenticacao | Descricao |
 |---|---|---|---|
-| `PATCH` | `/ordens-servico/{id}/iniciar-diagnostico` | JWT | Recebida -> EmDiagnostico |
+| `PATCH` | `/ordens-servico/{id}/iniciar-diagnostico` | JWT | Agenda a Saga e retorna `202`; Recebida -> EmDiagnostico por evento |
 | `PATCH` | `/ordens-servico/{id}/finalizar-diagnostico` | JWT | EmDiagnostico -> AguardandoAprovacao |
 | `PATCH` | `/ordens-servico/{id}/aprovar` | JWT | AguardandoAprovacao -> EmExecucao (ou AguardandoEstoque) |
 | `PATCH` | `/ordens-servico/{id}/liberar-execucao` | JWT | AguardandoEstoque -> EmExecucao |
@@ -674,7 +676,7 @@ Resposta `200 OK`:
 |---|---|---|
 | `PATCH .../iniciar-diagnostico` | `404` | OS nao encontrada |
 | `PATCH .../iniciar-diagnostico` | `400` | Status atual diferente de `Recebida` ou `EmDiagnostico` |
-| `PATCH .../iniciar-diagnostico` | `503` | Execucao indisponivel ou resposta remota invalida |
+| `PATCH .../iniciar-diagnostico` | `202` | Comando persistido na Outbox; acompanhe a OS ate o evento atualizar para `EmDiagnostico` |
 | `PATCH .../finalizar-diagnostico` | `404` | OS nao encontrada |
 | `PATCH .../finalizar-diagnostico` | `400` | Status atual nao e `EmDiagnostico` |
 | `PATCH .../finalizar-diagnostico` | `400` | OS sem servicos ou orcamento zerado |

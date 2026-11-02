@@ -1,0 +1,73 @@
+using Amazon.SQS;
+using Amazon.SQS.Model;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Messaging;
+
+public sealed class OutboxSqsPublisherWorker(
+    IServiceScopeFactory scopeFactory,
+    IAmazonSQS sqs,
+    IOptions<MessagingOptions> options,
+    ILogger<OutboxSqsPublisherWorker> logger) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        if (!options.Value.Enabled)
+            return;
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await PublicarPendentesAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, "Falha ao publicar comandos da Outbox no SQS.");
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+        }
+    }
+
+    private async Task PublicarPendentesAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
+        var mensagens = await context.OutboxMessages
+            .Where(item => item.PublicadoEm == null && item.Destino == "ExecucaoIniciarDiagnostico")
+            .OrderBy(item => item.CriadoEm)
+            .Take(10)
+            .ToListAsync(cancellationToken);
+
+        foreach (var mensagem in mensagens)
+        {
+            try
+            {
+                await sqs.SendMessageAsync(new SendMessageRequest
+                {
+                    QueueUrl = options.Value.ExecucaoCommandQueueUrl,
+                    MessageBody = mensagem.Payload
+                }, cancellationToken);
+                mensagem.MarcarPublicada(DateTimeOffset.UtcNow);
+            }
+            catch (Exception exception)
+            {
+                mensagem.RegistrarFalha(exception.Message);
+                logger.LogWarning(exception, "Falha ao publicar mensagem {MessageId}.", mensagem.Id);
+            }
+        }
+
+        if (mensagens.Count > 0)
+            await context.SaveChangesAsync(cancellationToken);
+    }
+}

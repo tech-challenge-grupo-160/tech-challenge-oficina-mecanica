@@ -17,12 +17,12 @@ public sealed class OrdemDeServicoResponse
     public string DescricaoSolicitacao { get; init; } = null!;
     public string? ObservacoesRecepcao { get; init; }
     public string? MotivoCancelamento { get; init; }
-    public DateTime? OrcamentoEnviadoEm { get; init; }
-    public DateTime? DataFinalizacao { get; init; }
-    public DateTime? DataPagamento { get; init; }
+    public DateTimeOffset? OrcamentoEnviadoEm { get; init; }
+    public DateTimeOffset? DataFinalizacao { get; init; }
+    public DateTimeOffset? DataPagamento { get; init; }
     public string Status { get; init; } = null!;
-    public DateTime DataAbertura { get; init; }
-    public DateTime? DataConclusao { get; init; }
+    public DateTimeOffset DataAbertura { get; init; }
+    public DateTimeOffset? DataConclusao { get; init; }
     public decimal ValorTotal { get; init; }
     public List<OrdemDeServicoServicoResponse> Servicos { get; init; } = new();
     public List<OrdemDeServicoPecaResponse> Pecas { get; init; } = new();

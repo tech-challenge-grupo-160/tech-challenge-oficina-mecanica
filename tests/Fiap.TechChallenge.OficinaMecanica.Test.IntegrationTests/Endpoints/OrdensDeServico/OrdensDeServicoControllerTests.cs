@@ -28,9 +28,10 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
     public async Task FluxoCompleto_DevePercorrerCaminhoFelizDaOs()
     {
         var ordemCriada = await CriarOrdemAsync();
+        ordemCriada.DataAbertura.Offset.Should().Be(TimeSpan.Zero);
 
         var iniciarDiagnostico = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
-        iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.OK);
+        iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
         var adicionarPeca = await _client.PostAsJsonAsync(
             $"/api/v1/ordens-servico/{ordemCriada.Id}/pecas",
@@ -73,6 +74,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var historico = await obterHistorico.Content.ReadFromJsonAsync<List<OrdemServicoHistoricoResponse>>();
         historico.Should().NotBeNull();
         historico.Should().HaveCount(10);
+        historico.Should().OnlyContain(item => item.DataEvento.Offset == TimeSpan.Zero);
         historico![0].TipoEvento.Should().Be("OrdemCriada");
         historico[0].StatusAnterior.Should().BeNull();
         historico[0].StatusNovo.Should().Be("Recebida");
@@ -100,7 +102,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var ordemCriada = await CriarOrdemAsync();
 
         var iniciarDiagnostico = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
-        iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.OK);
+        iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
         var removerServico = await _client.DeleteAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/servicos/{CustomWebApplicationFactory.ServicoExistenteId}");
         removerServico.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -499,7 +501,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var ordemCriada = await CriarOrdemAsync();
 
         var iniciarDiagnostico = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
-        iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.OK);
+        iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
         await _client.PostAsJsonAsync(
             $"/api/v1/ordens-servico/{ordemCriada.Id}/pecas",
@@ -528,7 +530,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         var ordemCriada = await CriarOrdemAsync();
 
         var iniciarDiagnostico = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
-        iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.OK);
+        iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
         var segundaInclusao = await _client.PostAsJsonAsync(
             $"/api/v1/ordens-servico/{ordemCriada.Id}/servicos",

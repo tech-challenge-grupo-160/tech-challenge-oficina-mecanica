@@ -44,6 +44,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         context.ChangeTracker.Clear();
         context.Database.ExecuteSqlRaw("""
             TRUNCATE TABLE
+                "InboxMessage",
+                "OutboxMessage",
+                "SagaInicioDiagnostico",
                 "MovimentacaoEstoque",
                 "PedidoCompra",
                 "NotificacaoCliente",
@@ -114,8 +117,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
                 options.UseNpgsql(GetTestConnectionString()));
             services.RemoveAll<ICatalogoExecucao>();
             services.AddScoped<ICatalogoExecucao, CatalogoExecucaoLocal>();
-            services.RemoveAll<IDiagnosticoExecucao>();
-            services.AddScoped<IDiagnosticoExecucao, DiagnosticoExecucaoLocal>();
+            services.RemoveAll<IInicioDiagnosticoScheduler>();
+            services.AddScoped<IInicioDiagnosticoScheduler, InicioDiagnosticoSchedulerLocal>();
 
             ConfigureAuthenticationForTests(services);
         });
