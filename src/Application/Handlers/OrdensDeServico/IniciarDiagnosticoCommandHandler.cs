@@ -18,23 +18,17 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class IniciarDiagnosticoCommandHandler : IRequestHandler<IniciarDiagnosticoCommand, OrdemDeServicoResult>
 {
     private const string LoggerName = nameof(IniciarDiagnosticoCommandHandler);
-    private readonly OrdemDeServicoHistoricoService _historicoService;
-    private readonly IDiagnosticoExecucao _diagnosticoExecucao;
+    private readonly IInicioDiagnosticoScheduler _inicioDiagnosticoScheduler;
     private readonly IOrdemDeServicoRepository _ordemRepository;
-    private readonly ITransactionManager _transactionManager;
     private readonly ILogger _logger;
 
     public IniciarDiagnosticoCommandHandler(
-        OrdemDeServicoHistoricoService historicoService,
-        IDiagnosticoExecucao diagnosticoExecucao,
+        IInicioDiagnosticoScheduler inicioDiagnosticoScheduler,
         IOrdemDeServicoRepository ordemRepository,
-        ITransactionManager transactionManager,
         ILoggerFactory loggerFactory)
     {
-        _historicoService = historicoService;
-        _diagnosticoExecucao = diagnosticoExecucao;
+        _inicioDiagnosticoScheduler = inicioDiagnosticoScheduler;
         _ordemRepository = ordemRepository;
-        _transactionManager = transactionManager;
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
 
@@ -61,13 +55,6 @@ public sealed class IniciarDiagnosticoCommandHandler : IRequestHandler<IniciarDi
             {
                 ordem.ValidarInicioDiagnostico();
             }
-            await _diagnosticoExecucao.IniciarAsync(
-                ordem.Id,
-                ordem.VeiculoId,
-                ordem.DescricaoSolicitacao,
-                ordem.Servicos.Select(servico => servico.ServicoId),
-                ordem.Pecas.Select(peca => peca.PecaId),
-                cancellationToken);
 
             if (repeticaoIdempotente)
             {
@@ -75,22 +62,16 @@ public sealed class IniciarDiagnosticoCommandHandler : IRequestHandler<IniciarDi
                 return OrdemDeServicoMapper.ToResult(ordem);
             }
 
-            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(IniciarDiagnosticoAsync), "Alterando status da ordem para EmDiagnostico");
-            var ordemAtualizada = await _transactionManager.ExecuteAsync(async token =>
-            {
-                var eventoDiagnosticoIniciado = ordem.IniciarDiagnostico();
-                var atualizada = await _ordemRepository.AtualizarAsync(ordem, token);
-                await _historicoService.RegistrarAsync(
-                    atualizada,
-                    eventoDiagnosticoIniciado.TipoEvento,
-                    eventoDiagnosticoIniciado.StatusAnterior,
-                    eventoDiagnosticoIniciado.StatusNovo,
-                    eventoDiagnosticoIniciado.Descricao,
-                    token);
-                return atualizada;
-            }, cancellationToken);
-            _logger.LogInformation(LogTemplate.End, LoggerName, $"Diagnostico iniciado com sucesso para a ordem {ordemAtualizada.Numero}");
-            return OrdemDeServicoMapper.ToResult(ordemAtualizada);
+            await _inicioDiagnosticoScheduler.AgendarAsync(
+                ordem.Id,
+                ordem.VeiculoId,
+                ordem.DescricaoSolicitacao,
+                ordem.Servicos.Select(servico => servico.ServicoId).ToArray(),
+                ordem.Pecas.Select(peca => peca.PecaId).ToArray(),
+                cancellationToken);
+
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Inicio do diagnostico agendado para a ordem {ordem.Numero}");
+            return OrdemDeServicoMapper.ToResult(ordem);
         }
         catch (Exception ex)
         {

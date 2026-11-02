@@ -79,7 +79,7 @@ public class PedidosCompraControllerTests : IClassFixture<CustomWebApplicationFa
         var ordem = await CriarOrdemAsync(descricaoSolicitacao, clienteId, veiculoId);
 
         var iniciar = await _client.PatchAsync($"/api/v1/ordens-servico/{ordem!.Id}/iniciar-diagnostico", null);
-        iniciar.StatusCode.Should().Be(HttpStatusCode.OK);
+        iniciar.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
         var adicionarPeca = await _client.PostAsJsonAsync(
             $"/api/v1/ordens-servico/{ordem.Id}/pecas",

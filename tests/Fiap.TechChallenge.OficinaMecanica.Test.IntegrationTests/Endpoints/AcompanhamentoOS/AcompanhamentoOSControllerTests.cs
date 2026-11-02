@@ -89,7 +89,7 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
         var dataInicial = acompanhamentoInicial.DataUltimaAtualizacao;
 
         var iniciarDiagnostico = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/iniciar-diagnostico", null);
-        iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.OK);
+        iniciarDiagnostico.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
         var acompanhamentoAposMudancaStatus = await ObterAcompanhamentoAsync(ordemCriada.CodigoAcompanhamento);
         acompanhamentoAposMudancaStatus.DataUltimaAtualizacao.Should().BeAfter(dataInicial);

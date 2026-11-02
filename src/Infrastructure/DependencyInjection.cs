@@ -5,11 +5,12 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Interfaces.Services;
 using Fiap.TechChallenge.OficinaMecanica.Application.Security;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Catalogo;
-using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Execucao;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Repositories;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Security;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Time;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Observability;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Messaging;
+using Amazon.SQS;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -66,19 +67,15 @@ public static class DependencyInjection
                 options.Retry.MaxRetryAttempts = 2;
                 options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(10);
             });
-        services
-            .AddHttpClient<IDiagnosticoExecucao, DiagnosticoExecucaoHttpClient>(client =>
-            {
-                client.BaseAddress = new Uri(execucaoBaseUrl, UriKind.Absolute);
-                client.Timeout = Timeout.InfiniteTimeSpan;
-            })
-            .AddStandardResilienceHandler(options =>
-            {
-                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(5);
-                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(2);
-                options.Retry.MaxRetryAttempts = 2;
-                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(10);
-            });
+        var messagingOptions = configuration
+            .GetSection(MessagingOptions.SectionName)
+            .Get<MessagingOptions>() ?? new MessagingOptions();
+        services.Configure<MessagingOptions>(
+            configuration.GetSection(MessagingOptions.SectionName));
+        services.AddSingleton<IAmazonSQS>(_ => AwsMessagingClientFactory.CreateSqs(messagingOptions));
+        services.AddScoped<IInicioDiagnosticoScheduler, InicioDiagnosticoScheduler>();
+        services.AddHostedService<OutboxSqsPublisherWorker>();
+        services.AddHostedService<DiagnosticoIniciadoConsumerWorker>();
         services.AddScoped<IOrdemDeServicoRepository, OrdemDeServicoRepository>();
         services.AddScoped<IOrdemServicoHistoricoRepository, OrdemServicoHistoricoRepository>();
         services.AddScoped<INotificacaoClienteRepository, NotificacaoClienteRepository>();

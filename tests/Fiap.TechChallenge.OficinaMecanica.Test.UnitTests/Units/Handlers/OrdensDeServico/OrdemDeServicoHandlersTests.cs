@@ -18,6 +18,7 @@ using Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Mocks.Entities;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using MediatR;
 using Moq;
 
 namespace Fiap.TechChallenge.OficinaMecanica.Test.UnitTests.Units.Handlers.OrdensDeServico;
@@ -30,7 +31,7 @@ public class OrdemDeServicoHandlersTests
     private readonly Mock<IServicoRepository> _servicoRepositoryMock;
     private readonly Mock<IPecaRepository> _pecaRepositoryMock;
     private readonly Mock<ICatalogoExecucao> _catalogoMock;
-    private readonly Mock<IDiagnosticoExecucao> _diagnosticoExecucaoMock;
+    private readonly Mock<IInicioDiagnosticoScheduler> _inicioDiagnosticoSchedulerMock;
     private readonly Mock<IPedidoCompraRepository> _pedidoCompraRepositoryMock;
     private readonly Mock<IMovimentacaoEstoqueRepository> _movimentacaoEstoqueRepositoryMock;
     private readonly Mock<IOrdemServicoHistoricoRepository> _historicoRepositoryMock;
@@ -48,7 +49,7 @@ public class OrdemDeServicoHandlersTests
         _servicoRepositoryMock = new Mock<IServicoRepository>(MockBehavior.Strict);
         _pecaRepositoryMock = new Mock<IPecaRepository>(MockBehavior.Strict);
         _catalogoMock = new Mock<ICatalogoExecucao>(MockBehavior.Strict);
-        _diagnosticoExecucaoMock = new Mock<IDiagnosticoExecucao>(MockBehavior.Strict);
+        _inicioDiagnosticoSchedulerMock = new Mock<IInicioDiagnosticoScheduler>(MockBehavior.Strict);
         _pedidoCompraRepositoryMock = new Mock<IPedidoCompraRepository>(MockBehavior.Strict);
         _movimentacaoEstoqueRepositoryMock = new Mock<IMovimentacaoEstoqueRepository>(MockBehavior.Strict);
         _historicoRepositoryMock = new Mock<IOrdemServicoHistoricoRepository>(MockBehavior.Strict);
@@ -78,16 +79,15 @@ public class OrdemDeServicoHandlersTests
         _transactionManagerMock
             .Setup(x => x.ExecuteAsync(It.IsAny<Func<CancellationToken, Task<OrdemDeServico>>>(), It.IsAny<CancellationToken>()))
             .Returns((Func<CancellationToken, Task<OrdemDeServico>> action, CancellationToken ct) => action(ct));
-        _diagnosticoExecucaoMock
-            .Setup(x => x.IniciarAsync(
+        _inicioDiagnosticoSchedulerMock
+            .Setup(x => x.AgendarAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<string>(),
-                It.IsAny<IEnumerable<int>>(),
-                It.IsAny<IEnumerable<int>>(),
+                It.IsAny<IReadOnlyCollection<int>>(),
+                It.IsAny<IReadOnlyCollection<int>>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync((int ordemId, int _, string _, IEnumerable<int> _, IEnumerable<int> _, CancellationToken _) =>
-                new DiagnosticoExecucao(ordemId, ordemId, "EmDiagnostico", DateTimeOffset.UtcNow));
+            .ReturnsAsync(Guid.NewGuid());
         _ordemRepositoryMock
             .Setup(x => x.ObterPorCodigoAcompanhamentoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((OrdemDeServico?)null);
@@ -115,7 +115,7 @@ public class OrdemDeServicoHandlersTests
             _servicoRepositoryMock.Object,
             _pecaRepositoryMock.Object,
             _catalogoMock.Object,
-            _diagnosticoExecucaoMock.Object,
+            _inicioDiagnosticoSchedulerMock.Object,
             _movimentacaoEstoqueRepositoryMock.Object,
             _historicoRepositoryMock.Object,
             _notificacaoClienteRepositoryMock.Object,
@@ -411,20 +411,44 @@ public class OrdemDeServicoHandlersTests
     }
 
     [Fact]
-    public async Task IniciarDiagnostico_DeveManterOsRecebidaQuandoExecucaoFalhar()
+    public async Task IniciarDiagnostico_DeveAgendarEManterOsRecebidaAteEvento()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Recebida, clienteId: 1, veiculoId: 10);
         ordem.Servicos.Add(OrdemDeServicoServico.Criar(ordem.Id, 1000, 150m, 30));
         _ordemRepositoryMock
             .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ordem);
-        _diagnosticoExecucaoMock
-            .Setup(x => x.IniciarAsync(
+
+        var result = await _handlers.IniciarDiagnosticoAsync(ordem.Id, CancellationToken.None);
+
+        result.Status.Should().Be(nameof(StatusOrdemDeServico.Recebida));
+        _inicioDiagnosticoSchedulerMock.Verify(x => x.AgendarAsync(
+            ordem.Id,
+            ordem.VeiculoId,
+            ordem.DescricaoSolicitacao,
+            It.Is<IReadOnlyCollection<int>>(ids => ids.SequenceEqual(new[] { 1000 })),
+            It.IsAny<IReadOnlyCollection<int>>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _ordemRepositoryMock.Verify(
+            x => x.AtualizarAsync(It.IsAny<OrdemDeServico>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task IniciarDiagnostico_DeveManterOsRecebidaQuandoAgendamentoFalhar()
+    {
+        var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.Recebida, clienteId: 1, veiculoId: 10);
+        ordem.Servicos.Add(OrdemDeServicoServico.Criar(ordem.Id, 1000, 150m, 30));
+        _ordemRepositoryMock
+            .Setup(x => x.ObterPorIdAsync(ordem.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ordem);
+        _inicioDiagnosticoSchedulerMock
+            .Setup(x => x.AgendarAsync(
                 ordem.Id,
                 ordem.VeiculoId,
                 ordem.DescricaoSolicitacao,
-                It.IsAny<IEnumerable<int>>(),
-                It.IsAny<IEnumerable<int>>(),
+                It.IsAny<IReadOnlyCollection<int>>(),
+                It.IsAny<IReadOnlyCollection<int>>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(new ServiceUnavailableException("Execucao indisponivel."));
 
@@ -480,7 +504,9 @@ public class OrdemDeServicoHandlersTests
             .Setup(x => x.CriarAsync(It.IsAny<MovimentacaoEstoque>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((MovimentacaoEstoque movimentacao, CancellationToken _) => movimentacao);
 
-        var emDiagnostico = await _handlers.IniciarDiagnosticoAsync(ordem.Id, CancellationToken.None);
+        var agendada = await _handlers.IniciarDiagnosticoAsync(ordem.Id, CancellationToken.None);
+        await _handlers.ConfirmarDiagnosticoIniciadoAsync(ordem.Id, CancellationToken.None);
+        var emDiagnostico = OrdemDeServicoMapper.ToResult(ordem);
         var comServico = await _handlers.AdicionarServicoAsync(ordem.Id, new AdicionarServicoAOrdemDto { ServicoId = servico.Id }, CancellationToken.None);
         var comPeca = await _handlers.AdicionarPecaAsync(ordem.Id, new AdicionarPecaAOrdemDto { PecaId = peca.Id, Quantidade = 1 }, CancellationToken.None);
         var aguardandoAprovacao = await _handlers.FinalizarDiagnosticoAsync(ordem.Id, CancellationToken.None);
@@ -922,7 +948,7 @@ public class OrdemDeServicoHandlersTests
         private readonly IServicoRepository _servicoRepository;
         private readonly IPecaRepository _pecaRepository;
         private readonly ICatalogoExecucao _catalogo;
-        private readonly IDiagnosticoExecucao _diagnosticoExecucao;
+        private readonly IInicioDiagnosticoScheduler _inicioDiagnosticoScheduler;
         private readonly IMovimentacaoEstoqueRepository _movimentacaoEstoqueRepository;
         private readonly IOrdemServicoHistoricoRepository _historicoRepository;
         private readonly INotificacaoClienteRepository _notificacaoClienteRepository;
@@ -943,7 +969,7 @@ public class OrdemDeServicoHandlersTests
             IServicoRepository servicoRepository,
             IPecaRepository pecaRepository,
             ICatalogoExecucao catalogo,
-            IDiagnosticoExecucao diagnosticoExecucao,
+            IInicioDiagnosticoScheduler inicioDiagnosticoScheduler,
             IMovimentacaoEstoqueRepository movimentacaoEstoqueRepository,
             IOrdemServicoHistoricoRepository historicoRepository,
             INotificacaoClienteRepository notificacaoClienteRepository,
@@ -963,7 +989,7 @@ public class OrdemDeServicoHandlersTests
             _servicoRepository = servicoRepository;
             _pecaRepository = pecaRepository;
             _catalogo = catalogo;
-            _diagnosticoExecucao = diagnosticoExecucao;
+            _inicioDiagnosticoScheduler = inicioDiagnosticoScheduler;
             _movimentacaoEstoqueRepository = movimentacaoEstoqueRepository;
             _historicoRepository = historicoRepository;
             _notificacaoClienteRepository = notificacaoClienteRepository;
@@ -992,21 +1018,21 @@ public class OrdemDeServicoHandlersTests
                 _veiculoRepository,
                 _loggerFactory,
                 _businessMetrics).Handle(new CriarOrdemDeServicoCommand
-            {
-                ClienteId = dto.ClienteId,
-                VeiculoId = dto.VeiculoId,
-                DescricaoSolicitacao = dto.DescricaoSolicitacao,
-                ObservacoesRecepcao = dto.ObservacoesRecepcao,
-                Servicos = dto.Servicos.Select(servico => new CriarOrdemDeServicoServicoCommand
                 {
-                    ServicoId = servico.ServicoId
-                }).ToArray(),
-                Pecas = dto.Pecas.Select(peca => new CriarOrdemDeServicoPecaCommand
-                {
-                    PecaId = peca.PecaId,
-                    Quantidade = peca.Quantidade
-                }).ToArray()
-            }, cancellationToken);
+                    ClienteId = dto.ClienteId,
+                    VeiculoId = dto.VeiculoId,
+                    DescricaoSolicitacao = dto.DescricaoSolicitacao,
+                    ObservacoesRecepcao = dto.ObservacoesRecepcao,
+                    Servicos = dto.Servicos.Select(servico => new CriarOrdemDeServicoServicoCommand
+                    {
+                        ServicoId = servico.ServicoId
+                    }).ToArray(),
+                    Pecas = dto.Pecas.Select(peca => new CriarOrdemDeServicoPecaCommand
+                    {
+                        PecaId = peca.PecaId,
+                        Quantidade = peca.Quantidade
+                    }).ToArray()
+                }, cancellationToken);
         }
 
         public Task<OrdemDeServicoResult> ObterPorIdAsync(int id, CancellationToken cancellationToken)
@@ -1061,11 +1087,18 @@ public class OrdemDeServicoHandlersTests
         public Task<OrdemDeServicoResult> IniciarDiagnosticoAsync(int id, CancellationToken cancellationToken)
         {
             return new IniciarDiagnosticoCommandHandler(
-                _historicoService,
-                _diagnosticoExecucao,
+                _inicioDiagnosticoScheduler,
                 _ordemRepository,
-                _transactionManager,
                 _loggerFactory).Handle(new IniciarDiagnosticoCommand { Id = id }, cancellationToken);
+        }
+
+        public Task<Unit> ConfirmarDiagnosticoIniciadoAsync(int id, CancellationToken cancellationToken)
+        {
+            return new ConfirmarDiagnosticoIniciadoCommandHandler(
+                _historicoService,
+                _ordemRepository).Handle(
+                    new ConfirmarDiagnosticoIniciadoCommand(id, id),
+                    cancellationToken);
         }
 
         public Task<OrdemDeServicoResult> AdicionarServicoAsync(int id, AdicionarServicoAOrdemDto dto, CancellationToken cancellationToken)
@@ -1075,10 +1108,10 @@ public class OrdemDeServicoHandlersTests
                 _ordemRepository,
                 _servicoRepository,
                 _loggerFactory).Handle(new AdicionarServicoAOrdemCommand
-            {
-                OrdemDeServicoId = id,
-                ServicoId = dto.ServicoId
-            }, cancellationToken);
+                {
+                    OrdemDeServicoId = id,
+                    ServicoId = dto.ServicoId
+                }, cancellationToken);
         }
 
         public Task<OrdemDeServicoResult> AdicionarPecaAsync(int id, AdicionarPecaAOrdemDto dto, CancellationToken cancellationToken)
@@ -1088,11 +1121,11 @@ public class OrdemDeServicoHandlersTests
                 _ordemRepository,
                 _pecaRepository,
                 _loggerFactory).Handle(new AdicionarPecaAOrdemCommand
-            {
-                OrdemDeServicoId = id,
-                PecaId = dto.PecaId,
-                Quantidade = dto.Quantidade
-            }, cancellationToken);
+                {
+                    OrdemDeServicoId = id,
+                    PecaId = dto.PecaId,
+                    Quantidade = dto.Quantidade
+                }, cancellationToken);
         }
 
         public Task<OrdemDeServicoResult> AprovarAsync(int id, CancellationToken cancellationToken)
@@ -1176,10 +1209,10 @@ public class OrdemDeServicoHandlersTests
                 _clock,
                 _ordemRepository,
                 _loggerFactory).Handle(new ObterResumoMonitoramentoOrdensDeServicoQuery
-            {
-                Page = page,
-                PageSize = pageSize
-            }, cancellationToken);
+                {
+                    Page = page,
+                    PageSize = pageSize
+                }, cancellationToken);
         }
 
         public Task<EstimativaTempoOrdemDeServicoResult> ObterEstimativaTempoAsync(int id, CancellationToken cancellationToken)
@@ -1219,10 +1252,10 @@ public class OrdemDeServicoHandlersTests
                 _ordemRepository,
                 _servicoRepository,
                 _loggerFactory).Handle(new RemoverServicoDaOrdemCommand
-            {
-                OrdemDeServicoId = id,
-                ServicoId = servicoId
-            }, cancellationToken);
+                {
+                    OrdemDeServicoId = id,
+                    ServicoId = servicoId
+                }, cancellationToken);
         }
 
         public Task<OrdemDeServicoResult> RemoverPecaAsync(int id, int pecaId, CancellationToken cancellationToken)
@@ -1232,10 +1265,10 @@ public class OrdemDeServicoHandlersTests
                 _ordemRepository,
                 _pecaRepository,
                 _loggerFactory).Handle(new RemoverPecaDaOrdemCommand
-            {
-                OrdemDeServicoId = id,
-                PecaId = pecaId
-            }, cancellationToken);
+                {
+                    OrdemDeServicoId = id,
+                    PecaId = pecaId
+                }, cancellationToken);
         }
     }
 }

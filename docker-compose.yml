@@ -1,4 +1,25 @@
 services:
+  localstack:
+    # Ultima linha Community anterior a obrigatoriedade de token nas imagens 2026.
+    image: localstack/localstack:4.14.0
+    container_name: oficina-mecanica-localstack-dev
+    environment:
+      SERVICES: sqs,sns
+      AWS_DEFAULT_REGION: us-east-1
+      DEBUG: "0"
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./docker/localstack/init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - oficina-mecanica-network-dev
+    restart: unless-stopped
+
   postgres:
     build:
       context: .
@@ -44,6 +65,13 @@ services:
       DD_TRACE_ENABLED: "false"
       ConnectionStrings__DefaultConnection: ${API_CONNECTION_STRING:-Host=postgres;Database=oficina_mecanica;Username=postgres;Password=postgres}
       Services__Execucao__BaseUrl: ${EXECUCAO_BASE_URL:-http://host.docker.internal:8082}
+      Messaging__Enabled: "true"
+      Messaging__Region: us-east-1
+      Messaging__ServiceUrl: http://host.docker.internal:4566
+      AWS_ACCESS_KEY_ID: ${LOCALSTACK_ACCESS_KEY_ID:?Defina LOCALSTACK_ACCESS_KEY_ID no arquivo .env}
+      AWS_SECRET_ACCESS_KEY: ${LOCALSTACK_SECRET_ACCESS_KEY:?Defina LOCALSTACK_SECRET_ACCESS_KEY no arquivo .env}
+      Messaging__ExecucaoCommandQueueUrl: http://host.docker.internal:4566/000000000000/execucao-iniciar-diagnostico
+      Messaging__DiagnosticoIniciadoQueueUrl: http://host.docker.internal:4566/000000000000/os-diagnostico-iniciado
       Jwt__SecretKey: ${JWT_SECRET:-local-development-secret-key-32chars}
       Jwt__Issuer: ${JWT_ISSUER:-Fiap.TechChallenge.OficinaMecanica}
       Jwt__Audience: ${JWT_AUDIENCE:-Fiap.TechChallenge.OficinaMecanica}
@@ -51,6 +79,8 @@ services:
       - "${API_PORT:-8080}:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
     networks:
       - oficina-mecanica-network-dev

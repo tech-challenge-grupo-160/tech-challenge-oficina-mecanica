@@ -5,6 +5,7 @@ using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.DTOs;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Results.OrdensDeServico;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
 
 namespace Fiap.TechChallenge.OficinaMecanica.API.Mappers;
 
@@ -172,12 +173,20 @@ public static class OrdemDeServicoApiMapper
             DescricaoSolicitacao = result.DescricaoSolicitacao,
             ObservacoesRecepcao = result.ObservacoesRecepcao,
             MotivoCancelamento = result.MotivoCancelamento,
-            OrcamentoEnviadoEm = result.OrcamentoEnviadoEm,
-            DataFinalizacao = result.DataFinalizacao,
-            DataPagamento = result.DataPagamento,
+            OrcamentoEnviadoEm = result.OrcamentoEnviadoEm.HasValue
+                ? DateTimeHelper.BrazilToUtc(result.OrcamentoEnviadoEm.Value)
+                : null,
+            DataFinalizacao = result.DataFinalizacao.HasValue
+                ? DateTimeHelper.BrazilToUtc(result.DataFinalizacao.Value)
+                : null,
+            DataPagamento = result.DataPagamento.HasValue
+                ? DateTimeHelper.BrazilToUtc(result.DataPagamento.Value)
+                : null,
             Status = result.Status,
-            DataAbertura = result.DataAbertura,
-            DataConclusao = result.DataConclusao,
+            DataAbertura = DateTimeHelper.BrazilToUtc(result.DataAbertura),
+            DataConclusao = result.DataConclusao.HasValue
+                ? DateTimeHelper.BrazilToUtc(result.DataConclusao.Value)
+                : null,
             ValorTotal = result.ValorTotal,
             Servicos = result.Servicos.Select(servico => servico.ToResponse()).ToList(),
             Pecas = result.Pecas.Select(peca => peca.ToResponse()).ToList()
@@ -216,7 +225,7 @@ public static class OrdemDeServicoApiMapper
             StatusNovo = result.StatusNovo,
             TipoEvento = result.TipoEvento,
             Descricao = result.Descricao,
-            DataEvento = result.DataEvento
+            DataEvento = DateTimeHelper.BrazilToUtc(result.DataEvento)
         };
     }
 

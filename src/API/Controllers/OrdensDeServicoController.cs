@@ -119,7 +119,7 @@ public class OrdensDeServicoController : ControllerBase
     public async Task<ActionResult<OrdemDeServicoResponse>> IniciarDiagnostico(int id, CancellationToken cancellationToken)
     {
         var ordem = await _mediator.Send(id.ToIniciarDiagnosticoCommand(), cancellationToken);
-        return Ok(ordem.ToResponse());
+        return AcceptedAtAction(nameof(Obter), new { id }, ordem.ToResponse());
     }
 
     [HttpPatch("{id}/finalizar-diagnostico")]

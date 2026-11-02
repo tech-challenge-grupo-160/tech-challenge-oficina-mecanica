@@ -26,8 +26,13 @@ O handler deixou de depender diretamente dos repositorios de servicos e pecas. O
 
 O retorno do catalogo contem somente ID, nome, preco e tempo estimado. O OS Service nao recebe saldo de estoque. Todas as gravacoes locais da abertura, incluindo itens, historico e notificacao, executam na mesma transacao.
 
-## Limites desta etapa
+## Evolucao seguinte: inicio do diagnostico
 
-Esta implementacao ja consulta o banco proprio da Execucao por HTTP. As tabelas e chaves estrangeiras legadas de servico e peca ainda continuam no schema do OS porque as jornadas de diagnostico e estoque ainda dependem delas. Idempotencia, outbox e eventos da Saga entram nos proximos cortes.
+A consulta de catalogo continua HTTP por ser uma validacao sincrona. A alteracao
+distribuida de estado nao usa HTTP direto: `iniciar-diagnostico` cria Saga e
+Outbox no OS Service, envia um comando SQS, e a Execucao responde por evento
+SNS/SQS. Inbox, unicidade por OS e DLQs tornam o fluxo idempotente e resiliente.
 
-O proximo passo e extrair diagnostico e estoque para a Execucao e entao remover as dependencias relacionais restantes entre a OS e o catalogo.
+As tabelas e chaves estrangeiras legadas de servico e peca ainda continuam no
+schema do OS enquanto as jornadas restantes de estoque, reparo e pedido de compra
+nao forem extraidas. Elas nao sao usadas para criar o diagnostico na Execucao.

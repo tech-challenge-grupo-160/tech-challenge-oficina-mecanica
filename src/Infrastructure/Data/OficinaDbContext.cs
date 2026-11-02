@@ -22,6 +22,9 @@ public class OficinaDbContext : DbContext
     public DbSet<PedidoCompra> PedidosCompra { get; set; } = null!;
     public DbSet<MovimentacaoEstoque> MovimentacoesEstoque { get; set; } = null!;
     public DbSet<Usuario> Usuarios { get; set; } = null!;
+    public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
+    public DbSet<InboxMessage> InboxMessages { get; set; } = null!;
+    public DbSet<SagaInicioDiagnostico> SagasInicioDiagnostico { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
