@@ -58,6 +58,12 @@ public sealed class SagaInicioDiagnostico
         AtualizadaEm = atualizadaEm;
     }
 
+    public void MarcarFinalizada(DateTimeOffset atualizadaEm)
+    {
+        Status = "Finalizada";
+        AtualizadaEm = atualizadaEm;
+    }
+
     public void Cancelar(DateTimeOffset atualizadaEm)
     {
         Status = "Cancelada";

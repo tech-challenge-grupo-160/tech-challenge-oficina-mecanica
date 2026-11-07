@@ -43,6 +43,7 @@ public sealed class OrcamentoAprovadoConsumerWorker(
         if (!resultado.ReservaNecessaria)
         {
             saga.MarcarEmExecucao(evento.OcorridoEm);
+            ExecucaoReparoOutboxFactory.Adicionar(context, saga, evento.OcorridoEm);
             return;
         }
 

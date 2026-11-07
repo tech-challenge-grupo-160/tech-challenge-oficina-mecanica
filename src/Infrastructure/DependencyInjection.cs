@@ -82,6 +82,7 @@ public static class DependencyInjection
         services.AddHostedService<OrcamentoRecusadoConsumerWorker>();
         services.AddHostedService<PecasReservadasConsumerWorker>();
         services.AddHostedService<EstoqueInsuficienteConsumerWorker>();
+        services.AddHostedService<ExecucaoFinalizadaConsumerWorker>();
         services.AddScoped<IOrdemDeServicoRepository, OrdemDeServicoRepository>();
         services.AddScoped<IOrdemServicoHistoricoRepository, OrdemServicoHistoricoRepository>();
         services.AddScoped<INotificacaoClienteRepository, NotificacaoClienteRepository>();

@@ -36,6 +36,7 @@ public sealed class PecasReservadasConsumerWorker(
         await mediator.Send(new ConfirmarReservaPecasCommand(
             evento.OrdemServicoId, true, null), cancellationToken);
         saga.MarcarEmExecucao(evento.OcorridoEm);
+        ExecucaoReparoOutboxFactory.Adicionar(context, saga, evento.OcorridoEm);
     }
 
     internal static async Task<SagaInicioDiagnostico> ObterSagaAsync(
