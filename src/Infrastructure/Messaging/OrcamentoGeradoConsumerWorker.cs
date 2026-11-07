@@ -48,5 +48,6 @@ public sealed class OrcamentoGeradoConsumerWorker(
             evento.OrcamentoId,
             evento.ValorTotal,
             DateTimeHelper.UTCToBrazil(evento.OcorridoEm.UtcDateTime)), cancellationToken);
+        saga.ConfirmarOrcamento(evento.OrcamentoId, evento.OcorridoEm);
     }
 }

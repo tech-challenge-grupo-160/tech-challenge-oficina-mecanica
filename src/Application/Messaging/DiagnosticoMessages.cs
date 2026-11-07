@@ -89,3 +89,60 @@ public sealed record OrcamentoGeradoMessage(
     decimal ValorPecas,
     decimal ValorTotal,
     int Versao = 1) : IMensagemIntegracao;
+
+public sealed record OrcamentoAprovadoMessage(
+    Guid MessageId,
+    Guid CorrelationId,
+    DateTimeOffset OcorridoEm,
+    Guid OrcamentoId,
+    int OrdemServicoId,
+    int DiagnosticoId,
+    string Status,
+    decimal ValorTotal,
+    int Versao = 1) : IMensagemIntegracao;
+
+public sealed record OrcamentoRecusadoMessage(
+    Guid MessageId,
+    Guid CorrelationId,
+    DateTimeOffset OcorridoEm,
+    Guid OrcamentoId,
+    int OrdemServicoId,
+    int DiagnosticoId,
+    string Status,
+    string Motivo,
+    int Versao = 1) : IMensagemIntegracao;
+
+public sealed record ReservarPecasMessage(
+    Guid MessageId,
+    Guid CorrelationId,
+    DateTimeOffset OcorridoEm,
+    int OrdemServicoId,
+    Guid OrcamentoId,
+    IReadOnlyCollection<PecaReservarMessage> Pecas,
+    int Versao = 1) : IMensagemIntegracao;
+
+public sealed record PecaReservarMessage(int PecaId, int Quantidade);
+
+public sealed record PecasReservadasMessage(
+    Guid MessageId,
+    Guid CorrelationId,
+    DateTimeOffset OcorridoEm,
+    int OrdemServicoId,
+    Guid OrcamentoId,
+    IReadOnlyCollection<PecaReservaResultadoMessage> Pecas,
+    int Versao = 1) : IMensagemIntegracao;
+
+public sealed record EstoqueInsuficienteMessage(
+    Guid MessageId,
+    Guid CorrelationId,
+    DateTimeOffset OcorridoEm,
+    int OrdemServicoId,
+    Guid OrcamentoId,
+    IReadOnlyCollection<PecaReservaResultadoMessage> Pecas,
+    int Versao = 1) : IMensagemIntegracao;
+
+public sealed record PecaReservaResultadoMessage(
+    int PecaId,
+    int QuantidadeSolicitada,
+    int QuantidadeReservada,
+    int QuantidadeFaltante);

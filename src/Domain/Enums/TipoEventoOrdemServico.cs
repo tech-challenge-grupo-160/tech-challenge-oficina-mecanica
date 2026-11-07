@@ -19,5 +19,9 @@ public enum TipoEventoOrdemServico
     EstoqueReposto = 14,
     ServicoRemovido = 15,
     PecaRemovida = 16,
-    OrcamentoGerado = 17
+    OrcamentoGerado = 17,
+    OrcamentoRecusado = 18,
+    ReservaPecasSolicitada = 19,
+    PecasReservadas = 20,
+    EstoqueInsuficiente = 21
 }

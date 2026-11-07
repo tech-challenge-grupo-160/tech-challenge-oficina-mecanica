@@ -507,6 +507,9 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                     b.Property<int?>("DiagnosticoId")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("OrcamentoId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("OrdemServicoId")
                         .HasColumnType("integer");
 

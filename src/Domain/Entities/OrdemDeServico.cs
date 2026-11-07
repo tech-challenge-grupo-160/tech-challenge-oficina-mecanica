@@ -527,6 +527,31 @@ public class OrdemDeServico
         }
     }
 
+    public OrdemDeServicoEventoDominio RegistrarAprovacaoAguardandoReserva()
+    {
+        AprovarOrcamento();
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.ReservaPecasSolicitada,
+            Status,
+            Status,
+            "Orcamento aprovado pelo cliente; reserva de pecas solicitada.");
+    }
+
+    public OrdemDeServicoEventoDominio RecusarOrcamento(string motivo)
+    {
+        if (Status != StatusOrdemDeServico.AguardandoAprovacao)
+            throw new InvalidOperationException(
+                "So e possivel recusar o orcamento quando a ordem estiver aguardando aprovacao.");
+
+        var statusAnterior = Status;
+        Cancelar(motivo);
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.OrcamentoRecusado,
+            statusAnterior,
+            Status,
+            $"Orcamento recusado pelo cliente. Motivo: {MotivoCancelamento}");
+    }
+
     public void BloquearPorFaltaEstoque()
     {
         AlterarStatus(StatusOrdemDeServico.AguardandoEstoque);
@@ -543,6 +568,17 @@ public class OrdemDeServico
             $"Execucao bloqueada por falta de estoque: {descricaoFaltas}");
     }
 
+    public OrdemDeServicoEventoDominio ConfirmarEstoqueInsuficiente(string descricaoFaltas)
+    {
+        var statusAnterior = Status;
+        BloquearPorFaltaEstoque();
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.EstoqueInsuficiente,
+            statusAnterior,
+            Status,
+            $"Reserva parcial realizada; aguardando reposicao: {descricaoFaltas}");
+    }
+
     public void LiberarExecucaoAposValidacaoEstoque()
     {
         AlterarStatus(StatusOrdemDeServico.EmExecucao);
@@ -557,6 +593,17 @@ public class OrdemDeServico
             statusAnterior,
             Status,
             "Orcamento aprovado pelo cliente e estoque validado com sucesso.");
+    }
+
+    public OrdemDeServicoEventoDominio ConfirmarPecasReservadas()
+    {
+        var statusAnterior = Status;
+        LiberarExecucaoAposValidacaoEstoque();
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.PecasReservadas,
+            statusAnterior,
+            Status,
+            "Pecas reservadas com sucesso; execucao liberada.");
     }
 
     public void FinalizarServico(DateTime dataFinalizacao)

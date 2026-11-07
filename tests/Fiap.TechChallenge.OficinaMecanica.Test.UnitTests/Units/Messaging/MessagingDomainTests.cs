@@ -86,6 +86,17 @@ public class MessagingDomainTests
         saga.Status.Should().Be("Concluida");
         saga.DiagnosticoId.Should().Be(1);
         saga.AtualizadaEm.Should().Be(concluidaEm);
+
+        var orcamentoId = Guid.NewGuid();
+        saga.ConfirmarOrcamento(orcamentoId, concluidaEm.AddSeconds(1));
+        saga.OrcamentoId.Should().Be(orcamentoId);
+        saga.Status.Should().Be("AguardandoAprovacao");
+        saga.MarcarReservandoPecas(concluidaEm.AddSeconds(2));
+        saga.Status.Should().Be("ReservandoPecas");
+        saga.MarcarAguardandoEstoque(concluidaEm.AddSeconds(3));
+        saga.Status.Should().Be("AguardandoEstoque");
+        saga.MarcarEmExecucao(concluidaEm.AddSeconds(4));
+        saga.Status.Should().Be("EmExecucao");
     }
 
     [Fact]
@@ -224,5 +235,97 @@ public class MessagingDomainTests
 
         options.BillingCommandQueueUrl.Should().EndWith("billing-gerar-orcamento");
         options.OrcamentoGeradoQueueUrl.Should().EndWith("os-orcamento-gerado");
+    }
+
+    [Fact]
+    public void ContratosDeAprovacaoEReserva_DevemPreservarTodosOsDados()
+    {
+        var correlationId = Guid.NewGuid();
+        var orcamentoId = Guid.NewGuid();
+        var ocorridoEm = DateTimeOffset.UtcNow;
+        var itemSolicitado = new PecaReservarMessage(1002, 4);
+        var itemResultado = new PecaReservaResultadoMessage(1002, 4, 0, 4);
+        var aprovado = new OrcamentoAprovadoMessage(
+            Guid.NewGuid(), correlationId, ocorridoEm, orcamentoId,
+            3007, 1, "Aprovado", 339.60m);
+        var recusado = new OrcamentoRecusadoMessage(
+            Guid.NewGuid(), correlationId, ocorridoEm, orcamentoId,
+            3007, 1, "Recusado", "Valor nao aprovado.");
+        var reservar = new ReservarPecasMessage(
+            Guid.NewGuid(), correlationId, ocorridoEm, 3007,
+            orcamentoId, [itemSolicitado]);
+        var reservadas = new PecasReservadasMessage(
+            Guid.NewGuid(), correlationId, ocorridoEm, 3007,
+            orcamentoId, [itemResultado]);
+        var insuficiente = new EstoqueInsuficienteMessage(
+            Guid.NewGuid(), correlationId, ocorridoEm, 3007,
+            orcamentoId, [itemResultado]);
+
+        aprovado.Should().BeEquivalentTo(new
+        {
+            CorrelationId = correlationId,
+            OcorridoEm = ocorridoEm,
+            OrcamentoId = orcamentoId,
+            OrdemServicoId = 3007,
+            DiagnosticoId = 1,
+            Status = "Aprovado",
+            ValorTotal = 339.60m,
+            Versao = 1
+        });
+        recusado.Should().BeEquivalentTo(new
+        {
+            CorrelationId = correlationId,
+            OcorridoEm = ocorridoEm,
+            OrcamentoId = orcamentoId,
+            OrdemServicoId = 3007,
+            DiagnosticoId = 1,
+            Status = "Recusado",
+            Motivo = "Valor nao aprovado.",
+            Versao = 1
+        });
+        reservar.Pecas.Should().ContainSingle().Which.Should().Be(itemSolicitado);
+        reservar.OrdemServicoId.Should().Be(3007);
+        reservar.OrcamentoId.Should().Be(orcamentoId);
+        reservar.Versao.Should().Be(1);
+        itemSolicitado.PecaId.Should().Be(1002);
+        itemSolicitado.Quantidade.Should().Be(4);
+        reservadas.Pecas.Should().ContainSingle().Which.Should().Be(itemResultado);
+        reservadas.CorrelationId.Should().Be(correlationId);
+        reservadas.OcorridoEm.Should().Be(ocorridoEm);
+        reservadas.OrdemServicoId.Should().Be(3007);
+        reservadas.OrcamentoId.Should().Be(orcamentoId);
+        reservadas.Versao.Should().Be(1);
+        insuficiente.Pecas.Should().ContainSingle().Which.Should().Be(itemResultado);
+        insuficiente.CorrelationId.Should().Be(correlationId);
+        insuficiente.OcorridoEm.Should().Be(ocorridoEm);
+        insuficiente.OrdemServicoId.Should().Be(3007);
+        insuficiente.OrcamentoId.Should().Be(orcamentoId);
+        insuficiente.Versao.Should().Be(1);
+        itemResultado.Should().BeEquivalentTo(new
+        {
+            PecaId = 1002,
+            QuantidadeSolicitada = 4,
+            QuantidadeReservada = 0,
+            QuantidadeFaltante = 4
+        });
+    }
+
+    [Fact]
+    public void MessagingOptions_DevePreservarFilasDeAprovacaoEReserva()
+    {
+        var options = new MessagingOptions
+        {
+            OrcamentoAprovadoQueueUrl = "http://localhost:4566/os-orcamento-aprovado",
+            OrcamentoRecusadoQueueUrl = "http://localhost:4566/os-orcamento-recusado",
+            ReservaPecasCommandQueueUrl = "http://localhost:4566/execucao-reservar-pecas",
+            PecasReservadasQueueUrl = "http://localhost:4566/os-pecas-reservadas",
+            EstoqueInsuficienteQueueUrl = "http://localhost:4566/os-estoque-insuficiente"
+        };
+
+        options.OrcamentoAprovadoQueueUrl.Should().EndWith("os-orcamento-aprovado");
+        options.OrcamentoRecusadoQueueUrl.Should().EndWith("os-orcamento-recusado");
+        options.ReservaPecasCommandQueueUrl.Should().EndWith("execucao-reservar-pecas");
+        options.PecasReservadasQueueUrl.Should().EndWith("os-pecas-reservadas");
+        options.EstoqueInsuficienteQueueUrl.Should().EndWith("os-estoque-insuficiente");
     }
 }

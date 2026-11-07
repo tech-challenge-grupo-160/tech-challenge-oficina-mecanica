@@ -78,6 +78,10 @@ public static class DependencyInjection
         services.AddHostedService<DiagnosticoIniciadoConsumerWorker>();
         services.AddHostedService<DiagnosticoConcluidoConsumerWorker>();
         services.AddHostedService<OrcamentoGeradoConsumerWorker>();
+        services.AddHostedService<OrcamentoAprovadoConsumerWorker>();
+        services.AddHostedService<OrcamentoRecusadoConsumerWorker>();
+        services.AddHostedService<PecasReservadasConsumerWorker>();
+        services.AddHostedService<EstoqueInsuficienteConsumerWorker>();
         services.AddScoped<IOrdemDeServicoRepository, OrdemDeServicoRepository>();
         services.AddScoped<IOrdemServicoHistoricoRepository, OrdemServicoHistoricoRepository>();
         services.AddScoped<INotificacaoClienteRepository, NotificacaoClienteRepository>();
