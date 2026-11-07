@@ -135,4 +135,43 @@ awslocal sns set-subscription-attributes \
   --attribute-name FilterPolicy \
   --attribute-value '{"tipo":["OrcamentoGeradoMessage"]}'
 
+create_command_queue() {
+  local queue_name="$1"
+  local dlq_url dlq_arn queue_input
+  dlq_url=$(awslocal sqs create-queue --queue-name "${queue_name}-dlq" --query QueueUrl --output text)
+  dlq_arn=$(awslocal sqs get-queue-attributes --queue-url "$dlq_url" --attribute-names QueueArn --query Attributes.QueueArn --output text)
+  queue_input=$(printf \
+    '{"QueueName":"%s","Attributes":{"RedrivePolicy":"{\\"deadLetterTargetArn\\":\\"%s\\",\\"maxReceiveCount\\":\\"3\\"}"}}' \
+    "$queue_name" "$dlq_arn")
+  awslocal sqs create-queue --cli-input-json "$queue_input" >/dev/null
+}
+
+create_event_queue() {
+  local queue_name="$1"
+  local event_type="$2"
+  local dlq_url dlq_arn queue_input queue_url queue_arn policy_input subscription_arn
+  dlq_url=$(awslocal sqs create-queue --queue-name "${queue_name}-dlq" --query QueueUrl --output text)
+  dlq_arn=$(awslocal sqs get-queue-attributes --queue-url "$dlq_url" --attribute-names QueueArn --query Attributes.QueueArn --output text)
+  queue_input=$(printf \
+    '{"QueueName":"%s","Attributes":{"RedrivePolicy":"{\\"deadLetterTargetArn\\":\\"%s\\",\\"maxReceiveCount\\":\\"3\\"}"}}' \
+    "$queue_name" "$dlq_arn")
+  queue_url=$(awslocal sqs create-queue --cli-input-json "$queue_input" --query QueueUrl --output text)
+  queue_arn=$(awslocal sqs get-queue-attributes --queue-url "$queue_url" --attribute-names QueueArn --query Attributes.QueueArn --output text)
+  policy_input=$(printf \
+    '{"QueueUrl":"%s","Attributes":{"Policy":"{\\"Version\\":\\"2012-10-17\\",\\"Statement\\":[{\\"Effect\\":\\"Allow\\",\\"Principal\\":\\"*\\",\\"Action\\":\\"sqs:SendMessage\\",\\"Resource\\":\\"%s\\",\\"Condition\\":{\\"ArnEquals\\":{\\"aws:SourceArn\\":\\"%s\\"}}}]}"}}' \
+    "$queue_url" "$queue_arn" "$TOPIC_ARN")
+  awslocal sqs set-queue-attributes --cli-input-json "$policy_input"
+  subscription_arn=$(awslocal sns subscribe --topic-arn "$TOPIC_ARN" --protocol sqs --notification-endpoint "$queue_arn" --attributes RawMessageDelivery=true --query SubscriptionArn --output text)
+  awslocal sns set-subscription-attributes \
+    --subscription-arn "$subscription_arn" \
+    --attribute-name FilterPolicy \
+    --attribute-value "{\"tipo\":[\"${event_type}\"]}"
+}
+
+create_command_queue "execucao-reservar-pecas"
+create_event_queue "os-orcamento-aprovado" "OrcamentoAprovadoMessage"
+create_event_queue "os-orcamento-recusado" "OrcamentoRecusadoMessage"
+create_event_queue "os-pecas-reservadas" "PecasReservadasMessage"
+create_event_queue "os-estoque-insuficiente" "EstoqueInsuficienteMessage"
+
 echo "SNS/SQS locais configurados na regiao $REGION para a conta $ACCOUNT_ID."

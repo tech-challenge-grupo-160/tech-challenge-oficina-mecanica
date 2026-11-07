@@ -86,6 +86,17 @@ public class MessagingDomainTests
         saga.Status.Should().Be("Concluida");
         saga.DiagnosticoId.Should().Be(1);
         saga.AtualizadaEm.Should().Be(concluidaEm);
+
+        var orcamentoId = Guid.NewGuid();
+        saga.ConfirmarOrcamento(orcamentoId, concluidaEm.AddSeconds(1));
+        saga.OrcamentoId.Should().Be(orcamentoId);
+        saga.Status.Should().Be("AguardandoAprovacao");
+        saga.MarcarReservandoPecas(concluidaEm.AddSeconds(2));
+        saga.Status.Should().Be("ReservandoPecas");
+        saga.MarcarAguardandoEstoque(concluidaEm.AddSeconds(3));
+        saga.Status.Should().Be("AguardandoEstoque");
+        saga.MarcarEmExecucao(concluidaEm.AddSeconds(4));
+        saga.Status.Should().Be("EmExecucao");
     }
 
     [Fact]

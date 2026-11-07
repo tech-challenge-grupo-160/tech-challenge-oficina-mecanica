@@ -12,4 +12,9 @@ public sealed class MessagingOptions
     public string DiagnosticoIniciadoQueueUrl { get; init; } = string.Empty;
     public string DiagnosticoConcluidoQueueUrl { get; init; } = string.Empty;
     public string OrcamentoGeradoQueueUrl { get; init; } = string.Empty;
+    public string OrcamentoAprovadoQueueUrl { get; init; } = string.Empty;
+    public string OrcamentoRecusadoQueueUrl { get; init; } = string.Empty;
+    public string ReservaPecasCommandQueueUrl { get; init; } = string.Empty;
+    public string PecasReservadasQueueUrl { get; init; } = string.Empty;
+    public string EstoqueInsuficienteQueueUrl { get; init; } = string.Empty;
 }
