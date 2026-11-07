@@ -161,8 +161,8 @@ Não atende o enunciado e acoplaria a disponibilidade dos serviços: se o Billin
 
 | Risco | Mitigação |
 |---|---|
-| Pods sem credencial para acessar SNS/SQS (hop limit do IMDS, como no Cluster Autoscaler da Fase 3) | Spike [F4-05](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/136) antes de construir; launch template com hop limit 2 |
-| SCP do Learner Lab bloquear alguma ação de SNS/SQS | Validado no spike; plano B é RabbitMQ no cluster |
+| Pods sem credencial para acessar SNS/SQS (hop limit do IMDS, como no Cluster Autoscaler da Fase 3) | **Resolvido** no spike [F4-05](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/136): launch template com hop limit 2 (ver abaixo) |
+| SCP do Learner Lab bloquear alguma ação de SNS/SQS | **Descartado** no spike: nenhuma ação usada foi negada. RabbitMQ deixa de ser plano B |
 | Contrato de mensagem quebrado entre serviços | Campo `version`, catálogo versionado e testes de contrato no CI |
 | Filas acumulando mensagens sem ninguém perceber | Monitores no Datadog para idade da mensagem mais antiga e DLQ não vazia |
 
@@ -171,6 +171,32 @@ Não atende o enunciado e acoplaria a disponibilidade dos serviços: se o Billin
 1. **SNS + SQS**, com RabbitMQ no cluster como plano B se o spike ([F4-05](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/136)) falhar.
 2. **MassTransit**, condicionado a confirmar que a versão adotada é open source; se não for, AWS SDK direto.
 3. Quem cria a topologia (Terraform ou biblioteca) fica para a [F4-11](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/142).
+
+## Resultado do spike F4-05 (2026-11-07)
+
+Ambiente `dev` no Learner Lab (EKS 1.33), com o launch template do node group
+definindo `http_put_response_hop_limit = 2` e IMDSv2 obrigatório
+([infra-k8s#55](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s/pull/55)).
+
+Um pod **na rede de pods**, sem `hostNetwork` e sem credencial injetada, usando só
+a cadeia padrão do SDK:
+
+| Passo | Resultado |
+|---|---|
+| Token IMDSv2 e role da instância | OK, o hop limit 2 chegou às instâncias |
+| `sts get-caller-identity` | OK, `assumed-role/LabRole/<instância>` |
+| SNS: criar tópico, assinar fila, publicar | OK |
+| SQS: criar fila, policy para o SNS, receber a mensagem publicada | OK, com `RawMessageDelivery` |
+| DynamoDB: criar tabela, `PutItem`, `GetItem`, `TransactWriteItems` | OK, a transação é a mesma que o Billing usa (orçamento + Inbox + Outbox) |
+| `ec2:CreateLaunchTemplate` pelo Terraform | OK, o SCP permite |
+
+Consequências:
+
+- Os serviços usam a **cadeia padrão de credenciais** do SDK. Não é preciso
+  injetar chave da AWS nos pods (ela expiraria com a sessão do lab).
+- O **Cluster Autoscaler** também passou a rodar na rede de pods: subiu e
+  registrou o ASG sem `hostNetwork`.
+- **RabbitMQ sai como plano B**: SNS + SQS funcionam no lab.
 
 ## Referências
 
