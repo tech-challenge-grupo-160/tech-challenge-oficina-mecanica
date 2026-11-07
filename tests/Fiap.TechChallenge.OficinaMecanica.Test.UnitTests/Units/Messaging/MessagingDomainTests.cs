@@ -97,6 +97,8 @@ public class MessagingDomainTests
         saga.Status.Should().Be("AguardandoEstoque");
         saga.MarcarEmExecucao(concluidaEm.AddSeconds(4));
         saga.Status.Should().Be("EmExecucao");
+        saga.MarcarFinalizada(concluidaEm.AddSeconds(5));
+        saga.Status.Should().Be("Finalizada");
     }
 
     [Fact]
@@ -327,5 +329,33 @@ public class MessagingDomainTests
         options.ReservaPecasCommandQueueUrl.Should().EndWith("execucao-reservar-pecas");
         options.PecasReservadasQueueUrl.Should().EndWith("os-pecas-reservadas");
         options.EstoqueInsuficienteQueueUrl.Should().EndWith("os-estoque-insuficiente");
+    }
+
+    [Fact]
+    public void ContratosDeExecucao_DevemPreservarIdentidadeEEstado()
+    {
+        var correlationId = Guid.NewGuid();
+        var orcamentoId = Guid.NewGuid();
+        var agora = DateTimeOffset.UtcNow;
+        var iniciar = new IniciarExecucaoMessage(
+            Guid.NewGuid(), correlationId, agora, 3007, 1, orcamentoId);
+        var finalizada = new ExecucaoFinalizadaMessage(
+            Guid.NewGuid(), correlationId, agora, 3007, 1, orcamentoId,
+            "Finalizada", agora);
+        var options = new MessagingOptions
+        {
+            IniciarExecucaoCommandQueueUrl = "http://localhost:4566/execucao-iniciar-reparo",
+            ExecucaoFinalizadaQueueUrl = "http://localhost:4566/os-execucao-finalizada"
+        };
+
+        iniciar.OrdemServicoId.Should().Be(3007);
+        iniciar.DiagnosticoId.Should().Be(1);
+        iniciar.OrcamentoId.Should().Be(orcamentoId);
+        iniciar.Versao.Should().Be(1);
+        finalizada.Status.Should().Be("Finalizada");
+        finalizada.FinalizadaEm.Should().Be(agora);
+        finalizada.Versao.Should().Be(1);
+        options.IniciarExecucaoCommandQueueUrl.Should().EndWith("execucao-iniciar-reparo");
+        options.ExecucaoFinalizadaQueueUrl.Should().EndWith("os-execucao-finalizada");
     }
 }

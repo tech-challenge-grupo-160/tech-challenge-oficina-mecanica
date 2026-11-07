@@ -17,4 +17,6 @@ public sealed class MessagingOptions
     public string ReservaPecasCommandQueueUrl { get; init; } = string.Empty;
     public string PecasReservadasQueueUrl { get; init; } = string.Empty;
     public string EstoqueInsuficienteQueueUrl { get; init; } = string.Empty;
+    public string IniciarExecucaoCommandQueueUrl { get; init; } = string.Empty;
+    public string ExecucaoFinalizadaQueueUrl { get; init; } = string.Empty;
 }

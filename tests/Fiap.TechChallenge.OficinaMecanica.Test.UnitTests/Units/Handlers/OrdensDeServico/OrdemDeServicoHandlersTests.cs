@@ -511,7 +511,9 @@ public class OrdemDeServicoHandlersTests
         var comPeca = await _handlers.AdicionarPecaAsync(ordem.Id, new AdicionarPecaAOrdemDto { PecaId = peca.Id, Quantidade = 1 }, CancellationToken.None);
         var aguardandoAprovacao = await _handlers.FinalizarDiagnosticoAsync(ordem.Id, CancellationToken.None);
         var emExecucao = await _handlers.AprovarAsync(ordem.Id, CancellationToken.None);
-        var finalizada = await _handlers.FinalizarAsync(ordem.Id, CancellationToken.None);
+        var dataFinalizacaoExecucao = new DateTime(2026, 6, 4, 9, 59, 0);
+        var finalizada = await _handlers.FinalizarAsync(
+            ordem.Id, CancellationToken.None, dataFinalizacaoExecucao);
         var pagamentoRegistrado = await _handlers.RegistrarPagamentoAsync(ordem.Id, CancellationToken.None);
         var entregue = await _handlers.EntregarAsync(ordem.Id, CancellationToken.None);
 
@@ -524,6 +526,7 @@ public class OrdemDeServicoHandlersTests
         emExecucao.Status.Should().Be(nameof(StatusOrdemDeServico.EmExecucao));
         finalizada.Status.Should().Be(nameof(StatusOrdemDeServico.Finalizada));
         finalizada.DataFinalizacao.Should().NotBeNull();
+        ordem.DataFinalizacao.Should().Be(dataFinalizacaoExecucao);
         pagamentoRegistrado.DataPagamento.Should().NotBeNull();
         entregue.Status.Should().Be(nameof(StatusOrdemDeServico.Entregue));
         entregue.DataConclusao.Should().NotBeNull();
@@ -1346,14 +1349,21 @@ public class OrdemDeServicoHandlersTests
                 _loggerFactory).Handle(new LiberarExecucaoCommand { Id = id }, cancellationToken);
         }
 
-        public Task<OrdemDeServicoResult> FinalizarAsync(int id, CancellationToken cancellationToken)
+        public Task<OrdemDeServicoResult> FinalizarAsync(
+            int id,
+            CancellationToken cancellationToken,
+            DateTime? dataFinalizacao = null)
         {
             return new FinalizarOrdemDeServicoCommandHandler(
                 _clock,
                 _historicoService,
                 _notificacaoService,
                 _ordemRepository,
-                _loggerFactory).Handle(new FinalizarOrdemDeServicoCommand { Id = id }, cancellationToken);
+                _loggerFactory).Handle(new FinalizarOrdemDeServicoCommand
+                {
+                    Id = id,
+                    DataFinalizacao = dataFinalizacao
+                }, cancellationToken);
         }
 
         public Task<OrdemDeServicoResult> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)

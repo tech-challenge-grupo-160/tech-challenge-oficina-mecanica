@@ -146,3 +146,23 @@ public sealed record PecaReservaResultadoMessage(
     int QuantidadeSolicitada,
     int QuantidadeReservada,
     int QuantidadeFaltante);
+
+public sealed record IniciarExecucaoMessage(
+    Guid MessageId,
+    Guid CorrelationId,
+    DateTimeOffset OcorridoEm,
+    int OrdemServicoId,
+    int DiagnosticoId,
+    Guid OrcamentoId,
+    int Versao = 1) : IMensagemIntegracao;
+
+public sealed record ExecucaoFinalizadaMessage(
+    Guid MessageId,
+    Guid CorrelationId,
+    DateTimeOffset OcorridoEm,
+    int OrdemServicoId,
+    int DiagnosticoId,
+    Guid OrcamentoId,
+    string Status,
+    DateTimeOffset FinalizadaEm,
+    int Versao = 1) : IMensagemIntegracao;
