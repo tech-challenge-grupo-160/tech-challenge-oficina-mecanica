@@ -39,7 +39,7 @@ Como voltar atrás no banco gerenciado: por que `kubectl rollout undo` não desf
 
 ### [MATRIZ_AUTORIZACAO.md](MATRIZ_AUTORIZACAO.md)
 
-Classificação das 53 rotas entre públicas, autenticadas, de cliente e internas, com o critério de sensibilidade e o que o API Gateway deve rotear.
+Classificação das rotas atuais do OS Service entre anônimas, autenticadas e exclusivas do cliente.
 
 ## Convenções
 

@@ -266,33 +266,6 @@ public class OrdemDeServico
             $"Orcamento {orcamentoId} gerado; aguardando aprovacao do cliente.");
     }
 
-    public void AdicionarServico(Servico servico)
-    {
-        if (Status != StatusOrdemDeServico.EmDiagnostico)
-        {
-            throw new InvalidOperationException("So e possivel adicionar servicos durante o diagnostico. Nao e possivel neste status: " + Status);
-        }
-
-        if (Servicos.Any(x => x.ServicoId == servico.Id))
-        {
-            throw new InvalidOperationException("O servico informado ja foi adicionado a ordem de servico.");
-        }
-
-        Servicos.Add(OrdemDeServicoServico.Criar(Id, servico.Id, servico.Preco, servico.TempoEstimado));
-
-        RecalcularTotal();
-    }
-
-    public OrdemDeServicoEventoDominio AdicionarServicoComEvento(Servico servico)
-    {
-        AdicionarServico(servico);
-        return new OrdemDeServicoEventoDominio(
-            TipoEventoOrdemServico.ServicoAdicionado,
-            Status,
-            Status,
-            $"Servico adicionado ao orcamento: {servico.Nome}.");
-    }
-
     public OrdemDeServicoEventoDominio AdicionarServicoNaAberturaComEvento(
         int servicoId, string nome, decimal preco, int tempoEstimado)
     {
@@ -319,70 +292,6 @@ public class OrdemDeServico
             Status,
             Status,
             $"Servico adicionado na abertura: {nome}.");
-    }
-
-    public void RemoverServico(int servicoId)
-    {
-        if (Status != StatusOrdemDeServico.EmDiagnostico)
-        {
-            throw new InvalidOperationException("So e possivel remover servicos durante o diagnostico. Nao e possivel neste status: " + Status);
-        }
-
-        var item = Servicos.FirstOrDefault(x => x.ServicoId == servicoId);
-        if (item == null)
-        {
-            throw new KeyNotFoundException($"Servico com ID {servicoId} nao encontrado na ordem de servico.");
-        }
-
-        Servicos.Remove(item);
-        RecalcularTotal();
-    }
-
-    public OrdemDeServicoEventoDominio RemoverServicoComEvento(int servicoId, string nomeServico)
-    {
-        RemoverServico(servicoId);
-        return new OrdemDeServicoEventoDominio(
-            TipoEventoOrdemServico.ServicoRemovido,
-            Status,
-            Status,
-            $"Servico removido do orcamento: {nomeServico}.");
-    }
-
-    public void AdicionarPeca(Peca peca, int quantidade)
-    {
-        if (Status != StatusOrdemDeServico.EmDiagnostico &&
-            Status != StatusOrdemDeServico.AguardandoAprovacao &&
-            Status != StatusOrdemDeServico.AguardandoEstoque)
-        {
-            throw new InvalidOperationException($"Nao e possivel adicionar pecas neste status: {Status}");
-        }
-
-        if (quantidade <= 0)
-        {
-            throw new InvalidOperationException("A quantidade da peca deve ser maior que zero.");
-        }
-
-        var itemExistente = Pecas.FirstOrDefault(item => item.PecaId == peca.Id);
-        if (itemExistente == null)
-        {
-            Pecas.Add(OrdemDeServicoPeca.Criar(Id, peca.Id, quantidade, peca.Preco));
-        }
-        else
-        {
-            itemExistente.SomarQuantidade(quantidade, peca.Preco);
-        }
-
-        RecalcularTotal();
-    }
-
-    public OrdemDeServicoEventoDominio AdicionarPecaComEvento(Peca peca, int quantidade)
-    {
-        AdicionarPeca(peca, quantidade);
-        return new OrdemDeServicoEventoDominio(
-            TipoEventoOrdemServico.PecaAdicionada,
-            Status,
-            Status,
-            $"Peca adicionada ao orcamento: {peca.Nome}. Quantidade: {quantidade}.");
     }
 
     public OrdemDeServicoEventoDominio AdicionarPecaNaAberturaComEvento(
@@ -422,33 +331,6 @@ public class OrdemDeServico
             $"Peca adicionada na abertura: {nome}. Quantidade: {quantidade}.");
     }
 
-    public void RemoverPeca(int pecaId)
-    {
-        if (Status != StatusOrdemDeServico.EmDiagnostico)
-        {
-            throw new InvalidOperationException("So e possivel remover pecas durante o diagnostico. Nao e possivel neste status: " + Status);
-        }
-
-        var item = Pecas.FirstOrDefault(x => x.PecaId == pecaId);
-        if (item == null)
-        {
-            throw new KeyNotFoundException($"Peca com ID {pecaId} nao encontrada na ordem de servico.");
-        }
-
-        Pecas.Remove(item);
-        RecalcularTotal();
-    }
-
-    public OrdemDeServicoEventoDominio RemoverPecaComEvento(int pecaId, string nomePeca)
-    {
-        RemoverPeca(pecaId);
-        return new OrdemDeServicoEventoDominio(
-            TipoEventoOrdemServico.PecaRemovida,
-            Status,
-            Status,
-            $"Peca removida do orcamento: {nomePeca}.");
-    }
-
     public void AlterarStatus(StatusOrdemDeServico novoStatus, DateTime? dataConclusao = null)
     {
         if (!ValidarTransicaoDeStatus(Status, novoStatus))
@@ -463,38 +345,6 @@ public class OrdemDeServico
             DataConclusao = dataConclusao
                 ?? throw new InvalidOperationException("Data de conclusao e obrigatoria para entregar a ordem de servico.");
         }
-    }
-
-    public void FinalizarDiagnostico(DateTime dataOrcamentoEnviado)
-    {
-        if (Status != StatusOrdemDeServico.EmDiagnostico)
-        {
-            throw new InvalidOperationException("So e possivel finalizar o diagnostico quando a ordem estiver em diagnostico.");
-        }
-
-        if (!Servicos.Any())
-        {
-            throw new InvalidOperationException("A ordem de servico deve possuir ao menos um servico antes de aguardar aprovacao.");
-        }
-
-        if (ValorTotal <= 0)
-        {
-            throw new InvalidOperationException("O orcamento da ordem de servico nao pode ser zerado.");
-        }
-
-        AlterarStatus(StatusOrdemDeServico.AguardandoAprovacao);
-        OrcamentoEnviadoEm = dataOrcamentoEnviado;
-    }
-
-    public OrdemDeServicoEventoDominio FinalizarDiagnosticoComEvento(DateTime dataOrcamentoEnviado)
-    {
-        var statusAnterior = Status;
-        FinalizarDiagnostico(dataOrcamentoEnviado);
-        return new OrdemDeServicoEventoDominio(
-            TipoEventoOrdemServico.DiagnosticoFinalizado,
-            statusAnterior,
-            Status,
-            "Diagnostico finalizado e orcamento enviado para aprovacao.");
     }
 
     public void Cancelar(string motivoCancelamento)
@@ -787,7 +637,6 @@ public class OrdemDeServicoServico
     public int TempoEstimado { get; private set; }
 
     public OrdemDeServico? OrdemDeServico { get; private set; }
-    public Servico? Servico { get; private set; }
 
     public static OrdemDeServicoServico Criar(int ordemDeServicoId, int servicoId, decimal preco, int tempoEstimado)
     {
@@ -819,7 +668,6 @@ public class OrdemDeServicoPeca
     public decimal Preco { get; private set; }
 
     public OrdemDeServico? OrdemDeServico { get; private set; }
-    public Peca? Peca { get; private set; }
 
     public static OrdemDeServicoPeca Criar(int ordemDeServicoId, int pecaId, int quantidade, decimal preco)
     {

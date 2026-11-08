@@ -25,7 +25,7 @@ public class AberturaOsServiceTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task Abrir_DevePreservarSnapshotsDosItensSemBaixarEstoque()
+    public async Task Abrir_DevePreservarSnapshotsDosItensSemCatalogoLocal()
     {
         using var client = _factory.CreateClient();
         var response = await client.PostAsJsonAsync("/api/v1/ordens-servico", CriarPayload(quantidade: 101));
@@ -46,13 +46,17 @@ public class AberturaOsServiceTests : IClassFixture<CustomWebApplicationFactory>
         using (var scope = _factory.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
-            var peca = await context.Pecas.SingleAsync(x => x.Id == CustomWebApplicationFactory.PecaExistenteId);
-            peca.QuantidadeEstoque.Should().Be(100);
-            (await context.MovimentacoesEstoque.CountAsync()).Should().Be(0);
+            var servico = await context.OrdemDeServicoServicos
+                .SingleAsync(x => x.OrdemDeServicoId == ordem.Id);
+            servico.ServicoId.Should().Be(CustomWebApplicationFactory.ServicoExistenteId);
+            servico.Preco.Should().Be(150m);
+            servico.TempoEstimado.Should().Be(30);
 
-            var servico = await context.Servicos.SingleAsync(x => x.Id == CustomWebApplicationFactory.ServicoExistenteId);
-            servico.AtualizarDados("Alinhamento atualizado", "Catalogo alterado", 999m, 60);
-            await context.SaveChangesAsync();
+            var peca = await context.OrdemDeServicoPecas
+                .SingleAsync(x => x.OrdemDeServicoId == ordem.Id);
+            peca.PecaId.Should().Be(CustomWebApplicationFactory.PecaExistenteId);
+            peca.Quantidade.Should().Be(101);
+            peca.Preco.Should().Be(45m);
         }
 
         var consulta = await client.GetFromJsonAsync<OrdemDeServicoResponse>($"/api/v1/ordens-servico/{ordem.Id}");

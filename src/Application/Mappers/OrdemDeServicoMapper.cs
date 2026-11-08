@@ -72,24 +72,6 @@ public static class OrdemDeServicoMapper
         };
     }
 
-    public static MovimentacaoEstoqueResult ToResult(this MovimentacaoEstoque movimentacao)
-    {
-        return new MovimentacaoEstoqueResult
-        {
-            Id = movimentacao.Id,
-            PecaId = movimentacao.PecaId,
-            OrdemDeServicoId = movimentacao.OrdemDeServicoId,
-            PedidoCompraId = movimentacao.PedidoCompraId,
-            NomePeca = movimentacao.Peca?.Nome ?? string.Empty,
-            TipoMovimentacao = movimentacao.TipoMovimentacao.ToString(),
-            Quantidade = movimentacao.Quantidade,
-            QuantidadeAnterior = movimentacao.QuantidadeAnterior,
-            QuantidadePosterior = movimentacao.QuantidadePosterior,
-            Descricao = movimentacao.Descricao,
-            DataMovimentacao = movimentacao.DataMovimentacao
-        };
-    }
-
     public static MonitoramentoOrdemDeServicoResult ToMonitoramentoResult(this OrdemDeServico ordem, DateTime agora)
     {
         var dataReferencia = ordem.DataFinalizacao ?? agora;
