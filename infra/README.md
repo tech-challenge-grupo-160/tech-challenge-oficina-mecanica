@@ -50,12 +50,11 @@ no segredo `os/messaging`. O passo a passo para AWS Academy, verificacao de
 assinaturas/DLQs e subida do ambiente completo está no
 [catálogo de mensageria](../docs/mensageria/catalogo.md#teste-direto-na-aws-academy-learner-lab).
 
-O LocalStack mencionado na ADR-0005 ainda não está configurado nos
-`docker-compose.yml` disponíveis. A validação registrada para `dev` em
-08/11/2026 encontrou as seis filas (incluindo as filas de comando) e as seis
-DLQs, com as quatro assinaturas SNS de eventos esperadas. Os atributos de
-filtros, redrive e criptografia devem ser conferidos com os comandos do
-catálogo. Isso não substitui o spike F4-05 de acesso a partir de pod no EKS.
+A validação registrada para `dev` em 08/11/2026 encontrou as seis filas
+(incluindo as filas de comando) e as seis DLQs, com as quatro assinaturas SNS
+de eventos esperadas. Os atributos de filtros, redrive e criptografia devem
+ser conferidos com os comandos do catálogo. Isso não substitui o spike F4-05
+de acesso a partir de pod no EKS.
 
 O workflow `terraform-messaging.yml` valida/planeja PRs e aplica em push nas
 branches de ambiente. Sem push, ele não é disparado por este commit.

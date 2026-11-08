@@ -94,10 +94,8 @@ O apply requer a variável de repositório `TF_STATE_BUCKET`, opcionalmente
 
 ### Teste direto na AWS Academy Learner Lab
 
-O LocalStack citado na ADR-0005 não está configurado nos três repositórios
-disponíveis; os `docker-compose.yml` do Billing e da Execução ainda descrevem
-mensageria como etapa futura. Por isso, a validação registrada abaixo foi feita
-diretamente no Learner Lab, seguindo este catálogo, sem subir EKS ou RDS.
+A validação registrada abaixo foi feita diretamente no Learner Lab, seguindo
+este catálogo, sem subir EKS ou RDS.
 
 Use uma sessão Learner Lab ativa e um perfil AWS local com as credenciais
 temporárias da sessão. Não registre chaves, session token, state Terraform ou
