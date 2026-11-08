@@ -70,7 +70,7 @@ public sealed class AvancarStatusOrdemDeServicoCommandHandler : IRequestHandler<
                 StatusOrdemDeServico.AguardandoEstoque => throw new InvalidOperationException(
                     "A ordem de servico esta aguardando estoque. Use o endpoint PATCH {id}/liberar-execucao apos reposicao do estoque."),
                 StatusOrdemDeServico.Finalizada => throw new InvalidOperationException(
-                    "A ordem de servico esta finalizada. Registre o pagamento via PATCH {id}/registrar-pagamento e utilize PATCH {id}/entregar."),
+                    "A ordem de servico esta finalizada. Aguarde a confirmacao do pagamento pelo Billing antes de utilizar PATCH {id}/entregar."),
                 StatusOrdemDeServico.Entregue => throw new InvalidOperationException(
                     "A ordem de servico ja foi entregue. Nao ha proximo status."),
                 StatusOrdemDeServico.Cancelada => throw new InvalidOperationException(

@@ -126,11 +126,6 @@ public static class OrdemDeServicoApiMapper
         return new FinalizarOrdemDeServicoCommand { Id = id };
     }
 
-    public static RegistrarPagamentoCommand ToRegistrarPagamentoCommand(this int id)
-    {
-        return new RegistrarPagamentoCommand { Id = id };
-    }
-
     public static EntregarOrdemDeServicoCommand ToEntregarOrdemDeServicoCommand(this int id)
     {
         return new EntregarOrdemDeServicoCommand { Id = id };

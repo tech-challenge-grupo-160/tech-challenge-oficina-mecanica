@@ -21,6 +21,7 @@ public sealed class OutboxSqsPublisherWorker(
     private const string BillingDestination = "BillingGerarOrcamento";
     private const string ReservaPecasDestination = "ExecucaoReservarPecas";
     private const string IniciarExecucaoDestination = "ExecucaoIniciarReparo";
+    private const string SolicitarPagamentoDestination = "BillingSolicitarPagamento";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -55,7 +56,8 @@ public sealed class OutboxSqsPublisherWorker(
                 (item.Destino == ExecucaoDestination ||
                  item.Destino == BillingDestination ||
                  item.Destino == ReservaPecasDestination ||
-                 item.Destino == IniciarExecucaoDestination))
+                 item.Destino == IniciarExecucaoDestination ||
+                 item.Destino == SolicitarPagamentoDestination))
             .OrderBy(item => item.CriadoEm)
             .Take(10)
             .ToListAsync(cancellationToken);
@@ -88,6 +90,7 @@ public sealed class OutboxSqsPublisherWorker(
         BillingDestination => options.Value.BillingCommandQueueUrl,
         ReservaPecasDestination => options.Value.ReservaPecasCommandQueueUrl,
         IniciarExecucaoDestination => options.Value.IniciarExecucaoCommandQueueUrl,
+        SolicitarPagamentoDestination => options.Value.SolicitarPagamentoCommandQueueUrl,
         _ => throw new InvalidOperationException($"Destino de Outbox nao suportado: {destino}.")
     };
 }

@@ -58,9 +58,15 @@ public sealed class SagaInicioDiagnostico
         AtualizadaEm = atualizadaEm;
     }
 
-    public void MarcarFinalizada(DateTimeOffset atualizadaEm)
+    public void MarcarAguardandoPagamento(DateTimeOffset atualizadaEm)
     {
-        Status = "Finalizada";
+        Status = "AguardandoPagamento";
+        AtualizadaEm = atualizadaEm;
+    }
+
+    public void MarcarAguardandoEntrega(DateTimeOffset atualizadaEm)
+    {
+        Status = "AguardandoEntrega";
         AtualizadaEm = atualizadaEm;
     }
 

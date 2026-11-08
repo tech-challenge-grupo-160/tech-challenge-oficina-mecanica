@@ -97,8 +97,10 @@ public class MessagingDomainTests
         saga.Status.Should().Be("AguardandoEstoque");
         saga.MarcarEmExecucao(concluidaEm.AddSeconds(4));
         saga.Status.Should().Be("EmExecucao");
-        saga.MarcarFinalizada(concluidaEm.AddSeconds(5));
-        saga.Status.Should().Be("Finalizada");
+        saga.MarcarAguardandoPagamento(concluidaEm.AddSeconds(5));
+        saga.Status.Should().Be("AguardandoPagamento");
+        saga.MarcarAguardandoEntrega(concluidaEm.AddSeconds(6));
+        saga.Status.Should().Be("AguardandoEntrega");
     }
 
     [Fact]

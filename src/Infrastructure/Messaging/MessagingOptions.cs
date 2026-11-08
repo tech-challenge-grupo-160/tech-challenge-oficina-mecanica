@@ -19,4 +19,6 @@ public sealed class MessagingOptions
     public string EstoqueInsuficienteQueueUrl { get; init; } = string.Empty;
     public string IniciarExecucaoCommandQueueUrl { get; init; } = string.Empty;
     public string ExecucaoFinalizadaQueueUrl { get; init; } = string.Empty;
+    public string SolicitarPagamentoCommandQueueUrl { get; init; } = string.Empty;
+    public string PagamentoConfirmadoQueueUrl { get; init; } = string.Empty;
 }
