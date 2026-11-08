@@ -19,25 +19,36 @@ A última linha é a que resolve o dia a dia. **Se você só quer a API de pé, 
 Docker Compose** — está no [SETUP.md](SETUP.md) e sobe em segundos. O kind serve
 quando o que você está mexendo é o Kubernetes em si.
 
-## Nada disso é definido aqui
+## Onde a infraestrutura é definida
 
-Este repositório é a **aplicação**. A infraestrutura vive em outros dois, por
-decisão da [ADR-0001](adrs/0001-segregacao-em-quatro-repositorios.md):
+Este repositório é o OS Service. Além da aplicação, ele mantém a infraestrutura
+de mensageria que pertence ao serviço. Rede e bancos continuam em repositórios
+próprios:
 
 | Repositório | O que define |
 |---|---|
 | [tech-challenge-infra-k8s](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s) | VPC, EKS, API Gateway, ALB, ECR, segredos, manifests do Kubernetes, Cluster Autoscaler — e o `local/`, com o kind |
 | [tech-challenge-infra-database](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-database) | RDS PostgreSQL Multi-AZ, subnet group, credencial no Secrets Manager |
+| Este repositório, [`infra/`](../infra/README.md) | Tópico SNS do OS Service, filas SQS que consomem Billing/Execução, DLQs e configuração no Secrets Manager |
+| [Billing](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-billing/tree/main/infra) | Tópico SNS do Billing, filas de eventos e comandos, DLQs e configuração |
+| [Execução](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-execucao/tree/main/infra) | Tópico SNS da Execução, filas de eventos e comandos, DLQs e configuração |
 
-O que fica **neste** repositório é o que atravessa os quatro: os scripts de ciclo
-de vida em `scripts/`, e a documentação que não pertence a um repositório só.
+Os scripts de `scripts/` coordenam os seis repositórios e a documentação
+compartilhada fica aqui.
 
-Até 04/09 havia cópias de `infra/` e `k8s/` aqui, sobras do split. Eram duplicata
-estrita do `infra-k8s` e já tinham começado a divergir — foram removidas.
+As antigas cópias de `infra/` e `k8s/`, removidas em 04/09, eram duplicatas da
+infraestrutura de rede e do cluster. O `infra/` atual é novo e contém somente
+recursos de mensageria próprios do OS Service, conforme a ADR-0005.
+
+Os três tópicos são criados antes das assinaturas para evitar dependência
+circular entre os states independentes. O ciclo de vida automatizado faz esse
+bootstrap em duas fases; os detalhes estão no
+[catálogo de mensageria](mensageria/catalogo.md).
 
 ## Subir e derrubar o ambiente na nuvem
 
-Dois comandos, e eles orquestram os quatro repositórios:
+Dois comandos, e eles orquestram a infraestrutura compartilhada e os seis
+repositórios:
 
 ```bash
 bash scripts/sobe-tudo.sh
@@ -83,7 +94,7 @@ cliente
   → API Gateway (HTTP API)          rota /auth pública, /api/v1 atrás do authorizer JWT
   → VPC Link → ALB interno          balanceador em subnet privada, alvos por instância
   → NodePort 30080 nos nodes        kube-proxy encaminha ao pod
-  → API .NET                        lê a connection string e a chave do JWT de um Secret
+  → API .NET                        lê connection string, JWT e configuração de mensageria dos Secrets
   → RDS PostgreSQL                  Multi-AZ, em subnet privada, sem acesso público
 ```
 
@@ -94,6 +105,14 @@ gateway responde `404 {"message":"Not Found"}`, até no `/health/live`.
 A autenticação por CPF é uma Lambda fora do cluster, e um segundo Lambda
 authorizer valida o JWT na borda do gateway — o desenho e o porquê estão na
 [RFC-0002](rfcs/0002-autenticacao-por-cpf-e-api-gateway.md).
+
+## Como os serviços recebem mensagens
+
+Cada serviço provisiona seu tópico e suas filas consumidoras em seu próprio
+`infra/`. O OS Service usa o segredo `os/messaging` do Secrets Manager para
+fornecer topic ARN e queue URLs ao pod; Billing e Execução seguem o mesmo
+padrão ao habilitar seus deploys independentes. O contrato e a topologia estão
+no [catálogo de eventos](mensageria/catalogo.md).
 
 ## Escalabilidade
 

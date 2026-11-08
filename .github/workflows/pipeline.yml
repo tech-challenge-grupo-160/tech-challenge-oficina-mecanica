@@ -39,6 +39,11 @@ jobs:
       segredos: |
         ConnectionStrings__DefaultConnection=tc-grupo160/{sufixo}/banco#connectionString
         Jwt__SecretKey=tc-grupo160/{sufixo}/jwt-signing-key
+        Messaging__EventTopicArn=tc-grupo160/{sufixo}/os/messaging#Messaging__EventTopicArn
+        Messaging__BillingEventsQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__BillingEventsQueueUrl
+        Messaging__ExecutionEventsQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__ExecutionEventsQueueUrl
+        Messaging__BillingCommandsQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__BillingCommandsQueueUrl
+        Messaging__ExecutionCommandsQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__ExecutionCommandsQueueUrl
       nome_secret: api-secret
       cluster_autoscaler: true
       # Migrations do EF Core sao codigo gerado: fora da analise e da cobertura.

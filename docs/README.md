@@ -9,6 +9,7 @@ Este diretório reúne a documentação viva do projeto, alinhada ao código atu
 3. [Arquitetura](ARCHITECTURE.md)
 4. [Referência da API](API_REFERENCE.md)
 5. [Infraestrutura](INFRAESTRUTURA.md)
+6. [Catálogo de eventos e mensageria](mensageria/catalogo.md)
 
 ## Conteúdo
 
@@ -28,6 +29,10 @@ Rotas, autenticação, payloads principais, fluxo da OS, monitoramento e tratame
 
 Onde cada ambiente roda e onde cada coisa é definida: os três ambientes na AWS, o kind como opção de desenvolvimento local, o caminho da requisição até o banco, e por que a infraestrutura vive em outros dois repositórios.
 
+### [Catálogo de eventos e mensageria](mensageria/catalogo.md)
+
+Eventos SNS, comandos SQS, filas consumidoras, filtros e a topologia provisionada por serviço.
+
 ### [ROLLBACK-BANCO.md](ROLLBACK-BANCO.md)
 
 Como voltar atrás no banco gerenciado: por que `kubectl rollout undo` não desfaz migration, snapshot manual antes de operação arriscada, restore por snapshot ou point-in-time, e o caminho de emergência de volta ao PostgreSQL no cluster.
@@ -41,4 +46,3 @@ Classificação das 53 rotas entre públicas, autenticadas, de cliente e interna
 - a documentação deve refletir o estado atual do código;
 - `README.md` da raiz é o ponto de entrada para o projeto;
 - `docs/` deve conter documentação operacional e técnica, não anotações temporárias.
-

@@ -24,7 +24,7 @@ export TF_VAR_datadog_api_key="${TF_VAR_datadog_api_key:-dummy_datadog_key_local
 
 # ---------------------------------------------------------------- caminhos
 #
-# Os quatro repositorios ficam lado a lado. Este script vive em
+# Os seis repositorios ficam lado a lado. Este script vive em
 # tech-challenge-oficina-mecanica/scripts, entao dois niveis acima e a pasta que os
 # contem. Derivar em vez de exigir variavel evita que o script funcione so na
 # maquina de quem o escreveu.
@@ -40,7 +40,9 @@ exigir_repos() {
   local faltando=0
   local r
   for r in tech-challenge-infra-k8s tech-challenge-infra-database \
-           tech-challenge-lambda-auth tech-challenge-oficina-mecanica; do
+           tech-challenge-lambda-auth tech-challenge-oficina-mecanica \
+           tech-challenge-oficina-mecanica-billing \
+           tech-challenge-oficina-mecanica-execucao; do
     if [ ! -d "$raiz/$r" ]; then
       vermelho "ERRO: repositorio ausente: $raiz/$r"
       faltando=1
@@ -48,10 +50,10 @@ exigir_repos() {
   done
   if [ "$faltando" -eq 1 ]; then
     echo
-    echo "Os quatro repositorios precisam estar lado a lado:"
+    echo "Os seis repositorios precisam estar lado a lado:"
     echo
     echo "  mkdir -p ~/source/repos/tech-challenge && cd ~/source/repos/tech-challenge"
-    echo "  for r in oficina-mecanica lambda-auth infra-k8s infra-database; do"
+    echo "  for r in oficina-mecanica lambda-auth infra-k8s infra-database oficina-mecanica-billing oficina-mecanica-execucao; do"
     echo "    git clone https://github.com/tech-challenge-grupo-160/tech-challenge-\$r.git"
     echo "  done"
     exit 1
@@ -255,7 +257,7 @@ ambiente_da_branch() {
   esac
 }
 
-# Olha os quatro repositorios, e nao so o que contem o script: quem trabalha
+# Olha os seis repositorios, e nao so o que contem o script: quem trabalha
 # no infra-k8s roda daqui por caminho relativo, e a branch que importa e a
 # de onde a pessoa acha que esta mexendo.
 avisar_se_a_branch_diverge() {
@@ -263,7 +265,9 @@ avisar_se_a_branch_diverge() {
   local divergentes="" r branch sugerido
 
   for r in tech-challenge-oficina-mecanica tech-challenge-infra-k8s \
-           tech-challenge-infra-database tech-challenge-lambda-auth; do
+           tech-challenge-infra-database tech-challenge-lambda-auth \
+           tech-challenge-oficina-mecanica-billing \
+           tech-challenge-oficina-mecanica-execucao; do
     branch="$(git -C "$raiz/$r" rev-parse --abbrev-ref HEAD 2>/dev/null)" || continue
     sugerido="$(ambiente_da_branch "$branch")" || continue
     if [ "$sugerido" != "$escolhido" ]; then
