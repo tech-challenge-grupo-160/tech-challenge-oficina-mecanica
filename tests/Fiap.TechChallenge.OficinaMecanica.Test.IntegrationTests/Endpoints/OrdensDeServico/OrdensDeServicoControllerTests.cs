@@ -25,7 +25,7 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
     }
 
     [Fact]
-    public async Task FluxoCompleto_DevePercorrerCaminhoFelizDaOs()
+    public async Task FluxoOperacional_DeveFinalizarOsESomenteBillingPodeRegistrarPagamento()
     {
         var ordemCriada = await CriarOrdemAsync();
         ordemCriada.DataAbertura.Offset.Should().Be(TimeSpan.Zero);
@@ -58,22 +58,16 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         finalizada.DataFinalizacao.Should().NotBeNull();
 
         var registrarPagamento = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/registrar-pagamento", null);
-        registrarPagamento.StatusCode.Should().Be(HttpStatusCode.OK);
-        var pagamentoRegistrado = await registrarPagamento.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
-        pagamentoRegistrado!.Status.Should().Be("Finalizada");
-        pagamentoRegistrado.DataPagamento.Should().NotBeNull();
+        registrarPagamento.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var entregar = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/entregar", null);
-        entregar.StatusCode.Should().Be(HttpStatusCode.OK);
-        var entregue = await entregar.Content.ReadFromJsonAsync<OrdemDeServicoResponse>();
-        entregue!.Status.Should().Be("Entregue");
-        entregue.DataConclusao.Should().NotBeNull();
+        entregar.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var obterHistorico = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/historico");
         obterHistorico.StatusCode.Should().Be(HttpStatusCode.OK);
         var historico = await obterHistorico.Content.ReadFromJsonAsync<List<OrdemServicoHistoricoResponse>>();
         historico.Should().NotBeNull();
-        historico.Should().HaveCount(10);
+        historico.Should().HaveCount(8);
         historico.Should().OnlyContain(item => item.DataEvento.Offset == TimeSpan.Zero);
         historico![0].TipoEvento.Should().Be("OrdemCriada");
         historico[0].StatusAnterior.Should().BeNull();
@@ -82,9 +76,8 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
             h.UsuarioId == CustomWebApplicationFactory.UsuarioAutenticadoId &&
             h.UsuarioNome == CustomWebApplicationFactory.UsuarioAutenticadoNome);
         historico.Should().Contain(h => h.TipoEvento == "EstoqueBaixado");
-        historico[^1].TipoEvento.Should().Be("VeiculoEntregue");
-        historico[^1].StatusAnterior.Should().Be("Finalizada");
-        historico[^1].StatusNovo.Should().Be("Entregue");
+        historico[^1].TipoEvento.Should().Be("ServicoFinalizado");
+        historico[^1].StatusNovo.Should().Be("Finalizada");
 
         var obterNotificacoes = await _client.GetAsync($"/api/v1/ordens-servico/{ordemCriada.Id}/notificacoes");
         obterNotificacoes.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -184,7 +177,13 @@ public class OrdensDeServicoControllerTests : IClassFixture<CustomWebApplication
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemEntregue.Id}/finalizar-diagnostico", null);
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemEntregue.Id}/aprovar", null);
         await _client.PatchAsync($"/api/v1/ordens-servico/{ordemEntregue.Id}/finalizar", null);
-        await _client.PatchAsync($"/api/v1/ordens-servico/{ordemEntregue.Id}/registrar-pagamento", null);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
+            var ordem = context.OrdensDeServico.Single(item => item.Id == ordemEntregue.Id);
+            ordem.RegistrarPagamento(DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified));
+            await context.SaveChangesAsync();
+        }
         var entregar = await _client.PatchAsync($"/api/v1/ordens-servico/{ordemEntregue.Id}/entregar", null);
         entregar.StatusCode.Should().Be(HttpStatusCode.OK);
 

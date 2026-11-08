@@ -162,13 +162,6 @@ public class OrdensDeServicoController : ControllerBase
         return Ok(ordem.ToResponse());
     }
 
-    [HttpPatch("{id}/registrar-pagamento")]
-    public async Task<ActionResult<OrdemDeServicoResponse>> RegistrarPagamento(int id, CancellationToken cancellationToken)
-    {
-        var ordem = await _mediator.Send(id.ToRegistrarPagamentoCommand(), cancellationToken);
-        return Ok(ordem.ToResponse());
-    }
-
     [HttpPatch("{id}/entregar")]
     public async Task<ActionResult<OrdemDeServicoResponse>> Entregar(int id, CancellationToken cancellationToken)
     {

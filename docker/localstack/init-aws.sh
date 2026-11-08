@@ -170,10 +170,12 @@ create_event_queue() {
 
 create_command_queue "execucao-reservar-pecas"
 create_command_queue "execucao-iniciar-reparo"
+create_command_queue "billing-solicitar-pagamento"
 create_event_queue "os-orcamento-aprovado" "OrcamentoAprovadoMessage"
 create_event_queue "os-orcamento-recusado" "OrcamentoRecusadoMessage"
 create_event_queue "os-pecas-reservadas" "PecasReservadasMessage"
 create_event_queue "os-estoque-insuficiente" "EstoqueInsuficienteMessage"
 create_event_queue "os-execucao-finalizada" "ExecucaoFinalizadaMessage"
+create_event_queue "os-pagamento-confirmado" "PagamentoConfirmadoMessage"
 
 echo "SNS/SQS locais configurados na regiao $REGION para a conta $ACCOUNT_ID."

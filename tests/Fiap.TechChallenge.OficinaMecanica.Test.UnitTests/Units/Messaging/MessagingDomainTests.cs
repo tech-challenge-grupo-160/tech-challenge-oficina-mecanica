@@ -97,8 +97,10 @@ public class MessagingDomainTests
         saga.Status.Should().Be("AguardandoEstoque");
         saga.MarcarEmExecucao(concluidaEm.AddSeconds(4));
         saga.Status.Should().Be("EmExecucao");
-        saga.MarcarFinalizada(concluidaEm.AddSeconds(5));
-        saga.Status.Should().Be("Finalizada");
+        saga.MarcarAguardandoPagamento(concluidaEm.AddSeconds(5));
+        saga.Status.Should().Be("AguardandoPagamento");
+        saga.MarcarAguardandoEntrega(concluidaEm.AddSeconds(6));
+        saga.Status.Should().Be("AguardandoEntrega");
     }
 
     [Fact]
@@ -357,5 +359,57 @@ public class MessagingDomainTests
         finalizada.Versao.Should().Be(1);
         options.IniciarExecucaoCommandQueueUrl.Should().EndWith("execucao-iniciar-reparo");
         options.ExecucaoFinalizadaQueueUrl.Should().EndWith("os-execucao-finalizada");
+    }
+
+    [Fact]
+    public void ContratosDePagamento_DevemPreservarIdentidadeValorEEstado()
+    {
+        var solicitarMessageId = Guid.NewGuid();
+        var confirmarMessageId = Guid.NewGuid();
+        var correlationId = Guid.NewGuid();
+        var pagamentoId = Guid.NewGuid();
+        var orcamentoId = Guid.NewGuid();
+        var ocorridoEm = DateTimeOffset.UtcNow;
+        var confirmadoEm = ocorridoEm.AddMinutes(5);
+        var solicitar = new SolicitarPagamentoMessage(
+            solicitarMessageId,
+            correlationId,
+            ocorridoEm,
+            orcamentoId,
+            3007);
+        var confirmado = new PagamentoConfirmadoMessage(
+            confirmarMessageId,
+            correlationId,
+            confirmadoEm,
+            pagamentoId,
+            orcamentoId,
+            3007,
+            219.90m,
+            "Confirmado",
+            confirmadoEm);
+        var options = new MessagingOptions
+        {
+            SolicitarPagamentoCommandQueueUrl = "http://localhost:4566/billing-solicitar-pagamento",
+            PagamentoConfirmadoQueueUrl = "http://localhost:4566/os-pagamento-confirmado"
+        };
+
+        solicitar.MessageId.Should().Be(solicitarMessageId);
+        solicitar.CorrelationId.Should().Be(correlationId);
+        solicitar.OcorridoEm.Should().Be(ocorridoEm);
+        solicitar.OrcamentoId.Should().Be(orcamentoId);
+        solicitar.OrdemServicoId.Should().Be(3007);
+        solicitar.Versao.Should().Be(1);
+        confirmado.MessageId.Should().Be(confirmarMessageId);
+        confirmado.CorrelationId.Should().Be(correlationId);
+        confirmado.OcorridoEm.Should().Be(confirmadoEm);
+        confirmado.PagamentoId.Should().Be(pagamentoId);
+        confirmado.OrcamentoId.Should().Be(orcamentoId);
+        confirmado.OrdemServicoId.Should().Be(3007);
+        confirmado.Valor.Should().Be(219.90m);
+        confirmado.Status.Should().Be("Confirmado");
+        confirmado.ConfirmadoEm.Should().Be(confirmadoEm);
+        confirmado.Versao.Should().Be(1);
+        options.SolicitarPagamentoCommandQueueUrl.Should().EndWith("billing-solicitar-pagamento");
+        options.PagamentoConfirmadoQueueUrl.Should().EndWith("os-pagamento-confirmado");
     }
 }

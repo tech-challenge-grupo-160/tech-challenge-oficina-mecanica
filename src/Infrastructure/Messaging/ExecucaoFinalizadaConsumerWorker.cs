@@ -47,6 +47,7 @@ public sealed class ExecucaoFinalizadaConsumerWorker(
             Id = evento.OrdemServicoId,
             DataFinalizacao = DateTimeHelper.UTCToBrazil(evento.FinalizadaEm.UtcDateTime)
         }, cancellationToken);
-        saga.MarcarFinalizada(evento.FinalizadaEm);
+        PagamentoOutboxFactory.Adicionar(context, saga, evento.FinalizadaEm);
+        saga.MarcarAguardandoPagamento(evento.FinalizadaEm);
     }
 }
