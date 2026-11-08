@@ -70,12 +70,19 @@ Seed de desenvolvimento:
 - [Ciclo de vida da infraestrutura](docs/CICLO-DE-VIDA.md)
 - [Arquitetura](docs/ARCHITECTURE.md)
 - [Infraestrutura](docs/INFRAESTRUTURA.md)
+- [Catálogo de eventos e mensageria](docs/mensageria/catalogo.md)
 - [Referência da API](docs/API_REFERENCE.md)
+
+## Infraestrutura do OS Service
+
+Os recursos SNS/SQS e a configuração de mensageria do OS Service ficam em
+[infra/](infra/README.md), separados da infraestrutura compartilhada de rede e
+cluster.
 
 ## Infraestrutura na AWS
 
-Os scripts que sobem e derrubam o ambiente inteiro ficam neste repositório,
-porque orquestram os quatro — o porquê está em
+Os scripts que sobem e derrubam o ambiente ficam neste repositório, porque
+orquestram a infraestrutura compartilhada e os seis repositórios — o porquê está em
 [docs/CICLO-DE-VIDA.md](docs/CICLO-DE-VIDA.md).
 
 ```bash
@@ -93,7 +100,7 @@ a chave do Datadog - ver [Chave do Datadog](docs/CICLO-DE-VIDA.md#chave-do-datad
 export TF_VAR_datadog_api_key="<chave da organizacao>"
 ```
 
-Renovar as credenciais do Learner Lab nos quatro repositórios, a cada sessão:
+Renovar as credenciais do Learner Lab nos seis repositórios, a cada sessão:
 
 ```bash
 bash scripts/renova-secrets.sh

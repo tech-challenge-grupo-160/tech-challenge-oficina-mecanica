@@ -53,10 +53,12 @@ K8S="$RAIZ/tech-challenge-infra-k8s"
 BANCO="$RAIZ/tech-challenge-infra-database"
 LAMBDA="$RAIZ/tech-challenge-lambda-auth"
 APP="$RAIZ/tech-challenge-oficina-mecanica"
+BILLING="$RAIZ/tech-challenge-oficina-mecanica-billing"
+EXECUCAO="$RAIZ/tech-challenge-oficina-mecanica-execucao"
 
-TOTAL=8
-# Com --so-infra a etapa 2 e pulada, mas o fluxo vai ate a 5.
-[ "$SO_INFRA" -eq 1 ] && TOTAL=5
+TOTAL=9
+# Com --so-infra a etapa 2 e pulada, mas o fluxo vai ate a 6.
+[ "$SO_INFRA" -eq 1 ] && TOTAL=6
 
 # ============================================================ verificacoes
 
@@ -87,6 +89,7 @@ if [ "$SEM_PERGUNTAR" -eq 0 ]; then
   echo "  - NAT Gateway       ~US\$ 1,08/dia"
   echo "  - RDS multi-AZ      ~US\$ 0,90/dia"
   echo "  - ALB               ~US\$ 0,54/dia"
+  echo "  - SNS/SQS           cobranca por uso"
   echo
   confirmar "Continuar?" || { echo "Cancelado."; exit 0; }
 fi
@@ -126,7 +129,9 @@ if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
     cinza   "  Para assumir as pipelines: --assumir-pipelines"
   else
     for r in tech-challenge-oficina-mecanica tech-challenge-lambda-auth \
-             tech-challenge-infra-k8s tech-challenge-infra-database; do
+             tech-challenge-infra-k8s tech-challenge-infra-database \
+             tech-challenge-oficina-mecanica-billing \
+             tech-challenge-oficina-mecanica-execucao; do
       gh variable set TF_STATE_BUCKET --body "$BUCKET" \
         --repo "tech-challenge-grupo-160/$r" >/dev/null 2>&1 || true
     done
@@ -244,9 +249,32 @@ terraform -chdir="$BANCO" apply -auto-approve -input=false \
   -var-file="inventories/$AMBIENTE/terraform.tfvars"
 verde "  RDS aplicado."
 
+# -------------------------------------------------------------- mensageria
+#
+# Cada servico e dono do seu topico e das filas que consome. Os tres topicos
+# precisam existir antes de qualquer assinatura; por isso o bootstrap aplica
+# primeiro so os topicos, depois a configuracao completa de cada servico.
+
+etapa 5 "$TOTAL" "Topicos, filas e DLQs SNS/SQS por servico"
+MENSAGERIA_DIRS=("$APP/infra" "$BILLING/infra" "$EXECUCAO/infra")
+MENSAGERIA_STATES=("messaging-os.tfstate" "messaging-billing.tfstate" "messaging-execucao.tfstate")
+
+for i in "${!MENSAGERIA_DIRS[@]}"; do
+  tf_init "${MENSAGERIA_DIRS[$i]}" "$AMBIENTE/${MENSAGERIA_STATES[$i]}" "$BUCKET" "$REGIAO"
+  terraform -chdir="${MENSAGERIA_DIRS[$i]}" apply -auto-approve -input=false \
+    -target=aws_sns_topic.events \
+    -var="environment=$AMBIENTE" -var="region=$REGIAO"
+done
+
+for i in "${!MENSAGERIA_DIRS[@]}"; do
+  terraform -chdir="${MENSAGERIA_DIRS[$i]}" apply -auto-approve -input=false \
+    -var="environment=$AMBIENTE" -var="region=$REGIAO"
+done
+verde "  Mensageria aplicada nos tres servicos."
+
 GATEWAY="$(terraform -chdir="$K8S/infra" output -raw gateway_url 2>/dev/null || echo '')"
 
-etapa 5 "$TOTAL" "Conferindo o que subiu"
+etapa 6 "$TOTAL" "Conferindo o que subiu"
 CLUSTER="$(terraform -chdir="$K8S/infra" output -raw cluster_nome 2>/dev/null || echo '')"
 if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "null" ]; then
   amarelo "  criar_cluster esta desligado em inventories/$AMBIENTE."
@@ -281,7 +309,7 @@ ECR="$(terraform -chdir="$K8S/infra" output -raw ecr_api_url)"
 # disputarem o mesmo recurso. Por isso tambem nao somem no `terraform destroy` -
 # ver derruba-tudo.sh.
 
-etapa 6 "$TOTAL" "Rede e variaveis das funcoes"
+etapa 7 "$TOTAL" "Rede e variaveis das funcoes"
 
 SEGREDO_JWT="tc-grupo160/${SUFIXO}/jwt-signing-key"
 SEGREDO_BANCO="tc-grupo160/${SUFIXO}/banco"
@@ -325,7 +353,7 @@ if [ -n "$DATADOG_SECRET_ARN" ] && [ "$DATADOG_SECRET_ARN" != "null" ]; then
 fi
 # -------------------------------------------------------------------- API
 
-etapa 7 "$TOTAL" "API no cluster"
+etapa 8 "$TOTAL" "API no cluster"
 aws eks update-kubeconfig --region "$REGIAO" --name "$CLUSTER" >/dev/null
 
 SHA="$(git -C "$APP" rev-parse --short=12 HEAD)"
@@ -346,10 +374,35 @@ CONN="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_BANCO" --regio
   | grep -o '"connectionString":"[^"]*"' | sed 's/^"connectionString":"//; s/"$//')"
 JWT="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_JWT" --region "$REGIAO" \
   --query SecretString --output text)"
+SEGREDO_MENSAGERIA="tc-grupo160/${SUFIXO}/os/messaging"
+MENSAGERIA="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_MENSAGERIA" --region "$REGIAO" \
+  --query SecretString --output text)"
+valor_json() {
+  local chave="$1"
+  printf '%s\n' "$MENSAGERIA" \
+    | sed -n "s/.*\"$chave\":\"\\([^\"]*\\)\".*/\\1/p"
+}
+
+MSG_TOPIC_ARN="$(valor_json Messaging__EventTopicArn)"
+MSG_BILLING_EVENTS_URL="$(valor_json Messaging__BillingEventsQueueUrl)"
+MSG_EXECUTION_EVENTS_URL="$(valor_json Messaging__ExecutionEventsQueueUrl)"
+MSG_BILLING_COMMANDS_URL="$(valor_json Messaging__BillingCommandsQueueUrl)"
+MSG_EXECUTION_COMMANDS_URL="$(valor_json Messaging__ExecutionCommandsQueueUrl)"
+if [ -z "$MSG_TOPIC_ARN" ] || [ -z "$MSG_BILLING_EVENTS_URL" ] \
+   || [ -z "$MSG_EXECUTION_EVENTS_URL" ] || [ -z "$MSG_BILLING_COMMANDS_URL" ] \
+   || [ -z "$MSG_EXECUTION_COMMANDS_URL" ]; then
+  vermelho "ERRO: configuracao de mensageria ausente ou incompleta em $SEGREDO_MENSAGERIA."
+  exit 1
+fi
 
 kubectl create secret generic api-secret --namespace oficina-mecanica \
   --from-literal=ConnectionStrings__DefaultConnection="$CONN" \
   --from-literal=Jwt__SecretKey="$JWT" \
+  --from-literal=Messaging__EventTopicArn="$MSG_TOPIC_ARN" \
+  --from-literal=Messaging__BillingEventsQueueUrl="$MSG_BILLING_EVENTS_URL" \
+  --from-literal=Messaging__ExecutionEventsQueueUrl="$MSG_EXECUTION_EVENTS_URL" \
+  --from-literal=Messaging__BillingCommandsQueueUrl="$MSG_BILLING_COMMANDS_URL" \
+  --from-literal=Messaging__ExecutionCommandsQueueUrl="$MSG_EXECUTION_COMMANDS_URL" \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 
 TMP="$(mktemp -d)"
@@ -379,7 +432,7 @@ verde "  API no ar."
 
 # ============================================================= verificacao
 
-etapa 8 "$TOTAL" "Teste de fumaca"
+etapa 9 "$TOTAL" "Teste de fumaca"
 sleep 10
 CODIGO="$(curl -s -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/auth" \
   -H 'Content-Type: application/json' -d '{"documento":"476.548.668-01"}' || echo 000)"

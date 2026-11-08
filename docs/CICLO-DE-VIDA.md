@@ -48,7 +48,8 @@ bash scripts/sobe-tudo.sh --ambiente hom --sim
 
 ### Quanto tempo leva
 
-Medido em 15/09, num ciclo completo do `dev`:
+Medido em 15/09, antes da infraestrutura de mensageria da Fase 4, num ciclo
+completo do `dev`:
 
 | Comando | Duração |
 |---|---|
@@ -66,13 +67,13 @@ conseguir liberar o lock do state, e a execução seguinte para em
 
 Cada membro tem a sua conta do Learner Lab, e portanto o seu bucket de state —
 os ambientes são independentes e não se atrapalham. O que **é** compartilhado
-são os quatro repositórios da organização.
+são os seis repositórios da organização.
 
 Dois scripts escrevem neles:
 
 | Script | O que grava | Onde |
 |---|---|---|
-| `sobe-tudo.sh` | `TF_STATE_BUCKET` | variável dos 4 repositórios |
+| `sobe-tudo.sh` | `TF_STATE_BUCKET` | variável dos 6 repositórios |
 | `renova-secrets.sh` | credenciais da AWS | secrets dos 6 repositórios (os 4 da Fase 3, mais Billing e Execução) |
 
 Se duas pessoas rodarem, **a última ganha**: as pipelines passam a aplicar na
@@ -107,52 +108,53 @@ lugar que eles não esperam.
 Vale para quem é **dono das pipelines** — quando elas aplicam na sua conta.
 
 Enquanto um `sobe-tudo.sh` ou `derruba-tudo.sh` estiver rodando, **não mergeie
-nem abra PR** no `infra-k8s` e no `infra-database`, nem que seja só de
-documentação: os workflows não filtram por caminho. Todo push em `develop`,
-`homolog` ou `main` desses repositórios aplica um ambiente, e todo PR roda plan
-nos três. Plan e apply pegam o lock do state, e o Terraform não espera — quem
-chega depois falha na hora. Um push na `develop` no meio de um derruba do `dev`
-pode até recriar o ambiente pela pipeline.
+nem abra PR** nos repositórios de infraestrutura, inclusive nos três serviços,
+nem que seja só de documentação: os workflows não filtram por caminho. Plan e
+apply pegam o lock do state, e o Terraform não espera — quem chega depois falha
+na hora. Um push numa branch de ambiente durante o ciclo pode até recriar
+recursos pela pipeline.
 
 Quem sobe ambiente na **própria** conta, sem ser dono das pipelines, não tem
 esse problema: elas não enxergam a conta dessa pessoa.
 
 ## Por que os scripts vivem aqui
 
-Eles orquestram os **quatro** repositórios: leem o Terraform do `infra-k8s`,
-aplicam o do `infra-database`, publicam as Lambdas do `lambda-auth` e constroem
-a imagem daqui.
+Eles orquestram os **seis** repositórios: leem o Terraform do `infra-k8s`,
+aplicam o do `infra-database`, provisionam os três roots de mensageria (primeiro
+os tópicos, depois filas e assinaturas), publicam as Lambdas do `lambda-auth` e
+constroem a imagem daqui.
 
-Um repositório de infraestrutura dirigindo os outros três inverteria a
-separação que o [ADR-0001](adrs/0001-segregacao-em-quatro-repositorios.md)
-criou — os quatro são pares, nenhum é dono dos demais.
+Um repositório de infraestrutura centralizando os outros cinco inverteria a
+separação entre serviços que o
+[ADR-0001](adrs/0001-segregacao-em-quatro-repositorios.md) iniciou. Hoje os
+seis repositórios são pares: nenhum serviço é dono dos demais.
 
 Este repositório já é o ponto de coordenação do projeto: guarda os ADRs, as
 RFCs, a matriz de autorização, o board e todas as issues. Um runbook que
 atravessa fronteiras pertence ao mesmo lugar que a documentação que atravessa
 fronteiras.
 
-O `renova-secrets.sh` veio junto pelo mesmo motivo. Ele também mexe nos quatro,
+O `renova-secrets.sh` veio junto pelo mesmo motivo. Ele também mexe nos seis,
 e deixá-lo para trás espalharia a ferramenta operacional entre dois
 repositórios — pior que qualquer das duas escolhas.
 
 ## Pré-requisitos
 
-Os **quatro repositórios lado a lado**, na mesma pasta:
+Os **seis repositórios lado a lado**, na mesma pasta:
 
 ```bash
 mkdir -p ~/source/repos/tech-challenge && cd ~/source/repos/tech-challenge
-for r in oficina-mecanica lambda-auth infra-k8s infra-database; do
+for r in oficina-mecanica lambda-auth infra-k8s infra-database oficina-mecanica-billing oficina-mecanica-execucao; do
   git clone https://github.com/tech-challenge-grupo-160/tech-challenge-$r.git
 done
 ```
 
-Os scripts descobrem os outros três a partir da própria localização — não há
+Os scripts descobrem os outros cinco a partir da própria localização — não há
 variável de ambiente para configurar.
 
 **Os scripts usam o código que está na pasta.** O clone traz a branch padrão
 (`master` no repositório principal, `main` nos outros), que é a versão entregue.
-Para subir o que está em desenvolvimento, faça `git switch develop` nos quatro.
+Para subir o que está em desenvolvimento, faça `git switch develop` nos seis.
 Com os clones em `master`/`main`, o script avisa que a branch "sugere `prod`" —
 é esperado: o ambiente é sempre o do `--ambiente`.
 
@@ -167,7 +169,7 @@ Com os clones em `master`/`main`, o script avisa que a branch "sugere `prod`" �
 Com `--so-infra`, apenas AWS CLI e Terraform bastam.
 
 > **Confira o `npx` antes de começar.** O `sobe-tudo.sh` só procura por ele na
-> etapa 6, depois de uns 30 minutos criando infraestrutura. No Windows, depois
+> etapa 7, depois de criar a infraestrutura. No Windows, depois
 > de instalar o Node.js, abra um terminal novo: o `npx` só entra no PATH dos
 > terminais abertos depois da instalação.
 >
@@ -342,7 +344,7 @@ inventory como está no Git, com o secret do GitHub.
 
 ## Subindo
 
-O `sobe-tudo.sh` executa oito etapas, nesta ordem:
+O `sobe-tudo.sh` executa nove etapas, nesta ordem:
 
 | # | Etapa | Por que nesta posição |
 |---|---|---|
@@ -350,10 +352,11 @@ O `sobe-tudo.sh` executa oito etapas, nesta ordem:
 | 2 | **Funções Lambda (código)** | o gateway não sobe sem elas |
 | 3 | Rede, cluster, ECR, gateway, ALB, Datadog Agent | base de todo o resto |
 | 4 | Banco gerenciado | lê a rede pelo state remoto |
-| 5 | Conferência | para cedo se o cluster estiver desligado |
-| 6 | Rede e variáveis das funções, instrumentação do Datadog | dependem de subnets, SGs e segredos |
-| 7 | API no cluster | precisa do cluster e do ECR |
-| 8 | Teste de fumaça | `POST /auth` deve responder 200 |
+| 5 | Tópicos, filas e DLQs SNS/SQS | tópicos são criados antes das assinaturas entre serviços |
+| 6 | Conferência | para cedo se o cluster estiver desligado |
+| 7 | Rede e variáveis das funções, instrumentação do Datadog | dependem de subnets, SGs e segredos |
+| 8 | API no cluster | precisa do cluster e do ECR |
+| 9 | Teste de fumaça | `POST /auth` deve responder 200 |
 
 Duas dessas posições **não são preferência**.
 
@@ -364,20 +367,20 @@ aparece, porque as funções foram publicadas muito antes — numa conta do zero
 aparece sempre.
 
 Só o **código** entra na etapa 2. Rede, variáveis de ambiente e VPC ficam para a
-etapa 6, quando subnets, security groups e segredos já existem.
+etapa 7, quando subnets, security groups e segredos já existem.
 
 **O banco vem depois da rede (4 depois de 3).** O Terraform do banco lê
 `vpc_id`, subnets e o security group do state da rede. Invertendo, ele falha
 procurando um state que ainda não existe.
 
-Na etapa 6, o `datadog-ci` imprime `❌ Configuration error: Missing DD_API_KEY`.
+Na etapa 7, o `datadog-ci` imprime `❌ Configuration error: Missing DD_API_KEY`.
 É só aviso: a chave chega às funções pelo ARN do segredo, e a instrumentação
 acontece mesmo assim.
 
 ### Se o cluster não subir
 
 Se `criar_cluster` estiver `false` no inventory do ambiente, o script avisa e
-para depois da etapa 4. Sem cluster não há onde publicar a aplicação. Para
+para depois da etapa 6. Sem cluster não há onde publicar a aplicação. Para
 ligar, edite `tech-challenge-infra-k8s/infra/inventories/<ambiente>/terraform.tfvars`.
 
 ### Conferindo que subiu
@@ -540,7 +543,7 @@ Se usar as pipelines, rode também:
 bash scripts/renova-secrets.sh
 ```
 
-O `sobe-tudo.sh` já atualiza a variável `TF_STATE_BUCKET` nos quatro
+O `sobe-tudo.sh` já atualiza a variável `TF_STATE_BUCKET` nos seis
 repositórios quando o `gh` está autenticado — sem isso as pipelines apontariam
 para o bucket da conta antiga.
 
@@ -558,7 +561,7 @@ para o bucket da conta antiga.
 | `Datadog ligado em inventories/<ambiente>, mas sem chave real` | conta nova, ou subida logo depois de um derruba | carregue a chave ([Chave do Datadog](#chave-do-datadog), passos 2 e 3) e rode de novo, ou suba com `--sem-datadog` |
 | `ResourceExistsException` ao criar `tc-grupo160/<ambiente>/datadog-api-key` | segredo criado à mão antes do primeiro apply | `aws secretsmanager delete-secret --secret-id tc-grupo160/<ambiente>/datadog-api-key --force-delete-without-recovery` e suba com a variável |
 | `helm_release.datadog_agent`: `context deadline exceeded` | o Agent não consegue falar com o Datadog: chave inválida ou dummy, ou `datadog_site` diferente de `datadoghq.com` | corrija a chave ou o site. Se o release ficou travado, `aws eks update-kubeconfig --name tc-grupo160-<ambiente>`, `helm uninstall datadog -n datadog` e rode de novo. Sem chave válida, rode com `--sem-datadog`: o apply remove o release travado |
-| `ERRO: 'npx' nao encontrado no PATH` na etapa 6 | Node.js ausente, ou terminal aberto antes da instalação | instale o Node.js LTS, abra um terminal novo e rode de novo |
+| `ERRO: 'npx' nao encontrado no PATH` na etapa 7 | Node.js ausente, ou terminal aberto antes da instalação | instale o Node.js LTS, abra um terminal novo e rode de novo |
 | `404 {"message":"Not Found"}` no `/auth` ou no `/health/live` | endereço sem o nome do ambiente | use `https://<id>.execute-api.us-east-1.amazonaws.com/<ambiente>/auth` |
 | `POST /auth` devolve 503 logo após subir | VPC Link ainda propagando | espere ~3 min |
 | `POST /auth` devolve 500 e a Lambda não registra invocação | o gateway perdeu a permissão de invocar a Lambda: apply do `infra-k8s` com `lambdas_publicadas = false` | aplique de novo sem essa variável — o padrão é `true` |

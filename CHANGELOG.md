@@ -6,8 +6,12 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Terraform de SNS, SQS e DLQs por microsserviço, com configuração no Secrets Manager, workflows independentes e runbook de validação AWS Academy (F4-11)
+
 ### Changed
 - CI/CD pelo pipeline reutilizavel `servico-dotnet.yml@v1` do `tech-challenge-pipelines`, no lugar do `deploy-eks.yml` e do `pr-develop-ci.yml`. Mesmo comportamento: build e testes em todo PR (agora tambem para `homolog` e `master`), deploy no push da `homolog` e da `master`, dev pelo disparo manual (F4-08)
+- Ciclo de vida passa a provisionar/remover mensageria dos três serviços; deploy do OS injeta configuração Messaging do Secrets Manager
 
 ## [3.1.0] - 2026-10-10
 
