@@ -232,6 +232,39 @@ if [ "$SEM_DATADOG" -eq 0 ] \
   exit 1
 fi
 
+# Credenciais do Mercado Pago (F4-06/F4-39): do ambiente ou, na falta, do
+# segredo que um apply anterior (da pipeline ou daqui) ja gravou nesta conta.
+#
+# O infra-k8s grava o segredo tc-grupo160/<amb>/mercadopago a partir de
+# TF_VAR_mercadopago_access_token e TF_VAR_mercadopago_webhook_secret. Um apply
+# sem elas cria o segredo vazio, ou APAGA o valor que ja estava la, e o Billing
+# nao sobe. Por isso o script reaproveita o valor existente antes de aplicar.
+#
+# Sem valor em lugar nenhum o script so avisa, sem parar: o pagamento simulado
+# nao precisa do Mercado Pago, e o resto do ambiente sobe normalmente.
+# Variavel de ambiente, e nao -var, pelo mesmo motivo da chave do Datadog.
+if [ -z "${TF_VAR_mercadopago_access_token:-}" ]; then
+  MP_SEGREDO="$(aws secretsmanager get-secret-value --secret-id "tc-grupo160/${AMBIENTE}/mercadopago" \
+    --region "$REGIAO" --query SecretString --output text 2>/dev/null || echo '')"
+  mp_valor() { printf '%s\n' "$MP_SEGREDO" | sed -n "s/.*\"$1\" *: *\"\\([^\"]*\\)\".*/\\1/p"; }
+  MP_TOKEN="$(mp_valor access_token)"
+  MP_WEBHOOK="$(mp_valor webhook_secret)"
+  if [ -n "$MP_TOKEN" ] && [ -n "$MP_WEBHOOK" ]; then
+    export TF_VAR_mercadopago_access_token="$MP_TOKEN"
+    export TF_VAR_mercadopago_webhook_secret="$MP_WEBHOOK"
+    cinza "  Credenciais do Mercado Pago reaproveitadas do Secrets Manager."
+  fi
+  unset MP_SEGREDO MP_TOKEN MP_WEBHOOK
+fi
+
+if [ -z "${TF_VAR_mercadopago_access_token:-}" ]; then
+  amarelo "  Sem credenciais do Mercado Pago: o segredo tc-grupo160/$AMBIENTE/mercadopago fica vazio."
+  cinza   "  O pagamento simulado funciona. Para o Checkout Pro, carregue e rode de novo:"
+  cinza   "    read -rsp 'Access token: ' TF_VAR_mercadopago_access_token && echo && export TF_VAR_mercadopago_access_token"
+  cinza   "    read -rsp 'Webhook secret: ' TF_VAR_mercadopago_webhook_secret && echo && export TF_VAR_mercadopago_webhook_secret"
+  cinza   "  As credenciais de teste estao com quem cuida da F4-06 (issue #137)."
+fi
+
 # shellcheck disable=SC2086
 terraform -chdir="$K8S/infra" apply -auto-approve -input=false \
   -var-file="inventories/$AMBIENTE/terraform.tfvars" $VAR_LAMBDAS $VAR_DATADOG
