@@ -56,7 +56,7 @@ APP="$RAIZ/tech-challenge-oficina-mecanica"
 BILLING="$RAIZ/tech-challenge-oficina-mecanica-billing"
 EXECUCAO="$RAIZ/tech-challenge-oficina-mecanica-execucao"
 
-TOTAL=9
+TOTAL=10
 # Com --so-infra a etapa 2 e pulada, mas o fluxo vai ate a 6.
 [ "$SO_INFRA" -eq 1 ] && TOTAL=6
 
@@ -463,9 +463,73 @@ kubectl rollout status deployment/oficina-mecanica-api \
   --namespace oficina-mecanica --timeout=420s
 verde "  API no ar."
 
+# ------------------------------------------------------ Billing e Execucao
+#
+# O mesmo deploy que a pipeline reutilizavel faz (tech-challenge-pipelines,
+# F4-08), a partir das pastas locais: imagem no ECR com o SHA do repositorio,
+# Secret montado do Secrets Manager e os manifests k8s/ de cada servico.
+#
+# As chaves do Secret sao as do segredo de mensageria da F4-11 e as mesmas do
+# input `segredos` da pipeline de cada servico (F4-38). DynamoDB do Billing e
+# RDS da Execucao entram aqui quando a F4-13 e a F4-12 existirem.
+#
+# Rollout que nao fica pronto so gera aviso, sem parar o script: enquanto o
+# banco da Execucao nao existir, a readiness dela (que testa o banco) nunca
+# passa, e isso nao pode impedir o OS Service e o teste de fumaca.
+
+etapa 9 "$TOTAL" "Billing e Execucao no cluster"
+REGISTRY="${ECR%%/*}"
+
+deploy_servico() {
+  local servico="$1" pasta="$2"
+  local nome="oficina-mecanica-${servico}"
+  local imagem="${REGISTRY}/tc-grupo160-${AMBIENTE}-${servico}"
+  local sha segredo json chave valor tmp
+  local args=()
+
+  sha="$(git -C "$pasta" rev-parse --short=12 HEAD)"
+  docker build -q -f "$pasta/docker/backend/Dockerfile" \
+    -t "${imagem}:${sha}" -t "${imagem}:latest" "$pasta" >/dev/null
+  docker push -q "${imagem}:${sha}" >/dev/null
+  docker push -q "${imagem}:latest" >/dev/null
+
+  segredo="tc-grupo160/${SUFIXO}/${servico}/messaging"
+  json="$(aws secretsmanager get-secret-value --secret-id "$segredo" --region "$REGIAO" \
+    --query SecretString --output text)"
+  for chave in Messaging__EventTopicArn Messaging__CommandsQueueUrl Messaging__OsEventsQueueUrl; do
+    valor="$(printf '%s\n' "$json" | sed -n "s/.*\"$chave\":\"\\([^\"]*\\)\".*/\\1/p")"
+    if [ -z "$valor" ]; then
+      vermelho "ERRO: $chave ausente em $segredo."
+      exit 1
+    fi
+    args+=(--from-literal="${chave}=${valor}")
+  done
+  kubectl create secret generic "${nome}-secret" --namespace oficina-mecanica \
+    "${args[@]}" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+
+  tmp="$(mktemp -d)"
+  cp -r "$pasta/k8s/." "$tmp/"
+  # Aspas no newTag pelo mesmo motivo do OS Service: SHA so de algarismos.
+  sed -i "s|newTag: .*|newTag: \"${sha}\"|; s|newName: .*|newName: ${imagem}|" "$tmp/kustomization.yaml"
+  grep -rl "__AMBIENTE__" "$tmp" | xargs -r sed -i "s|__AMBIENTE__|${AMBIENTE}|g"
+  kubectl apply -k "$tmp" >/dev/null
+  rm -rf "$tmp"
+
+  if kubectl rollout status "deployment/$nome" --namespace oficina-mecanica --timeout=300s >/dev/null 2>&1; then
+    verde "  $nome no ar."
+  else
+    amarelo "  $nome nao ficou pronto em 5 min. Diagnostico:"
+    cinza   "    kubectl describe pods -n oficina-mecanica -l app=$nome | tail -30"
+    cinza   "    kubectl logs -n oficina-mecanica -l app=$nome --tail=80"
+  fi
+}
+
+deploy_servico billing  "$BILLING"
+deploy_servico execucao "$EXECUCAO"
+
 # ============================================================= verificacao
 
-etapa 9 "$TOTAL" "Teste de fumaca"
+etapa 10 "$TOTAL" "Teste de fumaca"
 sleep 10
 CODIGO="$(curl -s -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/auth" \
   -H 'Content-Type: application/json' -d '{"documento":"476.548.668-01"}' || echo 000)"
