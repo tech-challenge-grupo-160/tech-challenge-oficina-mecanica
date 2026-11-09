@@ -87,7 +87,8 @@ if [ "$SEM_PERGUNTAR" -eq 0 ]; then
   amarelo "Isto cria infraestrutura que COBRA:"
   echo "  - cluster EKS       ~US\$ 2,40/dia (nao para com a sessao do lab)"
   echo "  - NAT Gateway       ~US\$ 1,08/dia"
-  echo "  - RDS multi-AZ      ~US\$ 0,90/dia"
+  echo "  - RDS multi-AZ (OS) ~US\$ 0,90/dia"
+  echo "  - RDS da Execucao   ~US\$ 0,45/dia (Single-AZ em dev e hom)"
   echo "  - ALB               ~US\$ 0,54/dia"
   echo "  - SNS/SQS           cobranca por uso"
   echo
@@ -470,12 +471,12 @@ verde "  API no ar."
 # Secret montado do Secrets Manager e os manifests k8s/ de cada servico.
 #
 # As chaves do Secret sao as do segredo de mensageria da F4-11 e as mesmas do
-# input `segredos` da pipeline de cada servico (F4-38). DynamoDB do Billing e
-# RDS da Execucao entram aqui quando a F4-13 e a F4-12 existirem.
+# input `segredos` da pipeline de cada servico (F4-38). A Execucao recebe
+# tambem a connection string do RDS proprio (F4-12), aplicado na etapa 4 pelo
+# infra-database. O DynamoDB do Billing entra quando a F4-13 existir.
 #
-# Rollout que nao fica pronto so gera aviso, sem parar o script: enquanto o
-# banco da Execucao nao existir, a readiness dela (que testa o banco) nunca
-# passa, e isso nao pode impedir o OS Service e o teste de fumaca.
+# Rollout que nao fica pronto so gera aviso, sem parar o script: um servico
+# fora do ar nao pode impedir o OS Service e o teste de fumaca.
 
 etapa 9 "$TOTAL" "Billing e Execucao no cluster"
 REGISTRY="${ECR%%/*}"
@@ -504,6 +505,20 @@ deploy_servico() {
     fi
     args+=(--from-literal="${chave}=${valor}")
   done
+
+  # So a Execucao tem banco relacional proprio, e so ela recebe esta credencial.
+  if [ "$servico" = "execucao" ]; then
+    segredo="tc-grupo160/${SUFIXO}/execucao/banco"
+    json="$(aws secretsmanager get-secret-value --secret-id "$segredo" --region "$REGIAO" \
+      --query SecretString --output text)"
+    valor="$(printf '%s\n' "$json" | sed -n 's/.*"connectionString":"\([^"]*\)".*/\1/p')"
+    if [ -z "$valor" ]; then
+      vermelho "ERRO: connectionString ausente em $segredo."
+      exit 1
+    fi
+    args+=(--from-literal="ConnectionStrings__DefaultConnection=${valor}")
+  fi
+
   kubectl create secret generic "${nome}-secret" --namespace oficina-mecanica \
     "${args[@]}" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 
