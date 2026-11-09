@@ -2,7 +2,9 @@
 
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=tech-challenge-grupo-160_tech-challenge-oficina-mecanica&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=tech-challenge-grupo-160_tech-challenge-oficina-mecanica) [![Cobertura](https://sonarcloud.io/api/project_badges/measure?project=tech-challenge-grupo-160_tech-challenge-oficina-mecanica&metric=coverage)](https://sonarcloud.io/summary/overall?id=tech-challenge-grupo-160_tech-challenge-oficina-mecanica) [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=tech-challenge-grupo-160_tech-challenge-oficina-mecanica&metric=bugs)](https://sonarcloud.io/summary/overall?id=tech-challenge-grupo-160_tech-challenge-oficina-mecanica) [![Vulnerabilidades](https://sonarcloud.io/api/project_badges/measure?project=tech-challenge-grupo-160_tech-challenge-oficina-mecanica&metric=vulnerabilities)](https://sonarcloud.io/summary/overall?id=tech-challenge-grupo-160_tech-challenge-oficina-mecanica)
 
-API REST para operação de oficina mecânica com foco em clientes, veículos, catálogo de serviços e peças, autenticação JWT e fluxo completo de ordens de serviço. 
+API REST do **OS Service** da oficina mecânica. O serviço mantém clientes,
+veículos e ordens de serviço e orquestra a Saga distribuída com os
+microsserviços de Execução e Billing.
 
 ## Visão geral
 
@@ -10,17 +12,18 @@ O domínio principal do projeto é a ordem de serviço. A API permite:
 
 - cadastrar e consultar clientes;
 - vincular veículos a clientes;
-- manter catálogo de serviços e peças;
-- abrir ordens de serviço;
-- montar orçamento com serviços e peças;
-- controlar o fluxo operacional da OS;
+- abrir ordens de serviço com snapshots dos itens consultados na Execução;
+- controlar o estado global e o histórico da OS;
+- orquestrar diagnóstico, orçamento, reserva, reparo e pagamento por mensagens;
 - monitorar tempo de execução e tempo médio de finalização;
-- validar estoque antes de iniciar execução;
-- gerar e acompanhar pedidos de compra;
-- consultar histórico e movimentações de estoque;
+- registrar notificações simuladas ao cliente;
 - autenticar usuários com JWT.
 
-Na transicao para o OS Service, a abertura mantem o contrato existente: exige ao menos um servico e aceita pecas opcionais. A consulta de itens passa por `ICatalogoExecucao` e pelo cliente HTTP resiliente do microsservico de Execucao. Consulte [Abertura do OS Service](docs/OS-SERVICE-ABERTURA.md).
+Catálogo, diagnóstico, estoque e reparo pertencem à Execução. Orçamento e
+pagamento pertencem ao Billing. O OS Service não mantém tabelas nem endpoints
+locais para essas responsabilidades. Na abertura, ele exige ao menos um serviço,
+aceita peças opcionais, consulta `ICatalogoExecucao` por HTTP e persiste somente
+os snapshots comerciais necessários à OS.
 
 Ao iniciar o diagnostico, o OS Service responde `202 Accepted`, persiste o estado
 da Saga e um comando na Outbox e o publica na fila SQS da Execucao. A Execucao
@@ -29,9 +32,10 @@ SNS. Somente ao consumir esse evento pela sua fila SQS o OS Service altera a OS
 para `EmDiagnostico`. Ao concluir o resultado tecnico, a Execucao publica
 `DiagnosticoConcluidoMessage`; o OS Service avanca para `AguardandoOrcamento` e
 envia `GerarOrcamentoMessage` para a fila do Billing. Depois que o Billing
-publica `OrcamentoGeradoMessage`, o OS Service avanca para
-`AguardandoAprovacao`. O ambiente Docker inclui LocalStack, filas, filtros de
-assinatura, topico e DLQs.
+publica `OrcamentoGeradoMessage`, o OS Service avança para
+`AguardandoAprovacao`. Aprovação, reserva, reparo e pagamento seguem pelo mesmo
+modelo assíncrono, com Inbox/Outbox e consumidores idempotentes. O ambiente
+Docker inclui LocalStack, filas, filtros de assinatura, tópico e DLQs.
 
 ## Stack
 
@@ -177,5 +181,7 @@ por variáveis como `Logging__LogLevel__Default`.
 ## Observações
 
 - Swagger só é exposto em `Development`.
-- `Clientes`, `Veiculos`, `Servicos`, `Pecas`, `OrdensDeServico` e `PedidosCompra` exigem token JWT.
-- `Auth` administrativo permanece na API. O acompanhamento e a resposta da OS sao acessados pelo cliente com JWT emitido pela Lambda.
+- As rotas de clientes, veículos e ordens de serviço exigem token JWT.
+- O `AuthController` administrativo permanece para o fluxo local de funcionários.
+- A autenticação externa por CPF e o acesso do cliente continuam sob
+  responsabilidade da Lambda/API Gateway.

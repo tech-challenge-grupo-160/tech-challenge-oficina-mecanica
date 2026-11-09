@@ -50,8 +50,6 @@ public static class DependencyInjection
 
         services.AddScoped<IClienteRepository, ClienteRepository>();
         services.AddScoped<IVeiculoRepository, VeiculoRepository>();
-        services.AddScoped<IServicoRepository, ServicoRepository>();
-        services.AddScoped<IPecaRepository, PecaRepository>();
         var execucaoBaseUrl = configuration["Services:Execucao:BaseUrl"]
             ?? "http://localhost:8082";
         services
@@ -87,8 +85,6 @@ public static class DependencyInjection
         services.AddScoped<IOrdemDeServicoRepository, OrdemDeServicoRepository>();
         services.AddScoped<IOrdemServicoHistoricoRepository, OrdemServicoHistoricoRepository>();
         services.AddScoped<INotificacaoClienteRepository, NotificacaoClienteRepository>();
-        services.AddScoped<IPedidoCompraRepository, PedidoCompraRepository>();
-        services.AddScoped<IMovimentacaoEstoqueRepository, MovimentacaoEstoqueRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<ITransactionManager, EfTransactionManager>();
         services.AddSingleton<IClock, BrazilClock>();

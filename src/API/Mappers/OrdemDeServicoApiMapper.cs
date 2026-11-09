@@ -40,37 +40,6 @@ public static class OrdemDeServicoApiMapper
         };
     }
 
-    public static ResponderOrdemDeServicoCommand ToCommand(
-        this ResponderOrdemDeServicoRequest request,
-        int id)
-    {
-        return new ResponderOrdemDeServicoCommand
-        {
-            Id = id,
-            Aprovado = request.Aprovado,
-            MotivoRecusa = request.MotivoRecusa
-        };
-    }
-
-    public static AdicionarServicoAOrdemCommand ToCommand(this AdicionarServicoAOrdemRequest request, int id)
-    {
-        return new AdicionarServicoAOrdemCommand
-        {
-            OrdemDeServicoId = id,
-            ServicoId = request.ServicoId
-        };
-    }
-
-    public static AdicionarPecaAOrdemCommand ToCommand(this AdicionarPecaAOrdemRequest request, int id)
-    {
-        return new AdicionarPecaAOrdemCommand
-        {
-            OrdemDeServicoId = id,
-            PecaId = request.PecaId,
-            Quantidade = request.Quantidade
-        };
-    }
-
     public static ObterOrdemDeServicoPorIdQuery ToOrdemDeServicoQueryById(this int id)
     {
         return new ObterOrdemDeServicoPorIdQuery { Id = id };
@@ -84,11 +53,6 @@ public static class OrdemDeServicoApiMapper
     public static ObterNotificacoesOrdemDeServicoQuery ToNotificacoesOrdemDeServicoQuery(this int id)
     {
         return new ObterNotificacoesOrdemDeServicoQuery { Id = id };
-    }
-
-    public static ObterMovimentacoesEstoqueOrdemDeServicoQuery ToMovimentacoesEstoqueOrdemDeServicoQuery(this int id)
-    {
-        return new ObterMovimentacoesEstoqueOrdemDeServicoQuery { Id = id };
     }
 
     public static ObterMonitoramentoOrdemDeServicoQuery ToMonitoramentoOrdemDeServicoQuery(this int id)
@@ -106,52 +70,9 @@ public static class OrdemDeServicoApiMapper
         return new IniciarDiagnosticoCommand { Id = id };
     }
 
-    public static FinalizarDiagnosticoCommand ToFinalizarDiagnosticoCommand(this int id)
-    {
-        return new FinalizarDiagnosticoCommand { Id = id };
-    }
-
-    public static AprovarOrdemDeServicoCommand ToAprovarOrdemDeServicoCommand(this int id)
-    {
-        return new AprovarOrdemDeServicoCommand { Id = id };
-    }
-
-    public static LiberarExecucaoCommand ToLiberarExecucaoCommand(this int id)
-    {
-        return new LiberarExecucaoCommand { Id = id };
-    }
-
-    public static FinalizarOrdemDeServicoCommand ToFinalizarOrdemDeServicoCommand(this int id)
-    {
-        return new FinalizarOrdemDeServicoCommand { Id = id };
-    }
-
     public static EntregarOrdemDeServicoCommand ToEntregarOrdemDeServicoCommand(this int id)
     {
         return new EntregarOrdemDeServicoCommand { Id = id };
-    }
-
-    public static AvancarStatusOrdemDeServicoCommand ToAvancarStatusOrdemDeServicoCommand(this string numero)
-    {
-        return new AvancarStatusOrdemDeServicoCommand { Numero = numero };
-    }
-
-    public static RemoverServicoDaOrdemCommand ToRemoverServicoDaOrdemCommand(this int id, int servicoId)
-    {
-        return new RemoverServicoDaOrdemCommand
-        {
-            OrdemDeServicoId = id,
-            ServicoId = servicoId
-        };
-    }
-
-    public static RemoverPecaDaOrdemCommand ToRemoverPecaDaOrdemCommand(this int id, int pecaId)
-    {
-        return new RemoverPecaDaOrdemCommand
-        {
-            OrdemDeServicoId = id,
-            PecaId = pecaId
-        };
     }
 
     public static OrdemDeServicoResponse ToResponse(this OrdemDeServicoResult result)
@@ -238,38 +159,6 @@ public static class OrdemDeServicoApiMapper
         };
     }
 
-    public static MovimentacaoEstoqueResponse ToResponse(this MovimentacaoEstoqueResult result)
-    {
-        return new MovimentacaoEstoqueResponse
-        {
-            Id = result.Id,
-            PecaId = result.PecaId,
-            OrdemDeServicoId = result.OrdemDeServicoId,
-            PedidoCompraId = result.PedidoCompraId,
-            NomePeca = result.NomePeca,
-            TipoMovimentacao = result.TipoMovimentacao,
-            Quantidade = result.Quantidade,
-            QuantidadeAnterior = result.QuantidadeAnterior,
-            QuantidadePosterior = result.QuantidadePosterior,
-            Descricao = result.Descricao,
-            DataMovimentacao = result.DataMovimentacao
-        };
-    }
-
-    public static MovimentacoesEstoquePorPecaResponse ToResponse(this MovimentacoesEstoquePorPecaResult result)
-    {
-        return new MovimentacoesEstoquePorPecaResponse
-        {
-            PecaId = result.PecaId,
-            NomePeca = result.NomePeca,
-            MarcaPeca = result.MarcaPeca,
-            ModeloPeca = result.ModeloPeca,
-            QuantidadeNaOrdem = result.QuantidadeNaOrdem,
-            TotalMovimentacoes = result.TotalMovimentacoes,
-            Movimentacoes = result.Movimentacoes.Select(movimentacao => movimentacao.ToResponse()).ToList()
-        };
-    }
-
     public static MonitoramentoOrdemDeServicoResponse ToResponse(this MonitoramentoOrdemDeServicoResult result)
     {
         return new MonitoramentoOrdemDeServicoResponse
@@ -335,11 +224,6 @@ public static class OrdemDeServicoApiMapper
     public static IEnumerable<NotificacaoClienteResponse> ToResponse(this IEnumerable<NotificacaoClienteResult> results)
     {
         return results.Select(notificacao => notificacao.ToResponse()).ToArray();
-    }
-
-    public static IEnumerable<MovimentacoesEstoquePorPecaResponse> ToResponse(this IEnumerable<MovimentacoesEstoquePorPecaResult> results)
-    {
-        return results.Select(movimentacao => movimentacao.ToResponse()).ToArray();
     }
 
     public static PagedResponse<OrdemDeServicoResponse> ToResponse(this PagedResultDto<OrdemDeServicoResult> result)

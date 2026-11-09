@@ -1,544 +1,156 @@
-# Arquitetura
+# Arquitetura do OS Service
 
-## Visao geral
+Última atualização: 2026-11-08
 
-A solucao e uma API REST em Clean Architecture, organizada por camadas e orientada a casos de uso. A camada `API` expoe contratos HTTP e delega a execucao para a `Application` via MediatR. A `Application` implementa CQRS separando Commands, Queries, Handlers, Validators e Results. A `Domain` concentra entidades, value objects, enums e contratos de repositorio. A `Infrastructure` implementa os detalhes tecnicos, como Entity Framework Core, PostgreSQL, JWT, clock e repositorios concretos.
+Este repositório contém o **OS Service**, dono do agregado de ordem de serviço e
+orquestrador da Saga da oficina. Ele deixou de ser o monólito da Fase 3: catálogo,
+diagnóstico, estoque, reparo, orçamento e pagamento foram separados em serviços
+independentes.
 
-O dominio principal e a ordem de servico, integrado a clientes, veiculos, servicos, pecas, estoque, notificacoes e pedidos de compra.
+## Limites dos microsserviços
 
-A primeira etapa da extracao para o OS Service preserva a abertura com pelo menos um servico e pecas opcionais. O caso de uso consulta `ICatalogoExecucao` por um cliente HTTP resiliente e recebe somente os snapshots necessarios de servico e peca, sem consultar ou alterar estoque. As escritas da OS, itens, historico e notificacao participam da mesma transacao local. O adaptador local permanece restrito aos testes do legado. As chaves estrangeiras locais para catalogo ainda permanecem nesta etapa e serao removidas junto com a extracao das jornadas de diagnostico e estoque.
+| Serviço | Responsabilidades | Persistência |
+|---|---|---|
+| OS Service | Clientes, veículos, OS, estado global, histórico, notificações e orquestração | PostgreSQL próprio |
+| Execução | Catálogo, diagnóstico, peças, estoque, reserva e reparo | PostgreSQL próprio |
+| Billing | Orçamento e pagamento | DynamoDB próprio |
 
-O inicio do diagnostico e o primeiro passo implementado da Saga orquestrada. O OS
-Service valida a transicao e grava a Saga e o comando na Outbox na mesma transacao
-local. Um worker publica o comando na fila SQS da Execucao. A Execucao registra o
-comando na Inbox, cria o diagnostico e grava o evento `DiagnosticoIniciado` na sua
-Outbox em uma transacao; outro worker publica o evento no SNS. A fila SQS do OS
-Service recebe o evento, cuja Inbox impede duplicidade, e somente entao a OS e o
-historico mudam para `EmDiagnostico` e a Saga fica `Concluida`. As filas possuem
-DLQ e os contratos carregam `messageId`, `correlationId` e versao.
+Nenhum serviço acessa diretamente o banco de outro. Identificadores externos de
+serviços e peças aparecem na OS somente como parte de snapshots comerciais.
 
-Depois do registro e da conclusao do resultado tecnico, a Execucao grava
-`DiagnosticoConcluidoMessage` na Outbox e o publica no mesmo topico SNS. Uma
-segunda fila SQS, filtrada pelo tipo do evento, entrega a mensagem ao OS Service.
-O consumidor valida a Saga e usa Inbox antes de alterar a OS de `EmDiagnostico`
-para `AguardandoOrcamento`. Assim, o limite entre diagnostico e orcamento permanece
-assincrono e idempotente.
+## Comunicação
 
-## Camadas
+São usados dois estilos de comunicação, conforme a necessidade:
 
-```text
-API
-  Contratos HTTP, controllers, filtros, autenticacao, validacao de requests,
-  mappers de entrada/saida e composition root da aplicacao.
+- **HTTP síncrono:** operações que precisam de resposta imediata, como a consulta
+  em lote ao catálogo da Execução durante a abertura da OS;
+- **SNS + SQS assíncrono:** comandos e eventos da Saga, com LocalStack no ambiente
+  local, DLQs, Inbox para idempotência de consumo e Outbox para publicação
+  confiável.
 
-Application
-  Casos de uso com CQRS + MediatR, validators de commands/queries,
-  pipeline behaviors, results, DTOs, interfaces tecnicas e servicos de apoio.
+Uma resposta `202 Accepted` indica que o comando foi persistido e será processado
+assincronamente; ela não afirma que o microsserviço de destino já concluiu a ação.
 
-Domain
-  Entidades, value objects, enums, regras de negocio e contratos de repositorio.
-
-Infrastructure
-  DbContext, configuracoes EF Core, migrations, repositories, seed,
-  health checks, JWT, clock e transacoes.
-
-Shared
-  Helpers e utilitarios compartilhados sem dependencia das camadas externas.
-```
-
-## Diagrama de camadas
-
-```mermaid
-graph TB
-    subgraph Externo
-        HTTP["Cliente HTTP / Swagger"]
-        DB["PostgreSQL 16"]
-    end
-
-    subgraph "src/"
-        API["API<br/><small>Controllers, Requests, Responses<br/>Mappers, Filters, Bootstrap</small>"]
-        APP["Application<br/><small>Commands, Queries, Handlers<br/>Validators, Results, Services</small>"]
-        DOM["Domain<br/><small>Entities, Value Objects<br/>Enums, Repository Contracts</small>"]
-        INFRA["Infrastructure<br/><small>EF Core, Repositories<br/>Migrations, JWT, Clock</small>"]
-        SHARED["Shared<br/><small>Helpers, Log Templates</small>"]
-    end
-
-    HTTP -->|"HTTP Request"| API
-    API -->|"IMediator.Send()"| APP
-    APP -->|"Entities / Contracts"| DOM
-    INFRA -->|"Implements"| APP
-    INFRA -->|"Implements"| DOM
-    INFRA -->|"EF Core"| DB
-    API -.->|"Composition Root"| INFRA
-    APP -.->|"Helpers"| SHARED
-    API -.->|"Helpers"| SHARED
-
-    style DOM fill:#4a9eff,color:#fff
-    style APP fill:#34d399,color:#fff
-    style API fill:#f59e0b,color:#fff
-    style INFRA fill:#a78bfa,color:#fff
-    style SHARED fill:#94a3b8,color:#fff
-```
-
-## Dependencias entre projetos
+## Fluxo principal da Saga
 
 ```text
-API
-  -> Application
-  -> Infrastructure
-
-Infrastructure
-  -> Application
-  -> Domain
-
-Application
-  -> Domain
-
-Domain
-  -> sem dependencia de API, Application ou Infrastructure
+OS aberta
+  -> solicitar diagnóstico
+  -> diagnóstico iniciado
+  -> diagnóstico concluído
+  -> gerar orçamento
+  -> orçamento gerado
+  -> cliente aprova ou recusa
+  -> reservar peças (quando houver)
+  -> iniciar e concluir reparo
+  -> gerar e confirmar pagamento
+  -> entregar veículo
 ```
 
-A API referencia Infrastructure apenas no composition root para registrar implementacoes concretas. Controllers nao acessam `DbContext`, repositories concretos ou servicos de infraestrutura diretamente.
+O OS Service é o único serviço que altera o estado global da OS. Execução e
+Billing alteram seus próprios agregados e publicam os resultados; o OS Service
+consome esses eventos e aplica a transição correspondente.
 
-## Estrutura principal
+### Estados da OS
+
+```text
+Recebida
+  -> EmDiagnostico
+  -> AguardandoOrcamento
+  -> AguardandoAprovacao
+  -> EmExecucao
+  -> Finalizada
+  -> Entregue
+```
+
+Também existem os caminhos de `Cancelada` e `AguardandoEstoque`. A falta de
+estoque é uma resposta explícita da Execução e não deixa a Saga silenciosamente
+travada.
+
+## Abertura e snapshots
+
+A abertura preserva o contrato funcional da oficina:
+
+- exige ao menos um serviço;
+- aceita peças opcionais e suas quantidades;
+- valida cliente e veículo no banco do OS Service;
+- consulta serviços e peças na Execução pelo `ICatalogoExecucao`;
+- persiste na OS o ID externo, preço, tempo estimado e quantidade aplicáveis
+  naquele momento.
+
+As tabelas de itens da OS não possuem FK para um catálogo local. Dessa forma,
+uma alteração futura de preço ou descrição na Execução não altera retroativamente
+uma OS já aberta.
+
+## Persistência do OS Service
+
+O PostgreSQL deste serviço mantém somente dados pertencentes ao seu contexto:
+
+- `Cliente`;
+- `Veiculo`;
+- `OrdemServico`;
+- `OrdemServicoItemServico`;
+- `OrdemServicoItemPeca`;
+- `OrdemServicoHistorico`;
+- `NotificacaoCliente`;
+- `Usuario`;
+- `SagaInicioDiagnostico`;
+- `InboxMessage`;
+- `OutboxMessage`.
+
+As tabelas locais `Servico`, `Peca`, `MovimentacaoEstoque` e `PedidoCompra` foram
+removidas. Seus dados operacionais pertencem à Execução.
+
+## Organização do código
 
 ```text
 src/
-  API/
-    Bootstrap/
-    Controllers/
-    Filters/
-    Mappers/
-    ProblemDetails/
-    Requests/
-    Responses/
-    Services/
-    Validators/
-
-  Application/
-    Behaviors/
-    Commands/
-    Common/
-    DTOs/
-    Exceptions/
-    Handlers/
-    Interfaces/
-    Mappers/
-    Options/
-    Queries/
-    Results/
-    Security/
-    Services/
-    Validators/
-
-  Domain/
-    Entities/
-    Enums/
-    Repositories/
-    ValueObjects/
-
-  Infrastructure/
-    Data/
-      Configurations/
-      Seeders/
-    Extensions/
-    HealthChecks/
-    Logging/
-    Migrations/
-    Repositories/
-    Security/
-    Time/
-
-  Shared/
-    Helpers/
-    Logging/
+  API/              Controllers, contratos HTTP, mappers e bootstrap
+  Application/      Commands, queries, handlers, validators e portas
+  Domain/           Agregado da OS, clientes, veículos e regras de domínio
+  Infrastructure/   EF Core, PostgreSQL, HTTP resiliente e mensageria AWS
+  Shared/           Utilitários compartilhados e logging
 ```
 
-## Papel de cada pasta
-
-### `src/API`
-
-- `Bootstrap`: extensoes de inicializacao da API, como servicos, pipeline HTTP, Swagger, JWT, logging e banco.
-- `Controllers`: endpoints REST. Cada controller recebe `IMediator`, monta Commands/Queries e retorna Responses HTTP.
-- `Filters`: filtros globais. `DomainExceptionFilter` converte excecoes conhecidas em respostas padronizadas.
-- `Mappers`: conversoes entre `Request -> Command/Query` e `Result -> Response`.
-- `ProblemDetails`: modelo padronizado para erros HTTP.
-- `Requests`: contratos de entrada da API. Representam payloads e parametros HTTP, nao regras de negocio.
-- `Responses`: contratos de saida da API. Representam a forma publica retornada ao consumidor.
-- `Services`: implementacoes acopladas ao ASP.NET Core, como usuario autenticado via `HttpContext`.
-- `Validators`: validadores de requests HTTP usados pela integracao do FluentValidation com ASP.NET Core.
-
-### `src/Application`
-
-- `Behaviors`: pipelines do MediatR. Hoje `ValidationBehavior<TRequest,TResponse>` executa validadores antes do handler.
-- `Commands`: intencoes de escrita, como criar, atualizar, deletar, aprovar, liberar ou finalizar.
-- `Common`: abstracoes comuns da aplicacao, como `IClock`.
-- `DTOs`: modelos internos usados em casos de uso mais compostos.
-- `Exceptions`: excecoes previsiveis da aplicacao, convertidas pela API em respostas HTTP.
-- `Handlers`: implementacao dos casos de uso. Cada handler implementa `IRequestHandler<TRequest,TResponse>`.
-- `Interfaces`: contratos tecnicos consumidos pela aplicacao, como `ITransactionManager`.
-- `Mappers`: conversoes entre entidades de dominio, DTOs e Results.
-- `Options`: opcoes de configuracao consumidas pela aplicacao, como JWT.
-- `Queries`: intencoes de leitura. Nao devem alterar estado.
-- `Results`: modelos de retorno dos casos de uso. Nao sao contratos HTTP.
-- `Security`: abstracoes e resultados relacionados a autenticacao/autorizacao.
-- `Services`: servicos de apoio da aplicacao para regras que coordenam mais de uma operacao, especialmente em ordens de servico.
-- `Validators`: validadores de Commands e Queries, executados pelo `ValidationBehavior`.
-
-### `src/Domain`
-
-- `Entities`: entidades e agregados com comportamento de negocio.
-- `Enums`: estados e classificacoes do dominio.
-- `Repositories`: contratos de persistencia usados pelos handlers e implementados pela Infrastructure.
-- `ValueObjects`: objetos de valor como `Documento`, `Telefone` e `PlacaVeiculo`.
-
-### `src/Infrastructure`
-
-- `Data`: `OficinaDbContext`, configuracoes EF Core e seeders.
-- `Data/Configurations`: mapeamentos por entidade com `IEntityTypeConfiguration<T>`.
-- `Extensions`: extensoes de host, incluindo migracao e seed no startup.
-- `HealthChecks`: configuracoes de health checks.
-- `Logging`: formatacao de log de console.
-- `Migrations`: migrations do Entity Framework Core.
-- `Repositories`: implementacoes concretas dos contratos de `Domain.Repositories`.
-- `Security`: implementacao tecnica de geracao de token JWT.
-- `Time`: implementacao concreta de relogio da aplicacao.
-
-### `src/Shared`
-
-- `Helpers`: funcoes utilitarias para documentos, telefone, placa, strings e datas.
-- `Logging`: templates padronizados de log compartilhados.
-
-## Clean Architecture aplicada
-
-A regra principal e manter dependencias apontando para dentro:
+As dependências apontam para dentro:
 
 ```text
-HTTP / ASP.NET Core / EF Core / PostgreSQL / JWT
-        -> API e Infrastructure
-        -> Application
-        -> Domain
+API -> Application -> Domain
+API -> Infrastructure (somente composition root)
+Infrastructure -> Application + Domain
 ```
 
-Na pratica:
-
-- controllers conhecem `IMediator`, requests, responses e mappers da API;
-- controllers nao conhecem handlers concretos, repositories ou `DbContext`;
-- handlers conhecem Commands/Queries, Results, entidades, value objects e contratos de repositorio;
-- handlers nao conhecem controllers, requests HTTP ou responses HTTP;
-- entidades de dominio nao conhecem MediatR, EF Core, ASP.NET Core ou PostgreSQL;
-- Infrastructure conhece os contratos internos para fornecer implementacoes concretas.
-
-## CQRS com MediatR
-
-CQRS significa separar comandos de escrita de consultas de leitura:
-
-- `Commands`: requests que alteram estado. Ex.: `CriarClienteCommand`, `AtualizarPecaCommand`, `LiberarExecucaoCommand`.
-- `Queries`: requests que apenas consultam dados. Ex.: `ListarClientesQuery`, `ObterOrdemDeServicoPorIdQuery`, `ObterAcompanhamentoOSQuery`.
-
-MediatR e o mediador entre a API e os casos de uso:
-
-```text
-Controller -> IMediator.Send(command/query) -> Handler
-```
-
-Cada Command ou Query implementa `IRequest<TResponse>`. Cada Handler implementa `IRequestHandler<TRequest,TResponse>`.
-
-Exemplo real simplificado:
-
-```text
-CriarClienteCommand : IRequest<ClienteResult>
-CriarClienteCommandHandler : IRequestHandler<CriarClienteCommand, ClienteResult>
-```
-
-Para operacoes sem corpo de retorno, o projeto usa `Unit`, por exemplo `DeletarClienteCommand : IRequest<Unit>`.
-
-## Fluxo Request -> Command/Query -> Handler -> Result -> Response
-
-O fluxo padrao implementado e:
-
-```mermaid
-sequenceDiagram
-    participant C as Cliente HTTP
-    participant CT as Controller
-    participant M as IMediator
-    participant VB as ValidationBehavior
-    participant H as Handler
-    participant D as Domain / Repository
-
-    C->>CT: HTTP Request
-    CT->>CT: API Mapper (Request → Command/Query)
-    CT->>M: Send(command/query)
-    M->>VB: Pipeline
-    VB->>VB: Executa validators
-    VB->>H: Handle()
-    H->>D: Entidades, Repositories, Services
-    D-->>H: Dados persistidos/consultados
-    H-->>M: Result
-    M-->>CT: Result
-    CT->>CT: API Mapper (Result → Response)
-    CT-->>C: HTTP Response
-```
-
-Exemplo com criacao de cliente:
-
-```text
-POST /api/v1/clientes
-  -> CriarClienteRequest
-  -> ClienteApiMapper.ToCommand()
-  -> CriarClienteCommand
-  -> IMediator.Send(command)
-  -> CriarClienteCommandValidator
-  -> CriarClienteCommandHandler
-  -> Cliente.Criar(...)
-  -> IClienteRepository.CriarAsync(...)
-  -> ClienteResult
-  -> ClienteApiMapper.ToResponse()
-  -> 201 Created + ClienteResponse
-```
-
-Papel de cada objeto:
-
-- `Request`: contrato HTTP de entrada da API. Deve refletir o payload externo.
-- `Command`: intencao de alterar estado. Pertence a Application e representa um caso de uso de escrita.
-- `Query`: intencao de consulta. Pertence a Application e nao deve alterar estado.
-- `Handler`: executa o caso de uso, aplica regras, chama dominio, repositories e servicos de apoio.
-- `Result`: retorno interno da Application. Nao deve depender de ASP.NET Core.
-- `Response`: contrato HTTP de saida da API. Deve ser estavel para consumidores externos.
-
-## Validacao
-
-Existem dois pontos de validacao:
-
-```text
-API Validators
-  -> validam Requests HTTP antes ou durante o model binding.
-
-Application Validators
-  -> validam Commands e Queries pelo ValidationBehavior do MediatR.
-```
-
-Regras de formato e obrigatoriedade ficam nos validators. Regras de negocio e invariantes ficam nas entidades, value objects e handlers.
-
-## Composition root
-
-`Program.cs` esta enxuto e delega o registro por camada:
-
-```csharp
-builder.Services.AddApiServices(builder.Configuration);
-builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
-```
-
-- `AddApiServices`: controllers, filtros, ProblemDetails, validators de requests, JWT, Swagger, CORS e usuario autenticado.
-- `AddApplication`: MediatR, `ValidationBehavior`, validators de Application e servicos de apoio.
-- `AddInfrastructure`: DbContext, PostgreSQL/InMemory, health checks, repositories, transacao, clock e JWT.
-
-## Dominio de ordem de servico
-
-`OrdemDeServico` e o agregado central. Ele concentra fluxo de status, composicao de orcamento, validacoes operacionais e bloqueio por falta de estoque.
-
-### Maquina de estados da OS
-
-```mermaid
-stateDiagram-v2
-    [*] --> Recebida : Criar OS
-    Recebida --> EmDiagnostico : Iniciar diagnostico
-    EmDiagnostico --> AguardandoAprovacao : Finalizar diagnostico
-    AguardandoAprovacao --> EmExecucao : Aprovar (estoque OK)
-    AguardandoAprovacao --> AguardandoEstoque : Aprovar (falta estoque)
-    AguardandoEstoque --> EmExecucao : Liberar execucao
-    EmExecucao --> Finalizada : Finalizar servico
-    Finalizada --> Finalizada : Registrar pagamento
-    Finalizada --> Entregue : Entregar veiculo
-    Entregue --> [*]
-
-    Recebida --> Cancelada : Cancelar
-    EmDiagnostico --> Cancelada : Cancelar
-    AguardandoAprovacao --> Cancelada : Cancelar
-    AguardandoEstoque --> Cancelada : Cancelar
-    Cancelada --> [*]
-```
-
-### Regras de composicao do orcamento
-
-- servicos so podem ser adicionados ou removidos em `EmDiagnostico`;
-- pecas podem ser adicionadas em `EmDiagnostico`, `AguardandoAprovacao` e `AguardandoEstoque`;
-- pecas so podem ser removidas em `EmDiagnostico`;
-- a transicao para `EmExecucao` depende de validacao de estoque com sucesso;
-- se faltar estoque, a OS vai para `AguardandoEstoque` e pode gerar pedido de compra.
-
-## Modelo de entidades
-
-```mermaid
-erDiagram
-    Cliente ||--o{ Veiculo : possui
-    Cliente ||--o{ OrdemDeServico : solicita
-    Veiculo ||--o{ OrdemDeServico : vinculada
-
-    OrdemDeServico ||--o{ OrdemDeServicoServico : contem
-    OrdemDeServico ||--o{ OrdemDeServicoPeca : contem
-    OrdemDeServico ||--o{ OrdemServicoHistorico : registra
-    OrdemDeServico ||--o{ NotificacaoCliente : notifica
-    OrdemDeServico ||--o{ PedidoCompra : gera
-
-    Servico ||--o{ OrdemDeServicoServico : referenciado
-    Peca ||--o{ OrdemDeServicoPeca : referenciada
-    Peca ||--o{ PedidoCompra : solicitada
-    Peca ||--o{ MovimentacaoEstoque : movimenta
-
-    Cliente {
-        int Id PK
-        string Nome
-        Documento CpfCnpj
-        Telefone Telefone
-        Email Email
-        DateTime DataCadastro
-    }
-
-    Veiculo {
-        int Id PK
-        int ClienteId FK
-        PlacaVeiculo Placa
-        string Marca
-        string Modelo
-        int Ano
-    }
-
-    OrdemDeServico {
-        int Id PK
-        string Numero
-        string CodigoAcompanhamento
-        int ClienteId FK
-        int VeiculoId FK
-        string DescricaoSolicitacao
-        StatusOrdemDeServico Status
-        decimal ValorTotal
-        DateTime DataAbertura
-    }
-
-    Servico {
-        int Id PK
-        string Nome
-        string Descricao
-        decimal Preco
-        int TempoEstimado
-    }
-
-    Peca {
-        int Id PK
-        string Nome
-        string Marca
-        string Modelo
-        decimal Preco
-        int QuantidadeEstoque
-    }
-
-    OrdemDeServicoServico {
-        int OrdemDeServicoId FK
-        int ServicoId FK
-        decimal Preco
-        int TempoEstimado
-    }
-
-    OrdemDeServicoPeca {
-        int OrdemDeServicoId FK
-        int PecaId FK
-        int Quantidade
-        decimal Preco
-    }
-
-    OrdemServicoHistorico {
-        int Id PK
-        int OrdemDeServicoId FK
-        string TipoEvento
-        string Descricao
-        DateTime DataEvento
-    }
-
-    NotificacaoCliente {
-        int Id PK
-        int OrdemDeServicoId FK
-        string Canal
-        string TipoNotificacao
-        string Mensagem
-        DateTime DataNotificacao
-    }
-
-    PedidoCompra {
-        int Id PK
-        int OrdemDeServicoId FK
-        int PecaId FK
-        int QuantidadeSolicitada
-        int QuantidadeRecebida
-        string Status
-    }
-
-    MovimentacaoEstoque {
-        int Id PK
-        int PecaId FK
-        int OrdemDeServicoId FK
-        string TipoMovimentacao
-        int Quantidade
-        DateTime DataMovimentacao
-    }
-
-    Usuario {
-        int Id PK
-        string Username
-        string SenhaHash
-        string Role
-    }
-```
-
-## Persistencia
-
-Banco principal:
-
-- PostgreSQL 16
-
-Banco para testes:
-
-- EF Core InMemory quando `Environment=Testing` ou connection string `UseInMemory`.
-
-Migrations:
-
-- mantidas em `src/Infrastructure/Migrations`;
-- aplicadas automaticamente no startup fora do ambiente de testes.
-
-O PostgreSQL foi escolhido por ser relacional, transacional e adequado ao dominio, que possui relacionamentos fortes entre clientes, veiculos, ordens de servico, servicos, pecas, movimentacoes de estoque, notificacoes e pedidos de compra. O controle transacional e importante para operacoes que envolvem validacao de estoque, mudanca de status, historico e criacao de pedidos de compra.
-
-## Seguranca
-
-Autenticacao:
-
-- JWT Bearer;
-- login implementado por `LoginCommand` e `LoginCommandHandler`;
-- geracao concreta do token em `JwtTokenGenerator`, na Infrastructure.
-
-Estado atual da autorizacao:
-
-- protegidos: `Clientes`, `Veiculos`, `Servicos`, `Pecas`, `OrdensDeServico`, `PedidosCompra`;
-- publicos: `Auth`; os endpoints de acompanhamento e resposta da OS sao acessados pelo cliente autenticado com JWT.
-
-## Observabilidade
-
-Health checks expostos:
-
-- `/health`
-- `/health/live`
-- `/health/ready`
-
-Logging:
-
-- console logging;
-- templates padronizados em `Shared/Logging`;
-- logs em handlers e startup.
-
-## Testabilidade
-
-O projeto possui:
-
-- testes unitarios focados em handlers, behaviors e registros de dependency injection;
-- testes de integracao focados em controllers/endpoints;
-- suporte a banco em memoria para cenarios de teste.
+Controllers não acessam `DbContext` ou repositórios concretos. Casos de uso são
+despachados por MediatR, regras permanecem no domínio e adaptadores externos são
+registrados pela Infrastructure.
+
+## Consistência e resiliência
+
+- cada microsserviço confirma apenas sua própria transação local;
+- comandos e eventos carregam `messageId` e `correlationId`;
+- Inbox impede o reprocessamento do mesmo evento;
+- Outbox evita a perda da mensagem entre persistência e publicação;
+- consumidores toleram redelivery e aplicam transições idempotentes;
+- retries e circuit breaker protegem a consulta HTTP ao catálogo;
+- mensagens não processáveis seguem para DLQ;
+- histórico da OS registra as mudanças relevantes da Saga.
+
+Não existe transação ACID distribuída. A consistência entre serviços é eventual e
+as falhas de negócio são representadas por estados ou eventos explícitos.
+
+## Autenticação
+
+O `AuthController` permanece para autenticação local de funcionários. Na AWS, a
+autenticação externa de clientes por CPF e a validação na borda permanecem na
+Lambda e no API Gateway. Essa decisão é independente da divisão dos domínios.
+
+## Evolução do banco
+
+O schema é versionado por migrations do Entity Framework Core. A migration
+`RemoveLegacyCatalogStockAndPurchasing` remove as tabelas e FKs do antigo
+catálogo/estoque local, preservando os itens já registrados nas ordens como
+snapshots. O `Down` recria registros mínimos para esses IDs antes de restaurar as
+FKs, permitindo rollback técnico sem invalidar ordens existentes.
+
+Para detalhes das rotas atuais, consulte [API_REFERENCE.md](API_REFERENCE.md).
+As decisões históricas e seus contextos permanecem registradas em [adrs/](adrs/).

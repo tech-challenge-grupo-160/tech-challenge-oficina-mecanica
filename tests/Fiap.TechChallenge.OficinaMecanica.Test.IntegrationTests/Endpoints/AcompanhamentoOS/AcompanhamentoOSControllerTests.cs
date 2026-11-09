@@ -95,11 +95,6 @@ public class AcompanhamentoOSControllerTests : IClassFixture<CustomWebApplicatio
         acompanhamentoAposMudancaStatus.DataUltimaAtualizacao.Should().BeAfter(dataInicial);
         var dataAposMudancaStatus = acompanhamentoAposMudancaStatus.DataUltimaAtualizacao;
 
-        var adicionarPeca = await _client.PostAsJsonAsync(
-            $"/api/v1/ordens-servico/{ordemCriada.Id}/pecas",
-            new { pecaId = CustomWebApplicationFactory.PecaExistenteId, quantidade = 1 });
-        adicionarPeca.StatusCode.Should().Be(HttpStatusCode.OK);
-
         var acompanhamentoAposEventoSemMudancaStatus = await ObterAcompanhamentoAsync(ordemCriada.CodigoAcompanhamento);
         acompanhamentoAposEventoSemMudancaStatus.DataUltimaAtualizacao.Should().Be(dataAposMudancaStatus);
     }
