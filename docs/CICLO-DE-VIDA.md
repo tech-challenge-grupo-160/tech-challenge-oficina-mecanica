@@ -5,8 +5,36 @@ projeto para outra conta da AWS trocando apenas a credencial.
 
 > **O cluster cobra sozinho.** O control plane do EKS custa US$ 0,10/hora
 > **enquanto existir** e não é suspenso junto com a sessão do Learner Lab —
-> diferente das instâncias EC2. Somando o NAT, o balanceador e o RDS, um
-> ambiente de pé custa cerca de **US$ 5/dia**. Derrube ao terminar.
+> diferente das instâncias EC2. Somando o NAT, o balanceador e os dois RDS
+> (o do OS e o da Execução, da Fase 4), um ambiente de pé custa cerca de
+> **US$ 5,40/dia**. Derrube ao terminar.
+
+## Roteiro rápido
+
+Para quem vai subir pela primeira vez. Cada passo aponta para a seção com os
+detalhes.
+
+1. **Repositórios e ferramentas.** Os seis repositórios lado a lado, em
+   `develop` para testar o que está em desenvolvimento, e as ferramentas da
+   tabela. Ver [Pré-requisitos](#pré-requisitos).
+2. **Credencial da AWS.** No Learner Lab: Start Lab → AWS Details → copie o
+   bloco para `~/.aws/credentials`, perfil `[default]`. Confira com
+   `aws sts get-caller-identity`. Ela dura cerca de 4 horas.
+3. **Datadog.** Com a chave da organização, carregue-a no terminal (ver
+   [Chave do Datadog](#chave-do-datadog)). Sem ela, suba com `--sem-datadog`.
+4. **Mercado Pago (opcional).** Sem as credenciais, o ambiente sobe e só o
+   pagamento simulado funciona. Ver [Billing e Execução](#billing-e-execução-etapa-9).
+5. **Pipelines.** Se elas não são suas, **não** use `--assumir-pipelines` nem
+   rode o `renova-secrets.sh`. Se são, não deixe nenhum merge nos repositórios
+   de infra rodar enquanto o script roda. Ver
+   [Mais de uma pessoa subindo ambiente](#mais-de-uma-pessoa-subindo-ambiente).
+6. **Subir.** `bash scripts/sobe-tudo.sh --ambiente dev --sem-datadog` (sem o
+   último parâmetro se tiver a chave). São dez etapas e cerca de 40 minutos.
+7. **Conferir.** A etapa 10 testa o `POST /auth`. Para o resto, ver
+   [Conferindo que subiu](#conferindo-que-subiu).
+8. **Derrubar ao terminar.** `bash scripts/derruba-tudo.sh --ambiente dev`.
+   Comece com pelo menos meia hora de credencial sobrando. Ele termina com
+   `Nada cobrando por hora nesta conta.`
 
 ## Os dois comandos
 
@@ -55,6 +83,11 @@ completo do `dev`:
 |---|---|
 | `derruba-tudo.sh` | ~18 min |
 | `sobe-tudo.sh`, do zero | ~40 min: ~16 na rede e no cluster, ~16 no RDS, o resto nas Lambdas e na API |
+
+A Fase 4 acrescentou a mensageria, o RDS da Execução e a publicação do Billing e
+da Execução, e o ciclo ainda não foi medido de novo. O RDS da Execução nasce no
+mesmo apply do banco do OS, em paralelo, então o tempo do banco não deve dobrar.
+Conte com alguns minutos a mais na etapa 9, que compila e publica as duas imagens.
 
 A sessão do Learner Lab dura cerca de **4 horas**, e a credencial morre junto.
 Comece com folga. Se ela expirar no meio de um apply, o Terraform pode não
@@ -344,19 +377,20 @@ inventory como está no Git, com o secret do GitHub.
 
 ## Subindo
 
-O `sobe-tudo.sh` executa nove etapas, nesta ordem:
+O `sobe-tudo.sh` executa dez etapas, nesta ordem:
 
 | # | Etapa | Por que nesta posição |
 |---|---|---|
 | 1 | Backend de state (S3 + DynamoDB) | tudo mais guarda state nele |
 | 2 | **Funções Lambda (código)** | o gateway não sobe sem elas |
-| 3 | Rede, cluster, ECR, gateway, ALB, Datadog Agent | base de todo o resto |
-| 4 | Banco gerenciado | lê a rede pelo state remoto |
-| 5 | Tópicos, filas e DLQs SNS/SQS | tópicos são criados antes das assinaturas entre serviços |
+| 3 | Rede, cluster, ECR, gateway, ALB com as regras por serviço, Datadog Agent | base de todo o resto |
+| 4 | Bancos gerenciados: o RDS do OS e o da Execução | leem a rede pelo state remoto |
+| 5 | Tópicos, filas e DLQs SNS/SQS dos três serviços | tópicos são criados antes das assinaturas entre serviços |
 | 6 | Conferência | para cedo se o cluster estiver desligado |
 | 7 | Rede e variáveis das funções, instrumentação do Datadog | dependem de subnets, SGs e segredos |
-| 8 | API no cluster | precisa do cluster e do ECR |
-| 9 | Teste de fumaça | `POST /auth` deve responder 200 |
+| 8 | API (OS Service) no cluster | precisa do cluster e do ECR |
+| 9 | Billing e Execução no cluster | precisam dos segredos da mensageria (5) e do banco da Execução (4) |
+| 10 | Teste de fumaça | `POST /auth` deve responder 200 |
 
 Duas dessas posições **não são preferência**.
 
@@ -376,6 +410,30 @@ procurando um state que ainda não existe.
 Na etapa 7, o `datadog-ci` imprime `❌ Configuration error: Missing DD_API_KEY`.
 É só aviso: a chave chega às funções pelo ARN do segredo, e a instrumentação
 acontece mesmo assim.
+
+### Billing e Execução (etapa 9)
+
+Para cada serviço, a etapa 9 faz o mesmo que o deploy da pipeline:
+
+1. Compila a imagem, que vai para o ECR com a tag do SHA do commit.
+2. Monta o secret `oficina-mecanica-<serviço>-secret` com o que está no Secrets
+   Manager: os endereços da mensageria (`tc-grupo160/<ambiente>/<serviço>/messaging`)
+   e, só na Execução, a connection string do RDS próprio
+   (`tc-grupo160/<ambiente>/execucao/banco`).
+3. Aplica os manifests `k8s/` do repositório do serviço.
+
+Se o rollout de um dos dois não termina em 5 minutos, o script **avisa e segue**,
+mostrando os comandos de diagnóstico. A API e o teste de fumaça não dependem
+deles. Já faltar a connection string da Execução para o script, porque aí o
+banco da etapa 4 não subiu.
+
+As credenciais do Mercado Pago, que o Billing usa, entram antes, na etapa 3. O
+script usa `TF_VAR_mercadopago_access_token` e `TF_VAR_mercadopago_webhook_secret`
+se estiverem no terminal. Senão, reaproveita o segredo
+`tc-grupo160/<ambiente>/mercadopago` da conta. Sem nenhum dos dois, ele **avisa e
+segue**: o segredo fica vazio e só o pagamento simulado funciona. As credenciais
+de teste estão com quem cuida da F4-06
+([#137](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/137)).
 
 ### Se o cluster não subir
 
@@ -424,19 +482,39 @@ DaemonSet aparecem com `3/3`:
 kubectl get pods -n datadog
 ```
 
+Os três serviços ficam no namespace `oficina-mecanica`, cada um num Service
+NodePort (OS 30080, Billing 30081, Execução 30082). O ALB os separa pelo caminho:
+`/api/v1/orcamentos*` e `/api/v1/pagamentos*` vão para o Billing,
+`/api/v1/catalogo*`, `/api/v1/diagnosticos*` e `/api/v1/execucoes*` para a
+Execução, e o resto para o OS. Os target groups devem estar `healthy`:
+
+```bash
+kubectl get pods,svc -n oficina-mecanica
+for tg in $(aws elbv2 describe-target-groups --query "TargetGroups[?starts_with(TargetGroupName,'tc-grupo160-dev')].TargetGroupArn" --output text); do
+  aws elbv2 describe-target-health --target-group-arn "$tg" --query "TargetHealthDescriptions[].TargetHealth.State" --output text
+done
+```
+
+O webhook do Mercado Pago (`POST /api/v1/pagamentos/webhook`) é a única rota
+de negócio que chega sem JWT: quem a autentica é o Billing, pela assinatura.
+
 ## Derrubando
 
 O `derruba-tudo.sh` desfaz na ordem inversa, e a inversão importa:
 
 1. **Funções Lambda** — primeiro, e não por acaso
-2. **Banco** — antes da rede, senão o destroy não resolve as referências
-3. **Cluster, rede, gateway, balanceador**
-4. **Backend de state** — só com `--com-bootstrap`
-5. **Conferência** do que ficou cobrando
+2. **Mensageria SNS/SQS dos três serviços** — primeiro as assinaturas entre
+   serviços, depois tópicos, filas e DLQs, porque cada serviço assina o tópico
+   dos outros
+3. **Bancos** (o RDS do OS e o da Execução) — antes da rede, senão o destroy não
+   resolve as referências
+4. **Cluster, rede, gateway, balanceador**
+5. **Backend de state** — só com `--com-bootstrap`
+6. **Conferência** do que ficou cobrando
 
-> **O banco sai sem deixar cópia.** A instância é criada com
-> `skip_final_snapshot = true`, então o passo 2 apaga os dados e pronto. Se
-> houver algo no RDS que você queira de volta, tire um snapshot manual **antes**
+> **Os bancos saem sem deixar cópia.** As duas instâncias são criadas com
+> `skip_final_snapshot = true`, então o passo 3 apaga os dados e pronto. Se
+> houver algo num RDS que você queira de volta, tire um snapshot manual **antes**
 > de rodar o script — o procedimento está em
 > [ROLLBACK-BANCO.md](ROLLBACK-BANCO.md).
 
@@ -564,6 +642,9 @@ para o bucket da conta antiga.
 | `ERRO: 'npx' nao encontrado no PATH` na etapa 7 | Node.js ausente, ou terminal aberto antes da instalação | instale o Node.js LTS, abra um terminal novo e rode de novo |
 | `404 {"message":"Not Found"}` no `/auth` ou no `/health/live` | endereço sem o nome do ambiente | use `https://<id>.execute-api.us-east-1.amazonaws.com/<ambiente>/auth` |
 | `POST /auth` devolve 503 logo após subir | VPC Link ainda propagando | espere ~3 min |
+| `oficina-mecanica-<serviço> nao ficou pronto em 5 min` na etapa 9 | pod do Billing ou da Execução sem subir: imagem, secret ou banco | rode os dois comandos de diagnóstico que o script imprime (`kubectl describe pods` e `kubectl logs`) |
+| `ERRO: connectionString ausente em tc-grupo160/<ambiente>/execucao/banco` | o RDS da Execução não subiu na etapa 4 | confira o apply do `infra-database` e rode de novo |
+| Rota do Billing ou da Execução devolve 503 pelo gateway | target group do serviço sem alvo `healthy`: pod fora do ar ou NodePort diferente do `alb-servicos.tf` | `kubectl get pods,svc -n oficina-mecanica` e confira a porta (30081 no Billing, 30082 na Execução) |
 | `POST /auth` devolve 500 e a Lambda não registra invocação | o gateway perdeu a permissão de invocar a Lambda: apply do `infra-k8s` com `lambdas_publicadas = false` | aplique de novo sem essa variável — o padrão é `true` |
 | Pipeline de infra falha com 403 ao ler o `.tfstate` | secrets com credencial de sessão encerrada ou de outra conta | quem é dono das pipelines roda `renova-secrets.sh` |
 | Nodes ficam `NotReady` | subnet privada sem saída | confirme que o NAT Gateway existe |

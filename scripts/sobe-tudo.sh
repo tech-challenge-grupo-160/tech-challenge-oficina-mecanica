@@ -15,8 +15,8 @@
 #   ./scripts/sobe-tudo.sh --sem-datadog      # sobe sem Agent nem chave do Datadog
 #
 # CUSTO: o cluster EKS cobra US$ 0,10/hora enquanto existir e NAO e suspenso
-# junto com a sessao do lab, diferente das instancias EC2. Com o NAT Gateway,
-# ~US$ 3,50/dia por ambiente. Rode derruba-tudo.sh ao terminar.
+# junto com a sessao do lab, diferente das instancias EC2. Com NAT, ALB e os dois RDS,
+# ~US$ 5,40/dia por ambiente. Rode derruba-tudo.sh ao terminar.
 
 if [ -z "${BASH_VERSION:-}" ]; then exec bash "$0" "$@"; fi
 set -euo pipefail
