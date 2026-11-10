@@ -11,7 +11,7 @@ Onde cada coisa roda, e onde cada coisa é definida.
 
 | | Onde roda | Banco | Quem publica |
 |---|---|---|---|
-| `dev`, `hom`, `prod` | EKS, na AWS | RDS PostgreSQL gerenciado | workflow `Pipeline` (disparo manual) ou `scripts/sobe-tudo.sh` |
+| `dev`, `hom`, `prod` | EKS, na AWS: OS, Billing e Execução no namespace `oficina-mecanica` | RDS do OS, RDS da Execução e DynamoDB do Billing (F4-13) | workflow `Pipeline` de cada serviço (push em `homolog`/`main`, disparo manual para `dev`) ou `scripts/sobe-tudo.sh` |
 | Desenvolvimento local | kind, na sua máquina | PostgreSQL dentro do cluster | você, à mão |
 | Só rodar a API | Docker Compose | contêiner do Compose | você, à mão |
 
@@ -27,11 +27,11 @@ próprios:
 
 | Repositório | O que define |
 |---|---|
-| [tech-challenge-infra-k8s](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s) | VPC, EKS, API Gateway, ALB, ECR, segredos, manifests do Kubernetes, Cluster Autoscaler — e o `local/`, com o kind |
-| [tech-challenge-infra-database](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-database) | RDS PostgreSQL Multi-AZ, subnet group, credencial no Secrets Manager |
+| [tech-challenge-infra-k8s](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s) | VPC, EKS, API Gateway (com a rota pública do webhook do Mercado Pago), ALB com regras por serviço, ECR, segredos (JWT e Mercado Pago), manifests do OS Service, Cluster Autoscaler — e o `local/`, com o kind |
+| [tech-challenge-infra-database](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-database) | RDS do OS (Multi-AZ) e RDS da Execução (Single-AZ em `dev` e `hom`, Multi-AZ em `prod`), subnet group, uma credencial por banco no Secrets Manager |
 | Este repositório, [`infra/`](../infra/README.md) | Tópico SNS do OS Service, filas SQS que consomem Billing/Execução, DLQs e configuração no Secrets Manager |
-| [Billing](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-billing/tree/main/infra) | Tópico SNS do Billing, filas de eventos e comandos, DLQs e configuração |
-| [Execução](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-execucao/tree/main/infra) | Tópico SNS da Execução, filas de eventos e comandos, DLQs e configuração |
+| [Billing](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-billing/tree/main/infra) | Tópico SNS do Billing, filas de eventos e comandos, DLQs e configuração; manifests `k8s/` do serviço |
+| [Execução](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-execucao/tree/main/infra) | Tópico SNS da Execução, filas de eventos e comandos, DLQs e configuração; manifests `k8s/` do serviço |
 
 Os scripts de `scripts/` coordenam os seis repositórios e a documentação
 compartilhada fica aqui.
@@ -59,11 +59,12 @@ bash scripts/derruba-tudo.sh
 ```
 
 A ordem das etapas, as dependências entre elas e o que fazer quando dá errado
-estão em [CICLO-DE-VIDA.md](CICLO-DE-VIDA.md).
+estão em [CICLO-DE-VIDA.md](CICLO-DE-VIDA.md). Na primeira vez, comece pelo
+[roteiro rápido](CICLO-DE-VIDA.md#roteiro-rápido).
 
 > **O cluster cobra sozinho.** O control plane do EKS custa US$ 0,10/hora
 > enquanto existir e **não** é suspenso junto com a sessão do Learner Lab.
-> Um ambiente de pé custa cerca de US$ 5/dia. Derrube ao terminar.
+> Um ambiente de pé custa cerca de US$ 5,40/dia. Derrube ao terminar.
 
 ## Desenvolvimento local com kind
 
@@ -91,12 +92,21 @@ conversaria com o errado.
 
 ```
 cliente
-  → API Gateway (HTTP API)          rota /auth pública, /api/v1 atrás do authorizer JWT
-  → VPC Link → ALB interno          balanceador em subnet privada, alvos por instância
-  → NodePort 30080 nos nodes        kube-proxy encaminha ao pod
-  → API .NET                        lê connection string, JWT e configuração de mensageria dos Secrets
-  → RDS PostgreSQL                  Multi-AZ, em subnet privada, sem acesso público
+  → API Gateway (HTTP API)          /auth e o webhook do Mercado Pago públicos, /api/v1 atrás do authorizer JWT
+  → VPC Link → ALB interno          balanceador em subnet privada, alvos por instância, regra por caminho
+      /api/v1/orcamentos*, /api/v1/pagamentos*                       → NodePort 30081 → Billing   → DynamoDB
+      /api/v1/catalogo*, /api/v1/diagnosticos*, /api/v1/execucoes*   → NodePort 30082 → Execução  → RDS próprio
+      todo o resto                                                   → NodePort 30080 → OS        → RDS do OS (Multi-AZ)
 ```
+
+Cada pod lê a connection string e a configuração de mensageria de um secret
+do Kubernetes, montado a partir do Secrets Manager a cada deploy. Os bancos
+ficam em subnet privada, sem acesso público.
+
+Entre os serviços, a conversa é por mensageria (abaixo), com uma exceção: ao
+abrir a OS, o OS consulta o catálogo da Execução por HTTP, direto pelo DNS do
+cluster (`http://oficina-mecanica-execucao`), sem passar pelo gateway nem pelo
+ALB.
 
 O endereço público é o do API Gateway **com o nome do ambiente no caminho** —
 `https://<id>.execute-api.us-east-1.amazonaws.com/dev/auth`. Sem o `/dev`, o
@@ -109,10 +119,10 @@ authorizer valida o JWT na borda do gateway — o desenho e o porquê estão na
 ## Como os serviços recebem mensagens
 
 Cada serviço provisiona seu tópico e suas filas consumidoras em seu próprio
-`infra/`. O OS Service usa o segredo `os/messaging` do Secrets Manager para
-fornecer topic ARN e queue URLs ao pod; Billing e Execução seguem o mesmo
-padrão ao habilitar seus deploys independentes. O contrato e a topologia estão
-no [catálogo de eventos](mensageria/catalogo.md).
+`infra/`. Cada um grava o topic ARN e as queue URLs num segredo próprio,
+`tc-grupo160/<ambiente>/<serviço>/messaging`, e o deploy (pipeline ou
+`sobe-tudo.sh`) os passa ao pod como variáveis `Messaging__*`. O contrato e a
+topologia estão no [catálogo de eventos](mensageria/catalogo.md).
 
 ## Escalabilidade
 

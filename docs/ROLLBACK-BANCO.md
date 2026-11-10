@@ -44,6 +44,18 @@ aws rds create-db-snapshot --db-instance-identifier tc-grupo160-dev --db-snapsho
 ```
 
 Troque o sufixo do ambiente (`dev`, `hom`, `prod`) nos dois identificadores.
+
+O banco da Execução (F4-12) é outra instância, `tc-grupo160-<ambiente>-execucao`,
+com as mesmas `skip_final_snapshot` e `deletion_protection`
+([`execucao.tf`](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-database/blob/develop/execucao.tf)).
+O procedimento é o mesmo, trocando o identificador:
+
+```bash
+aws rds create-db-snapshot --db-instance-identifier tc-grupo160-dev-execucao --db-snapshot-identifier tc-grupo160-dev-execucao-antes-da-migration
+```
+
+As migrations dela ficam no repositório da Execução e rodam no startup do
+serviço.
 O snapshot sobrevive ao `destroy` da instância e continua cobrando
 armazenamento — apague quando não precisar mais.
 

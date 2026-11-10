@@ -111,6 +111,9 @@ bash scripts/sobe-tudo.sh
 bash scripts/derruba-tudo.sh
 ```
 
+Primeira vez? Siga o [roteiro rápido](docs/CICLO-DE-VIDA.md#roteiro-rápido):
+credencial, Datadog, pipelines, subir, conferir e derrubar, nessa ordem.
+
 Numa conta nova do Learner Lab, ou depois de derrubar o ambiente, exporte antes
 a chave do Datadog - ver [Chave do Datadog](docs/CICLO-DE-VIDA.md#chave-do-datadog):
 
@@ -118,7 +121,15 @@ a chave do Datadog - ver [Chave do Datadog](docs/CICLO-DE-VIDA.md#chave-do-datad
 export TF_VAR_datadog_api_key="<chave da organizacao>"
 ```
 
-Renovar as credenciais do Learner Lab nos seis repositórios, a cada sessão:
+Sem a chave, suba sem o Datadog:
+
+```bash
+bash scripts/sobe-tudo.sh --sem-datadog
+```
+
+Quem é dono das pipelines renova as credenciais do Learner Lab nos seis
+repositórios a cada sessão. Quem não é não roda este comando, porque ele aponta
+as pipelines do time para a própria conta:
 
 ```bash
 bash scripts/renova-secrets.sh
@@ -126,7 +137,7 @@ bash scripts/renova-secrets.sh
 
 > **O cluster cobra sozinho.** O control plane do EKS custa US$ 0,10/hora
 > enquanto existir e **não** é suspenso junto com a sessão do lab. Um ambiente
-> de pé custa cerca de US$ 5/dia. Para ver o que está cobrando agora, sem
+> de pé custa cerca de US$ 5,40/dia. Para ver o que está cobrando agora, sem
 > destruir nada:
 >
 > ```bash
