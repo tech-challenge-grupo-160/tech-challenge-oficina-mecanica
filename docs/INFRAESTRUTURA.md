@@ -95,7 +95,7 @@ cliente
   → API Gateway (HTTP API)          /auth e o webhook do Mercado Pago públicos, /api/v1 atrás do authorizer JWT
   → VPC Link → ALB interno          balanceador em subnet privada, alvos por instância, regra por caminho
       /api/v1/orcamentos*, /api/v1/pagamentos*                       → NodePort 30081 → Billing   → DynamoDB
-      /api/v1/catalogo*, /api/v1/diagnosticos*, /api/v1/execucoes*   → NodePort 30082 → Execução  → RDS próprio
+      /api/v1/catalogo*, /api/v1/diagnosticos*, /api/v1/estoque*, /api/v1/execucoes* → NodePort 30082 → Execução  → RDS próprio
       todo o resto                                                   → NodePort 30080 → OS        → RDS do OS (Multi-AZ)
 ```
 

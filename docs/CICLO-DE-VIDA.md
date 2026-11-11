@@ -491,7 +491,7 @@ kubectl get pods -n datadog
 Os três serviços ficam no namespace `oficina-mecanica`, cada um num Service
 NodePort (OS 30080, Billing 30081, Execução 30082). O ALB os separa pelo caminho:
 `/api/v1/orcamentos*` e `/api/v1/pagamentos*` vão para o Billing,
-`/api/v1/catalogo*`, `/api/v1/diagnosticos*` e `/api/v1/execucoes*` para a
+`/api/v1/catalogo*`, `/api/v1/diagnosticos*`, `/api/v1/estoque*` e `/api/v1/execucoes*` para a
 Execução, e o resto para o OS. Os target groups devem estar `healthy`:
 
 ```bash
