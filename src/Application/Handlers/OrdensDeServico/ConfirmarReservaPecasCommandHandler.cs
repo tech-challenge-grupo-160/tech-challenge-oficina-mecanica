@@ -19,9 +19,12 @@ public sealed class ConfirmarReservaPecasCommandHandler(
         var ordem = await ordemRepository.ObterPorIdAsync(request.OrdemServicoId, cancellationToken)
             ?? throw new ServiceNotFoundException(
                 $"Ordem de servico com ID {request.OrdemServicoId} nao encontrada.");
-        if (ordem.Status is StatusOrdemDeServico.EmExecucao or StatusOrdemDeServico.AguardandoEstoque)
+        if (ordem.Status == StatusOrdemDeServico.EmExecucao)
             return Unit.Value;
-        if (ordem.Status != StatusOrdemDeServico.AguardandoAprovacao)
+        if (!request.ReservaCompleta && ordem.Status == StatusOrdemDeServico.AguardandoEstoque)
+            return Unit.Value;
+        if (ordem.Status is not (StatusOrdemDeServico.AguardandoAprovacao or
+            StatusOrdemDeServico.AguardandoEstoque))
             throw new InvalidOperationException(
                 $"Resultado da reserva nao e valido no status atual da OS: {ordem.Status}.");
 

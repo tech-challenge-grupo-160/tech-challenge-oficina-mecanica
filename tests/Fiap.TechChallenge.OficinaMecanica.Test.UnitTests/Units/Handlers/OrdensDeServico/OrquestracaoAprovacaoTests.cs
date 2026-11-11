@@ -61,6 +61,36 @@ public sealed class OrquestracaoAprovacaoTests
     }
 
     [Fact]
+    public async Task ReposicaoConcluida_DeveLiberarOrdemQueAguardavaEstoque()
+    {
+        var ordem = CriarAguardandoAprovacaoComPeca();
+        var handler = new ConfirmarReservaPecasCommandHandler(
+            CriarRepository(ordem).Object, CriarHistoricoService());
+        await handler.Handle(new ConfirmarReservaPecasCommand(
+            ordem.Id, false, "peca 1000: faltam 2"), CancellationToken.None);
+
+        await handler.Handle(new ConfirmarReservaPecasCommand(
+            ordem.Id, true, null), CancellationToken.None);
+
+        ordem.Status.Should().Be(StatusOrdemDeServico.EmExecucao);
+    }
+
+    [Fact]
+    public async Task EstoqueInsuficienteRepetido_DeveSerIdempotenteEnquantoAguardaReposicao()
+    {
+        var ordem = CriarAguardandoAprovacaoComPeca();
+        var handler = new ConfirmarReservaPecasCommandHandler(
+            CriarRepository(ordem).Object, CriarHistoricoService());
+        await handler.Handle(new ConfirmarReservaPecasCommand(
+            ordem.Id, false, "peca 1000: faltam 2"), CancellationToken.None);
+
+        await handler.Handle(new ConfirmarReservaPecasCommand(
+            ordem.Id, false, "peca 1000: faltam 2"), CancellationToken.None);
+
+        ordem.Status.Should().Be(StatusOrdemDeServico.AguardandoEstoque);
+    }
+
+    [Fact]
     public async Task Recusar_DeveCancelarOrdemComMotivoDoCliente()
     {
         var ordem = OrdemDeServicoMock.Criar(status: StatusOrdemDeServico.AguardandoAprovacao);
