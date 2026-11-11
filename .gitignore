@@ -15,6 +15,7 @@ node_modules/
 artifacts/
 .sonarqube/
 TestResults/
+.test-results/
 .codex
 
 
