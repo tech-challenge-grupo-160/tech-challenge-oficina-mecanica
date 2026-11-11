@@ -386,7 +386,7 @@ O `sobe-tudo.sh` executa dez etapas, nesta ordem:
 | 2 | **Funções Lambda (código)** | o gateway não sobe sem elas |
 | 3 | Rede, cluster, ECR, gateway, ALB com as regras por serviço, Datadog Agent | base de todo o resto |
 | 4 | Bancos gerenciados: o RDS do OS e o da Execução | leem a rede pelo state remoto |
-| 5 | Tópicos, filas e DLQs SNS/SQS dos três serviços | tópicos são criados antes das assinaturas entre serviços |
+| 5 | Tópicos, filas e DLQs SNS/SQS dos três serviços, e a tabela DynamoDB do Billing | tópicos são criados antes das assinaturas entre serviços; a tabela está no mesmo state da mensageria do Billing |
 | 6 | Conferência | para cedo se o cluster estiver desligado |
 | 7 | Rede e variáveis das funções, instrumentação do Datadog | dependem de subnets, SGs e segredos |
 | 8 | API (OS Service) no cluster | precisa do cluster e do ECR |
@@ -509,9 +509,10 @@ de negócio que chega sem JWT: quem a autentica é o Billing, pela assinatura.
 O `derruba-tudo.sh` desfaz na ordem inversa, e a inversão importa:
 
 1. **Funções Lambda** — primeiro, e não por acaso
-2. **Mensageria SNS/SQS dos três serviços** — primeiro as assinaturas entre
-   serviços, depois tópicos, filas e DLQs, porque cada serviço assina o tópico
-   dos outros
+2. **Mensageria SNS/SQS dos três serviços e a tabela DynamoDB do Billing** —
+   primeiro as assinaturas entre serviços, depois tópicos, filas e DLQs, porque
+   cada serviço assina o tópico dos outros. A tabela do Billing está no mesmo
+   state e sai junto, **com os dados**: fora de `prod` não há backup
 3. **Bancos** (o RDS do OS e o da Execução) — antes da rede, senão o destroy não
    resolve as referências
 4. **Cluster, rede, gateway, balanceador**
