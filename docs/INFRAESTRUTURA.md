@@ -11,7 +11,7 @@ Onde cada coisa roda, e onde cada coisa é definida.
 
 | | Onde roda | Banco | Quem publica |
 |---|---|---|---|
-| `dev`, `hom`, `prod` | EKS, na AWS: OS, Billing e Execução no namespace `oficina-mecanica` | RDS do OS, RDS da Execução e DynamoDB do Billing (F4-13) | workflow `Pipeline` de cada serviço (push em `homolog`/`main`, disparo manual para `dev`) ou `scripts/sobe-tudo.sh` |
+| `dev`, `hom`, `prod` | EKS, na AWS: OS, Billing e Execução no namespace `oficina-mecanica` | RDS do OS, RDS da Execução e a tabela DynamoDB `tc-grupo160-<amb>-billing` | workflow `Pipeline` de cada serviço (push em `homolog`/`main`, disparo manual para `dev`) ou `scripts/sobe-tudo.sh` |
 | Desenvolvimento local | kind, na sua máquina | PostgreSQL dentro do cluster | você, à mão |
 | Só rodar a API | Docker Compose | contêiner do Compose | você, à mão |
 
@@ -30,7 +30,7 @@ próprios:
 | [tech-challenge-infra-k8s](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s) | VPC, EKS, API Gateway (com a rota pública do webhook do Mercado Pago), ALB com regras por serviço, ECR, segredos (JWT e Mercado Pago), manifests do OS Service, Cluster Autoscaler — e o `local/`, com o kind |
 | [tech-challenge-infra-database](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-database) | RDS do OS (Multi-AZ) e RDS da Execução (Single-AZ em `dev` e `hom`, Multi-AZ em `prod`), subnet group, uma credencial por banco no Secrets Manager |
 | Este repositório, [`infra/`](../infra/README.md) | Tópico SNS do OS Service, filas SQS que consomem Billing/Execução, DLQs e configuração no Secrets Manager |
-| [Billing](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-billing/tree/main/infra) | Tópico SNS do Billing, filas de eventos e comandos, DLQs e configuração; manifests `k8s/` do serviço |
+| [Billing](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-billing/tree/main/infra) | Tópico SNS do Billing, filas de eventos e comandos, DLQs e configuração, tabela DynamoDB (F4-13); manifests `k8s/` do serviço |
 | [Execução](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-execucao/tree/main/infra) | Tópico SNS da Execução, filas de eventos e comandos, DLQs e configuração; manifests `k8s/` do serviço |
 
 Os scripts de `scripts/` coordenam os seis repositórios e a documentação
