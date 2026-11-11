@@ -22,8 +22,9 @@ detalhes.
    `aws sts get-caller-identity`. Ela dura cerca de 4 horas.
 3. **Datadog.** Com a chave da organização, carregue-a no terminal (ver
    [Chave do Datadog](#chave-do-datadog)). Sem ela, suba com `--sem-datadog`.
-4. **Mercado Pago (opcional).** Sem as credenciais, o ambiente sobe e só o
-   pagamento simulado funciona. Ver [Billing e Execução](#billing-e-execução-etapa-9).
+4. **Mercado Pago.** Sem as credenciais o ambiente sobe, mas a OS não passa da
+   etapa de pagamento. Para o fluxo completo (e para o vídeo), carregue-as antes.
+   Ver [Billing e Execução](#billing-e-execução-etapa-9).
 5. **Pipelines.** Se elas não são suas, **não** use `--assumir-pipelines` nem
    rode o `renova-secrets.sh`. Se são, não deixe nenhum merge nos repositórios
    de infra rodar enquanto o script roda. Ver
@@ -431,8 +432,13 @@ As credenciais do Mercado Pago, que o Billing usa, entram antes, na etapa 3. O
 script usa `TF_VAR_mercadopago_access_token` e `TF_VAR_mercadopago_webhook_secret`
 se estiverem no terminal. Senão, reaproveita o segredo
 `tc-grupo160/<ambiente>/mercadopago` da conta. Sem nenhum dos dois, ele **avisa e
-segue**: o segredo fica vazio e só o pagamento simulado funciona. As credenciais
-de teste estão com quem cuida da F4-06
+segue**, e o segredo fica sem valor. Nesse caso **não há pagamento na nuvem**: o
+Billing roda em `Production`, onde a confirmação simulada
+(`PATCH /api/v1/pagamentos/ordem-servico/{id}/{pagamentoId}/simular-confirmacao`)
+responde 404 de propósito, e sem
+credencial não há Checkout Pro. A OS para na etapa de pagamento. A confirmação
+simulada só vale rodando o Billing localmente. As credenciais de teste estão com
+quem cuida da F4-06
 ([#137](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/137)).
 
 ### Se o cluster não subir
@@ -485,7 +491,7 @@ kubectl get pods -n datadog
 Os três serviços ficam no namespace `oficina-mecanica`, cada um num Service
 NodePort (OS 30080, Billing 30081, Execução 30082). O ALB os separa pelo caminho:
 `/api/v1/orcamentos*` e `/api/v1/pagamentos*` vão para o Billing,
-`/api/v1/catalogo*`, `/api/v1/diagnosticos*` e `/api/v1/execucoes*` para a
+`/api/v1/catalogo*`, `/api/v1/diagnosticos*`, `/api/v1/estoque*` e `/api/v1/execucoes*` para a
 Execução, e o resto para o OS. Os target groups devem estar `healthy`:
 
 ```bash
