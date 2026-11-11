@@ -2,6 +2,8 @@ using System.Diagnostics.CodeAnalysis;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Logging;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -64,6 +66,11 @@ public sealed class OutboxSqsPublisherWorker(
 
         foreach (var mensagem in mensagens)
         {
+            using var contexto = logger.Iniciar(
+                mensagem.CorrelationId,
+                OutboxLogContexto.LerOrdemServicoId(mensagem.Payload),
+                mensagem.Id,
+                mensagem.Tipo);
             try
             {
                 await sqs.SendMessageAsync(new SendMessageRequest
@@ -72,6 +79,7 @@ public sealed class OutboxSqsPublisherWorker(
                     MessageBody = mensagem.Payload
                 }, cancellationToken);
                 mensagem.MarcarPublicada(DateTimeOffset.UtcNow);
+                logger.LogInformation("Comando {TipoMensagem} enviado para {Destino}.", mensagem.Tipo, mensagem.Destino);
             }
             catch (Exception exception)
             {
