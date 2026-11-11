@@ -7,9 +7,11 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Logs estruturados para seguir uma OS entre os servicos (F4-32): todo log JSON sai com `correlationId`, `ordemServicoId`, `trace_id`/`span_id` e bloco `dd` (`dd.trace_id`, `dd.span_id`) para o Datadog ligar log e trace; escopo aberto nas requisicoes HTTP, nos consumidores SQS e na Outbox; `DD_LOGS_INJECTION=true` na imagem; campos `level` e `message` reconhecidos pelo Datadog; mascara de CNPJ alem do CPF
 - Terraform de SNS, SQS e DLQs por microsserviço, com configuração no Secrets Manager, workflows independentes e runbook de validação AWS Academy (F4-11)
 
 ### Changed
+- Campo `status` do log de requisicao HTTP renomeado para `statusHttp`, para o Datadog nao ler o codigo HTTP como nivel do log (F4-32)
 - O inicio do diagnostico passa a ser orquestrado pelo OS Service na Execucao, com chave idempotente, resiliencia HTTP e transacao local aplicada somente apos a confirmacao remota.
 - A abertura da OS consulta o catalogo da Execucao por HTTP resiliente via `ICatalogoExecucao`, preserva o contrato e as regras de itens e grava OS, itens, historico e notificacao em uma unica transacao local.
 - CI/CD pelo pipeline reutilizavel `servico-dotnet.yml@v1` do `tech-challenge-pipelines`, no lugar do `deploy-eks.yml` e do `pr-develop-ci.yml`. Mesmo comportamento: build e testes em todo PR (agora tambem para `homolog` e `master`), deploy no push da `homolog` e da `master`, dev pelo disparo manual (F4-08)

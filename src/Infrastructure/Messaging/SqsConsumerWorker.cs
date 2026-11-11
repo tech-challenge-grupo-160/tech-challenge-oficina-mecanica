@@ -3,6 +3,7 @@ using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Fiap.TechChallenge.OficinaMecanica.Application.Messaging;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -65,6 +66,8 @@ public abstract class SqsConsumerWorker<TMessage>(
             if (evento.Versao != 1)
                 throw new InvalidOperationException($"Versao de evento nao suportada: {evento.Versao}.");
 
+            // correlationId e numero da OS em todos os logs do processamento.
+            using var contexto = logger.IniciarParaMensagem(evento, typeof(TMessage).Name);
             await using var scope = scopeFactory.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
             await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
@@ -88,6 +91,7 @@ public abstract class SqsConsumerWorker<TMessage>(
             await context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             await ExcluirAsync(message, cancellationToken);
+            logger.LogInformation("Mensagem {TipoMensagem} processada.", typeof(TMessage).Name);
         }
         catch (Exception exception)
         {
