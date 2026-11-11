@@ -561,5 +561,11 @@ fi
 titulo "Pronto"
 echo "Gateway:  $GATEWAY"
 echo "Cluster:  $CLUSTER"
+echo "Webhook:  $GATEWAY/api/v1/pagamentos/webhook"
+echo
+# O id do gateway muda a cada subida, e o Mercado Pago so avisa o Billing pela
+# URL cadastrada no painel. Sem atualizar, o pagamento e feito e a OS nao anda.
+amarelo "Mercado Pago: cole a URL do Webhook no painel (Webhooks > URL modo teste)"
+amarelo "antes de testar um pagamento. Ver docs/CICLO-DE-VIDA.md#credenciais-do-mercado-pago."
 echo
 amarelo "Lembre de rodar ./scripts/derruba-tudo.sh ao terminar."

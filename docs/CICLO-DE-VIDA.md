@@ -22,9 +22,10 @@ detalhes.
    `aws sts get-caller-identity`. Ela dura cerca de 4 horas.
 3. **Datadog.** Com a chave da organização, carregue-a no terminal (ver
    [Chave do Datadog](#chave-do-datadog)). Sem ela, suba com `--sem-datadog`.
-4. **Mercado Pago.** Sem as credenciais o ambiente sobe, mas a OS não passa da
-   etapa de pagamento. Para o fluxo completo (e para o vídeo), carregue-as antes.
-   Ver [Billing e Execução](#billing-e-execução-etapa-9).
+4. **Mercado Pago.** Peça o access token e a assinatura do webhook a quem cuida
+   da F4-06 e carregue os dois no terminal. Sem eles, o ambiente sobe, mas a OS
+   não passa da etapa de pagamento. Ver
+   [Credenciais do Mercado Pago](#credenciais-do-mercado-pago).
 5. **Pipelines.** Se elas não são suas, **não** use `--assumir-pipelines` nem
    rode o `renova-secrets.sh`. Se são, não deixe nenhum merge nos repositórios
    de infra rodar enquanto o script roda. Ver
@@ -33,7 +34,10 @@ detalhes.
    último parâmetro se tiver a chave). São dez etapas e cerca de 40 minutos.
 7. **Conferir.** A etapa 10 testa o `POST /auth`. Para o resto, ver
    [Conferindo que subiu](#conferindo-que-subiu).
-8. **Derrubar ao terminar.** `bash scripts/derruba-tudo.sh --ambiente dev`.
+8. **Apontar o webhook.** O script termina imprimindo a URL do webhook do
+   Mercado Pago. Ela muda a cada subida: cole-a no painel do Mercado Pago antes
+   de testar um pagamento. Ver [passo 4](#4-apontar-o-webhook-para-o-ambiente).
+9. **Derrubar ao terminar.** `bash scripts/derruba-tudo.sh --ambiente dev`.
    Comece com pelo menos meia hora de credencial sobrando. Ele termina com
    `Nada cobrando por hora nesta conta.`
 
@@ -376,6 +380,112 @@ Para religar, carregue a chave (passos 2 e 3) e rode o `sobe-tudo.sh` de novo,
 sem o parâmetro. Um merge no `infra-k8s` também religa: a pipeline aplica o
 inventory como está no Git, com o secret do GitHub.
 
+### Credenciais do Mercado Pago
+
+O Billing cobra pelo Checkout Pro do Mercado Pago e precisa de dois valores da
+aplicação do grupo, ambos de **teste** (o projeto nunca processa pagamento real):
+
+| Valor | Para quê |
+|---|---|
+| **Access token** (`APP_USR-...`) | o Billing cria a cobrança e consulta o pagamento na API |
+| **Assinatura secreta do webhook** | o Billing confere o `x-signature` de cada notificação |
+
+Como a chave do Datadog, eles passam por vários lugares:
+
+| Onde | Quem grava | Quem usa |
+|---|---|---|
+| Variáveis `TF_VAR_mercadopago_access_token` e `TF_VAR_mercadopago_webhook_secret`, no seu terminal | você | o Terraform, no apply local da etapa 3 |
+| Segredo `tc-grupo160/<ambiente>/mercadopago`, no Secrets Manager | o apply do `infra-k8s`, com o valor das variáveis | o Billing, no startup; o `sobe-tudo.sh`, quando as variáveis não foram exportadas |
+| Secrets `MERCADOPAGO_ACCESS_TOKEN_<AMB>` e `MERCADOPAGO_WEBHOOK_SECRET_<AMB>` do GitHub, no `infra-k8s` | quem cuida da F4-06 | o apply pelas pipelines |
+
+#### 1. Conseguir os valores
+
+Os dois são gerados no painel de desenvolvedores do Mercado Pago
+(<https://www.mercadopago.com.br/developers/panel/app>), na aplicação do grupo:
+
+- **Access token:** *Credenciais* → ambiente **Teste** → *Access Token*;
+- **Assinatura:** *Webhooks* → *Configurar notificações* → só o evento
+  *Pagamentos (legacy)* → *Salvar*, e revele a assinatura secreta.
+
+O passo a passo completo, com a criação da aplicação e das contas de teste
+(vendedor e comprador), está no
+[MERCADO-PAGO.md do Billing](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-billing/blob/develop/docs/MERCADO-PAGO.md).
+**Não crie outra aplicação:** peça os dois valores a quem cuida da F4-06
+([#137](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/137)),
+por um canal privado. Os secrets do GitHub não podem ser lidos de volta.
+
+#### 2. Carregar no terminal sem deixar rastro
+
+```bash
+read -rsp 'Access token do Mercado Pago: ' TF_VAR_mercadopago_access_token && echo && export TF_VAR_mercadopago_access_token
+```
+
+```bash
+read -rsp 'Assinatura do webhook: ' TF_VAR_mercadopago_webhook_secret && echo && export TF_VAR_mercadopago_webhook_secret
+```
+
+No mesmo terminal em que vai rodar o `sobe-tudo.sh`, como a chave do Datadog.
+O script confirma na etapa 3 se pegou as credenciais. Se aparecer
+`Sem credenciais do Mercado Pago`, as variáveis não chegaram.
+
+#### 3. Conferir o que está gravado, sem exibir os valores
+
+Depois da subida, o segredo deve ter as duas chaves preenchidas. O comando mostra
+só os nomes das chaves e o tamanho dos valores:
+
+```bash
+aws secretsmanager get-secret-value --secret-id tc-grupo160/dev/mercadopago \
+  --query SecretString --output text \
+  | grep -oE '"[a-z_]+" *: *"[^"]*"' | awk -F'"' '{print $2": "length($4)" caracteres"}'
+```
+
+Um `ResourceNotFoundException` com a mensagem de que não há valor no estágio
+`AWSCURRENT` significa que o segredo foi criado vazio: carregue as variáveis e
+rode o `sobe-tudo.sh` de novo.
+
+#### 4. Apontar o webhook para o ambiente
+
+O Mercado Pago avisa o Billing de cada pagamento pela URL cadastrada no painel.
+Ela é o endereço do gateway mais a rota do Billing, e **muda a cada subida**,
+porque o API Gateway ganha um id novo:
+
+```text
+https://<id>.execute-api.us-east-1.amazonaws.com/<ambiente>/api/v1/pagamentos/webhook
+```
+
+O `sobe-tudo.sh` imprime essa URL no fim. No painel: *Webhooks* → *Configurar
+notificações* → **URL modo teste** → cole a URL → *Salvar*. A assinatura não muda
+quando a URL muda, então os valores dos passos 1 e 2 continuam valendo.
+
+Para conferir sem fazer um pagamento, use **Simular notificação** no painel
+(evento Pagamentos, qualquer id). Com a cobrança do F4-20 no ar, o Billing
+responde `200` com desfecho `Ignorada`, porque o id não existe. Um `401` indica
+assinatura errada.
+
+#### Secrets das pipelines
+
+Para as pipelines aplicarem `hom` e `prod`, o `infra-k8s` precisa do par de cada
+ambiente: `MERCADOPAGO_ACCESS_TOKEN_HOM`/`_PROD` e
+`MERCADOPAGO_WEBHOOK_SECRET_HOM`/`_PROD`. Como tudo é credencial de teste, podem
+ser os mesmos valores do `dev`:
+
+```bash
+gh secret set MERCADOPAGO_ACCESS_TOKEN_HOM --repo tech-challenge-grupo-160/tech-challenge-infra-k8s
+```
+
+O `gh` pede o valor sem mostrar. Repita para os outros três nomes.
+
+> **Não rode o "Terraform CI → Run workflow" do `infra-k8s` para gravar as
+> credenciais** com o ambiente derrubado. Ele aplica o ambiente inteiro: sobe o
+> EKS, falha no meio por falta das Lambdas e deixa recurso cobrando. Cadastrar os
+> secrets já basta. Quem aplica é o `sobe-tudo.sh` ou a promoção.
+
+#### Depois de derrubar
+
+O `derruba-tudo.sh` destrói o segredo junto com o ambiente. Na subida seguinte,
+repita os passos 2 e 4. O passo 4 é necessário mesmo que nada tenha mudado,
+porque a URL é nova.
+
 ## Subindo
 
 O `sobe-tudo.sh` executa dez etapas, nesta ordem:
@@ -435,11 +545,10 @@ se estiverem no terminal. Senão, reaproveita o segredo
 segue**, e o segredo fica sem valor. Nesse caso **não há pagamento na nuvem**: o
 Billing roda em `Production`, onde a confirmação simulada
 (`PATCH /api/v1/pagamentos/ordem-servico/{id}/{pagamentoId}/simular-confirmacao`)
-responde 404 de propósito, e sem
-credencial não há Checkout Pro. A OS para na etapa de pagamento. A confirmação
-simulada só vale rodando o Billing localmente. As credenciais de teste estão com
-quem cuida da F4-06
-([#137](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/137)).
+responde 404 de propósito, e sem credencial não há Checkout Pro. A OS para na
+etapa de pagamento. A confirmação simulada só vale rodando o Billing localmente.
+Como conseguir e carregar as credenciais:
+[Credenciais do Mercado Pago](#credenciais-do-mercado-pago).
 
 ### Se o cluster não subir
 
