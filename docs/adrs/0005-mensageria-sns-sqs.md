@@ -198,6 +198,48 @@ Consequências:
   registrou o ASG sem `hostNetwork`.
 - **RabbitMQ sai como plano B**: SNS + SQS funcionam no lab.
 
+## Adendo: uma fila por tipo de mensagem (2026-11-11)
+
+**O que mudou.** A topologia da seção [Topologia](#topologia) previa uma fila de
+comandos por serviço e uma fila de eventos por consumidor, com o tipo no campo
+`type` do envelope roteando as mensagens dentro do serviço. A implementação dos
+três serviços seguiu outro desenho, o mesmo que o ambiente local
+(LocalStack, `docker/localstack/init-aws.sh`) monta desde o início:
+
+| | Desenho original | Desenho implementado |
+|---|---|---|
+| Filas | uma de comandos por serviço, uma de eventos por consumidor | **uma por tipo de mensagem**, cada uma com DLQ própria |
+| Roteamento | campo `type` no corpo, despachado no consumidor | **a própria fila**: cada worker consome um único tipo |
+| Filtro SNS | `type` no corpo (`billing.pagamento-confirmado`) | atributo **`tipo`** com o nome da classe (`PagamentoConfirmadoMessage`) |
+| Tópicos | um por produtor | **sem mudança**: um por produtor |
+
+Até 11/11 o Terraform da AWS seguia o desenho original, e o código seguia o
+implementado. Na nuvem nenhum consumidor tinha fila configurada, e a Saga não
+trocava mensagens. O mesmo código funcionava no LocalStack.
+
+**Decisão.** A infraestrutura da AWS passa a seguir o código, com as mesmas 14
+filas do LocalStack (5 de comando e 9 de evento do OS). O código das aplicações
+não muda. O detalhe por fila está no [catálogo](../mensageria/catalogo.md).
+
+**Por quê.**
+- A cinco dias da entrega, alinhar a infra é uma mudança verificável com
+  `terraform plan`. Alinhar o código mexeria nos consumidores dos três
+  serviços, nos testes e no ambiente local.
+- O código e o LocalStack já foram exercitados juntos. Levar o mesmo desenho
+  para a nuvem elimina a diferença entre o ambiente local e a AWS.
+- Uma DLQ por tipo deixa evidente qual passo da Saga falhou, sem abrir as
+  mensagens.
+
+**Consequências.**
+- Mais filas: 14 no total, mais as DLQs. SQS parada não cobra.
+- Um tipo novo exige uma fila nova no Terraform do consumidor, em vez de só uma
+  linha no filtro.
+- O contrato de tipo deixa de ser o nome do catálogo (`billing.pagamento-confirmado`)
+  e passa a ser o nome da classe. O catálogo foi atualizado.
+- Os eventos `os.aberta` e `os.cancelada` e as filas de eventos do OS para
+  Billing e Execução saem: nenhum serviço os consome hoje. O tópico do OS fica,
+  para quando o OS passar a publicar eventos.
+
 ## Referências
 
 - [Épico E2 — Infraestrutura e Mensageria](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/123)

@@ -1,19 +1,37 @@
 # Mensageria do OS Service
 
-Este diretorio provisiona o topico SNS publicado pelo OS Service, as filas SQS
-que consomem eventos do Billing e da Execucao, suas DLQs e a configuracao no
-AWS Secrets Manager.
+Este diretorio provisiona o topico SNS do OS Service, uma fila SQS por tipo de
+evento que o OS consome de Billing e Execucao, uma DLQ por fila e a
+configuracao no AWS Secrets Manager. E a mesma topologia do LocalStack
+(`../docker/localstack/init-aws.sh`), descrita no adendo de 11/11 a ADR-0005.
 
 ## Recursos
 
 - Topico `tc-grupo160-<ambiente>-os-events`, criptografado com a chave gerenciada
   pela AWS para SNS.
-- Filas de eventos `...-os-billing-eventos` e `...-os-execucao-eventos`, com
-  filtros pelo campo `type` do envelope.
+- Nove filas de eventos, uma por tipo, cada uma assinando o topico do produtor
+  com filtro pelo atributo `tipo` (o nome da classe da mensagem):
+
+  | Fila | Tipo | Produtor | Chave que o codigo le |
+  |---|---|---|---|
+  | `...-os-diagnostico-iniciado` | `DiagnosticoIniciadoMessage` | Execucao | `DiagnosticoIniciadoQueueUrl` |
+  | `...-os-diagnostico-concluido` | `DiagnosticoConcluidoMessage` | Execucao | `DiagnosticoConcluidoQueueUrl` |
+  | `...-os-pecas-reservadas` | `PecasReservadasMessage` | Execucao | `PecasReservadasQueueUrl` |
+  | `...-os-estoque-insuficiente` | `EstoqueInsuficienteMessage` | Execucao | `EstoqueInsuficienteQueueUrl` |
+  | `...-os-execucao-finalizada` | `ExecucaoFinalizadaMessage` | Execucao | `ExecucaoFinalizadaQueueUrl` |
+  | `...-os-orcamento-gerado` | `OrcamentoGeradoMessage` | Billing | `OrcamentoGeradoQueueUrl` |
+  | `...-os-orcamento-aprovado` | `OrcamentoAprovadoMessage` | Billing | `OrcamentoAprovadoQueueUrl` |
+  | `...-os-orcamento-recusado` | `OrcamentoRecusadoMessage` | Billing | `OrcamentoRecusadoQueueUrl` |
+  | `...-os-pagamento-confirmado` | `PagamentoConfirmadoMessage` | Billing | `PagamentoConfirmadoQueueUrl` |
+
+- URLs dos cinco destinos de comando, montadas pelo nome (as filas sao do
+  Terraform de Billing e Execucao): `ExecucaoCommandQueueUrl`,
+  `ReservaPecasCommandQueueUrl`, `IniciarExecucaoCommandQueueUrl`,
+  `BillingCommandQueueUrl` e `SolicitarPagamentoCommandQueueUrl`.
 - DLQ para cada fila; filas e DLQs usam criptografia gerenciada pelo SQS,
   retencao de 4 e 14 dias e redrive apos 5 recebimentos.
-- Segredo `tc-grupo160/<ambiente>/os/messaging` com nomes, URLs e ARNs do topico,
-  filas e filas de comando de destino.
+- Segredo `tc-grupo160/<ambiente>/os/messaging` com exatamente as chaves
+  `Messaging__*` que o codigo le, inclusive `Messaging__Enabled`.
 
 O workflow de deploy do OS Service sincroniza o segredo para `api-secret` e
 expõe os URLs/ARNs como variáveis `Messaging__*` do processo.

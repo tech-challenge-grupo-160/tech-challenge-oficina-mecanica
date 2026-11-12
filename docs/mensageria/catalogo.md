@@ -1,80 +1,81 @@
 # Catálogo de mensagens e infraestrutura
 
-Catálogo operacional da [ADR-0005](../adrs/0005-mensageria-sns-sqs.md). O
-envelope segue o formato acordado na ADR: `messageId`, `type`, `version`,
-`correlationId` (id da OS), `causationId`, `occurredAt` e `producer`.
+Catálogo operacional da [ADR-0005](../adrs/0005-mensageria-sns-sqs.md), já com o
+[adendo de 11/11](../adrs/0005-mensageria-sns-sqs.md#adendo-uma-fila-por-tipo-de-mensagem-2026-11-11):
+**uma fila por tipo de mensagem**, a mesma topologia na AWS e no LocalStack.
+
+Cada mensagem é o JSON do record correspondente (`*Message`), com `messageId`,
+`correlationId` (id da Saga), `ocorridoEm`, `ordemServicoId` e `versao`. O tipo
+**não** vai no corpo: o publicador da Outbox grava o nome da classe no atributo
+SNS `tipo`, e é por ele que as assinaturas filtram. O consumidor de cada fila
+conhece o tipo que recebe, e a deduplicação é pelo `messageId` (inbox).
 
 ## Eventos SNS
 
-Cada produtor publica os eventos em seu próprio tópico. Filas independentes
-por consumidor assinam o tópico com filtro SNS pelo campo `type` do envelope.
+Cada produtor publica no próprio tópico. Cada evento consumido tem uma fila
+própria no OS Service, que assina o tópico do produtor com filtro
+`{"tipo": ["<NomeDaClasse>"]}`.
 
-| Tipo | Produtor | Consumidores |
+| Tipo (atributo `tipo`) | Produtor | Fila consumidora (OS Service) |
 |---|---|---|
-| `os.aberta` | OS Service | Billing, Execução |
-| `os.cancelada` | OS Service | Billing, Execução |
-| `billing.orcamento-enviado` | Billing | OS Service |
-| `billing.orcamento-aprovado` | Billing | OS Service |
-| `billing.orcamento-recusado` | Billing | OS Service |
-| `billing.pagamento-confirmado` | Billing | OS Service |
-| `billing.pagamento-recusado` | Billing | OS Service |
-| `execucao.diagnostico-concluido` | Execução | OS Service |
-| `execucao.pecas-reservadas` | Execução | OS Service |
-| `execucao.estoque-insuficiente` | Execução | OS Service |
-| `execucao.finalizada` | Execução | OS Service |
-| `execucao.abortada` | Execução | OS Service |
+| `DiagnosticoIniciadoMessage` | Execução | `...-os-diagnostico-iniciado` |
+| `DiagnosticoConcluidoMessage` | Execução | `...-os-diagnostico-concluido` |
+| `PecasReservadasMessage` | Execução | `...-os-pecas-reservadas` |
+| `EstoqueInsuficienteMessage` | Execução | `...-os-estoque-insuficiente` |
+| `ExecucaoFinalizadaMessage` | Execução | `...-os-execucao-finalizada` |
+| `OrcamentoGeradoMessage` | Billing | `...-os-orcamento-gerado` |
+| `OrcamentoAprovadoMessage` | Billing | `...-os-orcamento-aprovado` |
+| `OrcamentoRecusadoMessage` | Billing | `...-os-orcamento-recusado` |
+| `PagamentoConfirmadoMessage` | Billing | `...-os-pagamento-confirmado` |
+| `PagamentoRecusadoMessage` | Billing | — ainda sem consumidor (compensação de pagamento, F4-27) |
 
 | Produtor | Tópico por ambiente |
 |---|---|
-| OS Service | `tc-grupo160-<ambiente>-os-events` |
+| OS Service | `tc-grupo160-<ambiente>-os-events` (sem publicações hoje: o OS orquestra só com comandos) |
 | Billing | `tc-grupo160-<ambiente>-billing-events` |
 | Execução | `tc-grupo160-<ambiente>-execucao-events` |
 
 ## Comandos SQS
 
-Comandos são enviados diretamente para a fila do serviço de destino, sem
-passarem por tópico SNS.
+Comandos vão por envio direto (`SendMessage`) para a fila do serviço de destino,
+sem tópico. Há uma fila por comando.
 
 | Tipo | Produtor | Fila consumidora |
 |---|---|---|
-| `execucao.solicitar-diagnostico` | OS Service | `...-execucao-comandos` |
-| `execucao.reservar-pecas` | OS Service | `...-execucao-comandos` |
-| `execucao.liberar-reservas` | OS Service | `...-execucao-comandos` |
-| `billing.gerar-orcamento` | OS Service | `...-billing-comandos` |
-| `billing.cobrar` | OS Service | `...-billing-comandos` |
-| `billing.cancelar-orcamento` | OS Service | `...-billing-comandos` |
+| `IniciarDiagnosticoMessage` | OS Service | `...-execucao-iniciar-diagnostico` |
+| `ReservarPecasMessage` | OS Service | `...-execucao-reservar-pecas` |
+| `IniciarExecucaoMessage` | OS Service | `...-execucao-iniciar-reparo` |
+| `GerarOrcamentoMessage` | OS Service | `...-billing-gerar-orcamento` |
+| `SolicitarPagamentoMessage` | OS Service | `...-billing-solicitar-pagamento` |
 
-As filas de comandos não têm assinatura SNS; o campo `type` roteia o comando
-dentro do serviço consumidor.
+## Filas, configuração e segurança
 
-## Filas, filtros e segurança
+| Serviço | Filas que consome | Chaves que o código lê (`Messaging__*`) |
+|---|---|---|
+| OS Service | as 9 de eventos acima | `DiagnosticoIniciadoQueueUrl`, `DiagnosticoConcluidoQueueUrl`, `PecasReservadasQueueUrl`, `EstoqueInsuficienteQueueUrl`, `ExecucaoFinalizadaQueueUrl`, `OrcamentoGeradoQueueUrl`, `OrcamentoAprovadoQueueUrl`, `OrcamentoRecusadoQueueUrl`, `PagamentoConfirmadoQueueUrl`; destinos de comando: `ExecucaoCommandQueueUrl`, `ReservaPecasCommandQueueUrl`, `IniciarExecucaoCommandQueueUrl`, `BillingCommandQueueUrl`, `SolicitarPagamentoCommandQueueUrl` |
+| Billing | `...-billing-gerar-orcamento`, `...-billing-solicitar-pagamento` | `GerarOrcamentoQueueUrl`, `SolicitarPagamentoQueueUrl`, `EventosTopicArn` |
+| Execução | `...-execucao-iniciar-diagnostico`, `...-execucao-reservar-pecas`, `...-execucao-iniciar-reparo` | `InicioDiagnosticoQueueUrl`, `ReservaPecasQueueUrl`, `InicioExecucaoQueueUrl`, `EventosTopicArn` |
 
-| Serviço dono da fila | Fila | Origem | Filtro |
-|---|---|---|---|
-| Billing | `...-billing-os-eventos` | Tópico OS | `os.aberta`, `os.cancelada` |
-| Billing | `...-billing-comandos` | Envio direto do OS Service | — |
-| Execução | `...-execucao-os-eventos` | Tópico OS | `os.aberta`, `os.cancelada` |
-| Execução | `...-execucao-comandos` | Envio direto do OS Service | — |
-| OS Service | `...-os-billing-eventos` | Tópico Billing | Todos os cinco eventos Billing |
-| OS Service | `...-os-execucao-eventos` | Tópico Execução | Todos os cinco eventos Execução |
+Os três leem também `Messaging__Enabled`, que liga os workers, e
+`Messaging__Region`. O nome completo de cada fila leva o prefixo
+`tc-grupo160-<ambiente>-`. No LocalStack os nomes são os mesmos, sem o prefixo.
 
-Cada fila tem uma DLQ exclusiva e redrive após cinco recebimentos. Filas
-principais retêm mensagens por quatro dias; DLQs, por 14 dias. SNS usa a chave
-gerenciada pela AWS para SNS e SQS usa criptografia gerenciada pelo serviço.
+Cada fila tem uma DLQ exclusiva (`<fila>-dlq`), com redrive após cinco
+recebimentos na AWS e três no LocalStack. Filas principais retêm mensagens por
+quatro dias; DLQs, por 14 dias. SNS usa a chave gerenciada pela AWS para SNS, e
+SQS usa criptografia gerenciada pelo serviço. As filas de eventos só aceitam
+`SendMessage` do tópico do produtor (queue policy com `aws:SourceArn`).
 
 Os Terraform roots responsáveis por tópico e filas são:
 
 - [OS Service](../../infra/README.md)
-- [Billing](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-billing/tree/main/infra)
-- [Execução](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-execucao/tree/main/infra)
+- [Billing](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-billing/tree/develop/infra)
+- [Execução](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-execucao/tree/develop/infra)
 
-Cada serviço grava sua configuração em
-`tc-grupo160/<ambiente>/<serviço>/messaging`, no Secrets Manager. O JSON
-contém chaves `Messaging__*` (compatíveis com a configuração .NET por
-variáveis de ambiente) com nome/ARN do tópico, nomes/URLs/ARNs das filas e,
-no OS Service, os destinos das filas de comando. O workflow de deploy do OS
-Service injeta esses valores no `api-secret`; Billing e Execução devem usar o
-mesmo mapeamento ao habilitar seus deploys independentes.
+Cada serviço grava em `tc-grupo160/<ambiente>/<serviço>/messaging`, no Secrets
+Manager, **exatamente as chaves `Messaging__*` que o código lê**, inclusive
+`Messaging__Enabled`. A pipeline as injeta pelo parâmetro `segredos`, e o
+`sobe-tudo.sh` copia todas as chaves do segredo para o Secret do pod.
 
 ## Primeiro provisionamento
 
@@ -220,6 +221,10 @@ não mostrou os atributos das assinaturas nem o redrive/encryption das filas;
 rode os comandos acima para validar esses critérios. Também não comprova que
 pods EKS consigam acessar SNS/SQS com a LabRole: essa prova de acesso em runtime
 continua pertencendo ao spike F4-05.
+
+Esse registro é da topologia anterior ao adendo de 11/11. Com uma fila por
+tipo, o esperado em `dev` é 14 filas e 14 DLQs (28 no total) e 9 assinaturas
+SNS, todas com `FilterScope: MessageAttributes` e filtro `{"tipo": [...]}`.
 
 ### Subir o ambiente completo
 
