@@ -411,36 +411,38 @@ CONN="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_BANCO" --regio
   | grep -o '"connectionString":"[^"]*"' | sed 's/^"connectionString":"//; s/"$//')"
 JWT="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_JWT" --region "$REGIAO" \
   --query SecretString --output text)"
-SEGREDO_MENSAGERIA="tc-grupo160/${SUFIXO}/os/messaging"
-MENSAGERIA="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_MENSAGERIA" --region "$REGIAO" \
-  --query SecretString --output text)"
-valor_json() {
-  local chave="$1"
-  printf '%s\n' "$MENSAGERIA" \
-    | sed -n "s/.*\"$chave\":\"\\([^\"]*\\)\".*/\\1/p"
+# Mensageria: todas as chaves Messaging__* do segredo de cada servico viram
+# variaveis do pod, com o nome que o codigo le - o Terraform de mensageria ja
+# grava assim (uma fila por tipo, adendo de 11/11 a ADR-0005). Ler o segredo
+# inteiro, e nao uma lista fixa, evita que o script quebre quando uma fila
+# entra ou sai. Messaging__Enabled vem junto e liga os workers.
+literais_mensageria() {
+  local segredo="$1" json
+  json="$(aws secretsmanager get-secret-value --secret-id "$segredo" --region "$REGIAO" \
+    --query SecretString --output text)"
+  printf '%s' "$json" | grep -oE '"Messaging__[A-Za-z]+": *"[^"]*"' \
+    | sed -E 's/^"([^"]+)": *"([^"]*)"$/--from-literal=\1=\2/'
 }
 
-MSG_TOPIC_ARN="$(valor_json Messaging__EventTopicArn)"
-MSG_BILLING_EVENTS_URL="$(valor_json Messaging__BillingEventsQueueUrl)"
-MSG_EXECUTION_EVENTS_URL="$(valor_json Messaging__ExecutionEventsQueueUrl)"
-MSG_BILLING_COMMANDS_URL="$(valor_json Messaging__BillingCommandsQueueUrl)"
-MSG_EXECUTION_COMMANDS_URL="$(valor_json Messaging__ExecutionCommandsQueueUrl)"
-if [ -z "$MSG_TOPIC_ARN" ] || [ -z "$MSG_BILLING_EVENTS_URL" ] \
-   || [ -z "$MSG_EXECUTION_EVENTS_URL" ] || [ -z "$MSG_BILLING_COMMANDS_URL" ] \
-   || [ -z "$MSG_EXECUTION_COMMANDS_URL" ]; then
-  vermelho "ERRO: configuracao de mensageria ausente ou incompleta em $SEGREDO_MENSAGERIA."
-  exit 1
-fi
+exigir_mensageria() {
+  local segredo="$1"; shift
+  if ! printf '%s\n' "$@" | grep -q '^--from-literal=Messaging__Enabled=true$'; then
+    vermelho "ERRO: configuracao de mensageria ausente ou antiga em $segredo (falta Messaging__Enabled)."
+    vermelho "      Rode de novo a etapa 5 (mensageria) ou confira o infra/ do servico."
+    exit 1
+  fi
+}
+
+SEGREDO_MENSAGERIA="tc-grupo160/${SUFIXO}/os/messaging"
+mapfile -t MSG_ARGS < <(literais_mensageria "$SEGREDO_MENSAGERIA")
+exigir_mensageria "$SEGREDO_MENSAGERIA" "${MSG_ARGS[@]}"
 
 kubectl create secret generic api-secret --namespace oficina-mecanica \
   --from-literal=ConnectionStrings__DefaultConnection="$CONN" \
   --from-literal=Jwt__SecretKey="$JWT" \
-  --from-literal=Messaging__EventTopicArn="$MSG_TOPIC_ARN" \
-  --from-literal=Messaging__BillingEventsQueueUrl="$MSG_BILLING_EVENTS_URL" \
-  --from-literal=Messaging__ExecutionEventsQueueUrl="$MSG_EXECUTION_EVENTS_URL" \
-  --from-literal=Messaging__BillingCommandsQueueUrl="$MSG_BILLING_COMMANDS_URL" \
-  --from-literal=Messaging__ExecutionCommandsQueueUrl="$MSG_EXECUTION_COMMANDS_URL" \
+  "${MSG_ARGS[@]}" \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+cinza "  api-secret com ${#MSG_ARGS[@]} chaves de mensageria."
 
 TMP="$(mktemp -d)"
 cp -r "$K8S/k8s/." "$TMP/"
@@ -498,16 +500,8 @@ deploy_servico() {
   docker push -q "${imagem}:latest" >/dev/null
 
   segredo="tc-grupo160/${SUFIXO}/${servico}/messaging"
-  json="$(aws secretsmanager get-secret-value --secret-id "$segredo" --region "$REGIAO" \
-    --query SecretString --output text)"
-  for chave in Messaging__EventTopicArn Messaging__CommandsQueueUrl Messaging__OsEventsQueueUrl; do
-    valor="$(printf '%s\n' "$json" | sed -n "s/.*\"$chave\":\"\\([^\"]*\\)\".*/\\1/p")"
-    if [ -z "$valor" ]; then
-      vermelho "ERRO: $chave ausente em $segredo."
-      exit 1
-    fi
-    args+=(--from-literal="${chave}=${valor}")
-  done
+  mapfile -t args < <(literais_mensageria "$segredo")
+  exigir_mensageria "$segredo" "${args[@]}"
 
   # So a Execucao tem banco relacional proprio, e so ela recebe esta credencial.
   if [ "$servico" = "execucao" ]; then

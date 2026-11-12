@@ -39,11 +39,21 @@ jobs:
       segredos: |
         ConnectionStrings__DefaultConnection=tc-grupo160/{sufixo}/banco#connectionString
         Jwt__SecretKey=tc-grupo160/{sufixo}/jwt-signing-key
-        Messaging__EventTopicArn=tc-grupo160/{sufixo}/os/messaging#Messaging__EventTopicArn
-        Messaging__BillingEventsQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__BillingEventsQueueUrl
-        Messaging__ExecutionEventsQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__ExecutionEventsQueueUrl
-        Messaging__BillingCommandsQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__BillingCommandsQueueUrl
-        Messaging__ExecutionCommandsQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__ExecutionCommandsQueueUrl
+        Messaging__Enabled=tc-grupo160/{sufixo}/os/messaging#Messaging__Enabled
+        Messaging__ExecucaoCommandQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__ExecucaoCommandQueueUrl
+        Messaging__BillingCommandQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__BillingCommandQueueUrl
+        Messaging__DiagnosticoIniciadoQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__DiagnosticoIniciadoQueueUrl
+        Messaging__DiagnosticoConcluidoQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__DiagnosticoConcluidoQueueUrl
+        Messaging__OrcamentoGeradoQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__OrcamentoGeradoQueueUrl
+        Messaging__OrcamentoAprovadoQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__OrcamentoAprovadoQueueUrl
+        Messaging__OrcamentoRecusadoQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__OrcamentoRecusadoQueueUrl
+        Messaging__ReservaPecasCommandQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__ReservaPecasCommandQueueUrl
+        Messaging__PecasReservadasQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__PecasReservadasQueueUrl
+        Messaging__EstoqueInsuficienteQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__EstoqueInsuficienteQueueUrl
+        Messaging__IniciarExecucaoCommandQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__IniciarExecucaoCommandQueueUrl
+        Messaging__ExecucaoFinalizadaQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__ExecucaoFinalizadaQueueUrl
+        Messaging__SolicitarPagamentoCommandQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__SolicitarPagamentoCommandQueueUrl
+        Messaging__PagamentoConfirmadoQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__PagamentoConfirmadoQueueUrl
       nome_secret: api-secret
       cluster_autoscaler: true
       # Migrations do EF Core sao codigo gerado: fora da analise e da cobertura.
