@@ -94,14 +94,14 @@ gha ..> authfn : "deploy (chave da sessao)"
 
 | Componente | Serviço AWS | Papel | Issue |
 |---|---|---|---|
-| API Gateway | API Gateway | Roteamento, throttling e validação do JWT nas rotas sensíveis | [#42](../../issues/42), [#43](../../issues/43) |
-| Lambda Auth | Lambda | Valida CPF, consulta cliente no banco e emite o JWT | [#37](../../issues/37)–[#39](../../issues/39) |
-| Cluster | EKS | Roda a API .NET com HPA entre 2 e 10 réplicas | [#60](../../issues/60) |
-| Banco | RDS PostgreSQL | Single-AZ (restricao de orcamento), subnet privada | [#61](../../issues/61) |
-| Ingress | ALB | Entrada TLS para o cluster | [#64](../../issues/64) |
-| Registry | ECR | Imagens da API publicadas pelo pipeline | [#52](../../issues/52) |
-| Segredos | Secrets Manager | Chave de assinatura do JWT e credenciais do banco | [#46](../../issues/46) |
-| Observabilidade | Datadog + CloudWatch | Latência, recursos, logs JSON, traces e alertas | [#67](../../issues/67) |
+| API Gateway | API Gateway | Roteamento, throttling e validação do JWT nas rotas sensíveis | [#42](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/42), [#43](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/43) |
+| Lambda Auth | Lambda | Valida CPF, consulta cliente no banco e emite o JWT | [#37](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/37)–[#39](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/39) |
+| Cluster | EKS | Roda a API .NET com HPA entre 2 e 10 réplicas | [#60](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/60) |
+| Banco | RDS PostgreSQL | Single-AZ (restricao de orcamento), subnet privada | [#61](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/61) |
+| Ingress | ALB | Entrada TLS para o cluster | [#64](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/64) |
+| Registry | ECR | Imagens da API publicadas pelo pipeline | [#52](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/52) |
+| Segredos | Secrets Manager | Chave de assinatura do JWT e credenciais do banco | [#46](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/46) |
+| Observabilidade | Datadog + CloudWatch | Latência, recursos, logs JSON, traces e alertas | [#67](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/67) |
 
 ## Decisões refletidas no diagrama
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Em revisão — ambiente e restrições confirmados com o professor em 24/08 |
+| **Status** | Aceita — AWS (Learner Lab) adotada desde a Fase 3; mudanças posteriores na seção Emendas |
 | **Autor** | Grupo 160 |
 | **Data** | 2026-08-24 |
 | **Issue** | [#56](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/56) |
