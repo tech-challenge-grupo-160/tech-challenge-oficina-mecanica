@@ -1,6 +1,6 @@
 # Arquitetura da Fase 4 — microsserviços
 
-> **Status:** desenho aceito na Sprint 1 (ADRs [0003](../../adrs/0003-divisao-em-microsservicos.md) a [0006](../../adrs/0006-banco-por-servico.md), 2026-10-17). O primeiro corte vertical da Saga está implementado no início do diagnóstico, com Outbox/Inbox, SNS, SQS e DLQs entre OS Service e Execução. Billing e as jornadas posteriores ainda estão pendentes. É a base do diagrama geral da entrega ([F4-40](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/171)).
+> **Status:** desenho aceito na Sprint 1 (ADRs [0003](../../adrs/0003-divisao-em-microsservicos.md) a [0006](../../adrs/0006-banco-por-servico.md), 2026-10-17) e implementado nos três serviços. Visão resumida; os diagramas da entrega ([F4-40](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/171)) são o [C4 de contexto](c4-contexto.md), o [C4 de containers](c4-containers.md), a [implantação na AWS](implantacao-aws.md) e a [sequência da Saga](saga-sequencia.md).
 
 ## Visão geral
 
@@ -85,11 +85,13 @@ sequenceDiagram
     Note over OS: entrega liberada
 ```
 
-Compensações, quando um passo falha:
+Compensações implementadas (detalhe e nomes das mensagens em [saga-sequencia.md](saga-sequencia.md)):
 
-| Falha | O que é desfeito |
+| Falha | Tratamento |
 |---|---|
-| Orçamento recusado ou expirado (7 dias) | Billing cancela o orçamento; OS cancelada |
-| Falta de estoque | Pedido de compra gerado e OS aguardando estoque; se cancelada, Execução libera as reservas |
-| Execução abortada | Execução devolve as peças ao estoque; Billing cancela o orçamento; OS cancelada |
-| Pagamento recusado | Nada é desfeito (o conserto já foi feito): a OS aguarda pagamento e a cobrança é repetida |
+| Orçamento recusado | OS cancelada, sem reservar peças |
+| Falta de estoque | OS aguardando estoque; a reposição na Execução retoma a saga |
+| Pagamento recusado | Nada é desfeito (o conserto já foi feito): a OS aguarda pagamento e uma nova cobrança é pedida |
+
+A expiração do orçamento por tempo e a execução abortada, previstas na
+ADR-0004, ficaram fora do escopo da Fase 4.
