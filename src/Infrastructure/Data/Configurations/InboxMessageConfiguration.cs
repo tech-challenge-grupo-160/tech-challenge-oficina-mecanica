@@ -11,6 +11,9 @@ public sealed class InboxMessageConfiguration : IEntityTypeConfiguration<InboxMe
         builder.ToTable("InboxMessage");
         builder.HasKey(item => item.MessageId);
         builder.Property(item => item.Tipo).HasMaxLength(200).IsRequired();
+        builder.Property(item => item.TraceContext).HasMaxLength(2000);
         builder.HasIndex(item => item.ProcessadoEm);
+        // O publicador da Outbox busca o trace da Saga pelo correlationId (F4-31).
+        builder.HasIndex(item => item.CorrelationId);
     }
 }

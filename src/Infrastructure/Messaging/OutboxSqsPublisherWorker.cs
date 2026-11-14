@@ -3,6 +3,7 @@ using Amazon.SQS;
 using Amazon.SQS.Model;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Logging;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Observability;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -66,23 +67,48 @@ public sealed class OutboxSqsPublisherWorker(
 
         foreach (var mensagem in mensagens)
         {
+            var ordemServicoId = OutboxLogContexto.LerOrdemServicoId(mensagem.Payload);
+            // A publicacao continua o trace de quem gravou a mensagem (F4-31).
+            var contextoDaSaga = await context.InboxMessages
+                .AsNoTracking()
+                .Where(item => item.CorrelationId == mensagem.CorrelationId && item.TraceContext != null)
+                .OrderByDescending(item => item.ProcessadoEm)
+                .Select(item => item.TraceContext)
+                .FirstOrDefaultAsync(cancellationToken);
+            using var span = MensageriaTrace.IniciarPublicacao(
+                MensageriaTrace.EscolherContextoPai(mensagem.TraceContext, contextoDaSaga),
+                mensagem.Tipo,
+                MensageriaTrace.SistemaSqs,
+                mensagem.Destino,
+                mensagem.CorrelationId,
+                ordemServicoId);
             using var contexto = logger.Iniciar(
                 mensagem.CorrelationId,
-                OutboxLogContexto.LerOrdemServicoId(mensagem.Payload),
+                ordemServicoId,
                 mensagem.Id,
                 mensagem.Tipo);
             try
             {
-                await sqs.SendMessageAsync(new SendMessageRequest
+                var request = new SendMessageRequest
                 {
                     QueueUrl = ObterQueueUrl(mensagem.Destino),
                     MessageBody = mensagem.Payload
-                }, cancellationToken);
+                };
+                if (MensageriaTrace.CapturarContextoAtual() is { } traceContext)
+                {
+                    request.MessageAttributes = new Dictionary<string, MessageAttributeValue>
+                    {
+                        [MensageriaTrace.AtributoMensagem] = new() { DataType = "String", StringValue = traceContext }
+                    };
+                }
+
+                await sqs.SendMessageAsync(request, cancellationToken);
                 mensagem.MarcarPublicada(DateTimeOffset.UtcNow);
                 logger.LogInformation("Comando {TipoMensagem} enviado para {Destino}.", mensagem.Tipo, mensagem.Destino);
             }
             catch (Exception exception)
             {
+                span.Span.SetException(exception);
                 mensagem.RegistrarFalha(exception.Message);
                 logger.LogWarning(exception, "Falha ao publicar mensagem {MessageId}.", mensagem.Id);
             }
