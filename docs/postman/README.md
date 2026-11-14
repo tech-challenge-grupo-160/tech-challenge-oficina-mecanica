@@ -1,121 +1,73 @@
-# Postman — Collection e Environment
+# Postman — fluxo completo da OS (Fase 4)
 
-Este diretorio contem a collection e o environment do Postman para testar a API da Oficina Mecanica.
+Collection e environments para exercitar o fluxo da ordem de serviço pelos três
+microsserviços (OS Service, Billing e Execução), incluindo as compensações da
+Saga.
 
 ## Arquivos
 
-| Arquivo | Descricao |
+| Arquivo | Conteúdo |
 |---|---|
-| `TechChallenge OficinaMecanica.postman_collection.json` | Collection com todos os endpoints organizados por recurso |
-| `TechChallenge OficinaMecanica.postman_environment.json` | Variaveis de ambiente (baseUrl, token, IDs) |
+| `oficina-mecanica-fase-4.postman_collection.json` | Collection com o fluxo em pastas numeradas, da autenticação à entrega |
+| `oficina-mecanica-local.postman_environment.json` | Serviços locais: OS `:8080`, Billing `:8081`, Execução `:8082` |
+| `oficina-mecanica-dev.postman_environment.json` | Ambiente dev na AWS, tudo pelo API Gateway |
+| `oficina-mecanica-hom.postman_environment.json` | Ambiente de homologação na AWS |
+| `oficina-mecanica-prod.postman_environment.json` | Ambiente de produção na AWS |
 
-## Como importar
+## Como usar
 
-1. Abra o Postman.
-2. Clique em **Import** (canto superior esquerdo).
-3. Arraste ou selecione os dois arquivos `.json` deste diretorio.
-4. A collection **TechChallenge OficinaMecanica** e o environment de mesmo nome aparecerao no painel lateral.
-5. Selecione o environment **TechChallenge OficinaMecanica** no seletor de ambientes (canto superior direito).
+1. Importe a collection e os environments no Postman (**Import**, arraste os
+   arquivos).
+2. Selecione o environment.
+3. Nos environments da AWS, preencha `gatewayUrl` com a URL do API Gateway do
+   ambiente. Ela é o output `gateway_url` do Terraform do
+   [infra-k8s](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s):
 
-## Variaveis de ambiente
+   ```bash
+   terraform -chdir=infra output -raw gateway_url
+   ```
 
-| Variavel | Valor padrao | Descricao |
-|---|---|---|
-| `baseUrl` | `http://localhost:8080` | URL base da API |
-| `token` | *(vazio)* | JWT obtido no login — preencher manualmente apos autenticar |
-| `cpfCnpj` | `47654866801` | CPF/CNPJ usado nos requests de cliente |
-| `clienteId` | `1000` | ID do cliente criado pelo seed |
-| `veiculoId` | `1000` | ID do veiculo criado pelo seed |
-| `placa` | `ABC1234` | Placa usada nos requests de veiculo |
-| `ordemServicoId` | `3004` | ID da OS para testes de fluxo |
-| `ordemServicoNumero` | `OS-20260418-3004` | Numero da OS |
-| `codigoAcompanhamento` | *(vazio)* | Codigo de acompanhamento retornado na criacao da OS |
-| `servicoId` | `1002` | ID do servico |
-| `pecaId` | `1004` | ID da peca |
-| `pedidoCompraId` | `1` | ID do pedido de compra |
+4. Preencha `senha` com a senha do usuário `admin` do seed (a mesma do README
+   principal). Ela fica marcada como secreta e não vai para o arquivo exportado.
+5. Rode as pastas em ordem. Cada requisição guarda no environment os ids que a
+   próxima usa: `token`, `ordemServicoId`, `orcamentoId`, `pagamentoId` e
+   `codigoAcompanhamento`.
 
-Ajuste os valores conforme o estado do seu banco. Os IDs padrao correspondem aos dados do seed de desenvolvimento.
+Os passos entre serviços são **assíncronos** (SNS/SQS). Quando o status da OS
+ainda não mudou, aguarde alguns segundos e repita a consulta.
 
-## Configurar autenticacao
+## O fluxo
 
-A collection usa a variavel `{{token}}` no header `Authorization: Bearer {{token}}`. Para configurar:
+| Pasta | O que mostra |
+|---|---|
+| 00 - Autenticação | JWT do funcionário (`POST /api/v1/auth/login`) e do cliente pelo CPF na Lambda (`POST /auth`, só na AWS) |
+| 01 - Cadastro e abertura da OS | Cliente e veículo (opcional), consulta ao catálogo da Execução e abertura da OS |
+| 02 - Diagnóstico | O OS manda o comando; na Execução, resultado e conclusão do diagnóstico |
+| 03 - Orçamento | Orçamento gerado pelo Billing; aprovação, ou recusa como compensação (a OS é cancelada) |
+| 04 - Reserva de peças e reparo | Reserva, reposição de estoque (retoma a saga se faltou peça) e finalização do reparo |
+| 05 - Pagamento | Link do Checkout Pro; na máquina local, confirmação ou recusa simulada; nova cobrança depois da recusa |
+| 06 - Entrega e acompanhamento | Entrega (bloqueada sem pagamento), histórico, monitoramento e acompanhamento pelo cliente |
+| 07 - Consultas e cadastros | Listagens de apoio |
 
-1. Execute o request **Auth > Login** (usuario `admin`, senha `admin123`).
-2. Copie o valor do campo `token` da resposta.
-3. No environment, cole o valor na variavel `token`.
-4. Todos os demais requests usarao o token automaticamente.
+Na AWS, o pagamento é feito no Checkout Pro do Mercado Pago, com cartão de
+teste ([MERCADO-PAGO.md do Billing](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-billing/blob/develop/docs/MERCADO-PAGO.md)).
+Os endpoints `simular-*` respondem 404 fora de Development/Testing.
 
-## Estrutura da collection
+## Autenticação
 
-A collection esta organizada por recurso, na ordem recomendada para testar o fluxo completo:
+A collection usa `Bearer {{token}}` em todas as requisições, exceto no login e
+no `/auth`. Na AWS, o API Gateway valida o token no authorizer Lambda antes de
+encaminhar para o ALB, que escolhe o serviço pelo caminho
+(`/api/v1/orcamentos*` e `/api/v1/pagamentos*` vão para o Billing;
+`/api/v1/catalogo*`, `/api/v1/diagnosticos*`, `/api/v1/estoque*` e
+`/api/v1/execucoes*` vão para a Execução; o resto vai para o OS Service).
 
-### 1. Auth
+Para ver o acompanhamento como o cliente, troque o token da requisição por
+`{{tokenCliente}}` na aba *Authorization*.
 
-- `POST Login` — obter JWT
+## Contratos
 
-### 2. Clientes
-
-- Criar, consultar por documento, listar paginado, atualizar, excluir
-
-### 3. Veiculos
-
-- Criar veiculo para cliente, listar por cliente, listar todos, consultar por placa, editar, excluir
-
-### 4. Servicos
-
-- Criar, listar, consultar por ID, atualizar, excluir
-
-### 5. Pecas
-
-- Criar, listar, consultar por ID, atualizar, excluir
-
-### 6. Ordens de Servico
-
-Fluxo completo da OS na ordem operacional:
-
-1. `POST Criar OS` — abre a ordem com servicos e pecas
-2. `GET Obter OS por Id` — consulta a OS criada
-3. `PATCH Iniciar Diagnostico` — Recebida → EmDiagnostico
-4. `POST Adicionar Servico na OS` — monta orcamento
-5. `POST Adicionar Peca na OS` — monta orcamento
-6. `PATCH Finalizar Diagnostico` — EmDiagnostico → AguardandoAprovacao
-7. `PATCH Aprovar Orcamento` — AguardandoAprovacao → EmExecucao (ou AguardandoEstoque)
-8. `PATCH Liberar Execucao OS` — AguardandoEstoque → EmExecucao (se bloqueada)
-9. `PATCH Finalizar OS` — EmExecucao → Finalizada
-10. `PATCH Registrar Pagamento OS` — registra pagamento
-11. `PATCH Entregar OS` — Finalizada → Entregue
-
-Consultas auxiliares:
-
-- `GET Listar OS Paginado` — com filtros por cliente, status, numero, periodo
-- `GET Historico OS` — eventos da ordem
-- `GET Monitoramento OS` / `GET Monitoramento OS por id` — tempo decorrido e metricas
-- `GET Estimativa Tempo Servico por OS` — soma dos tempos estimados
-- `GET Movimentacao Estoque OS por id` — movimentacoes agrupadas por peca
-- `GET Acompanhamento OS` — consulta do cliente autenticado com JWT da Lambda
-- `POST Aprovacao de orcamento` — resposta do cliente autenticado com JWT da Lambda
-- `PATCH Cancelar OS` — cancelamento com motivo
-
-### 7. Pedidos de Compra
-
-- Criar pedido manual, listar todos, listar por OS, registrar recebimento
-
-## Fluxo recomendado para teste completo
-
-```text
-1. Login (obter token)
-2. Criar Cliente
-3. Criar Veiculo para Cliente
-4. Criar Servico
-5. Criar Peca
-6. Criar OS (com servico e peca)
-7. Iniciar Diagnostico
-8. Adicionar Servico / Peca (opcional)
-9. Finalizar Diagnostico
-10. Aprovar Orcamento
-11. Finalizar OS
-12. Registrar Pagamento
-13. Entregar OS
-```
-
-Para testar o fluxo de falta de estoque, crie uma peca com `quantidadeEstoque: 0` e adicione-a a OS antes de aprovar. A OS ira para `AguardandoEstoque`. Crie e receba um pedido de compra, depois use `Liberar Execucao OS`.
+Os contratos OpenAPI de cada serviço estão versionados:
+[OS Service](../openapi/os-service.json),
+[Billing](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-billing/blob/develop/docs/openapi/billing.json) e
+[Execução](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-execucao/blob/develop/docs/openapi/execucao.json).

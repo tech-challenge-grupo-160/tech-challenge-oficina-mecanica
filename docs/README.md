@@ -11,6 +11,8 @@ Este diretório reúne a documentação viva do projeto, alinhada ao código atu
 5. [Infraestrutura](INFRAESTRUTURA.md)
 6. [Catálogo de eventos e mensageria](mensageria/catalogo.md)
 7. [Relatório do BDD do fluxo completo da OS](bdd/relatorio-bdd.html) (HTML do Reqnroll; baixe e abra no navegador)
+8. [Diagramas da arquitetura](diagrams/README.md) (C4, implantação na AWS e sequência da Saga)
+9. [Contrato OpenAPI do OS Service](openapi/os-service.json) e [collection do Postman](postman/README.md)
 
 ## Conteúdo
 

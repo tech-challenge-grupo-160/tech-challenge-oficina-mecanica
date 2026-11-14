@@ -1,0 +1,915 @@
+{
+  "info": {
+    "name": "Oficina Mecânica - Fase 4",
+    "description": "Fluxo completo da ordem de serviço pelos três microsserviços (OS Service, Billing e Execução), coordenado pela Saga orquestrada no OS Service.\n\nNa AWS, todas as chamadas passam pelo API Gateway (`gatewayUrl`): `POST /auth` emite o JWT do cliente pelo CPF e `POST /api/v1/auth/login` o do funcionário; as rotas `/api/v1/*` exigem o token (authorizer Lambda). Localmente, cada serviço tem sua URL (`osUrl`, `billingUrl`, `execucaoUrl`).\n\nRode as pastas em ordem. Cada requisição guarda no environment os ids que a próxima usa. Os passos entre serviços são assíncronos: quando um status ainda não mudou, aguarde alguns segundos.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "00 - Autenticação",
+      "description": "Obtém o JWT. O fluxo usa o token do funcionário; o do cliente demonstra a autenticação por CPF na Lambda.",
+      "item": [
+        {
+          "name": "Login do funcionário",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/auth/login"
+            },
+            "description": "Rota pública no API Gateway. O token fica em `token` e vale para as demais requisições.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuario}}\",\n  \"senha\": \"{{senha}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (pm.response.code < 300) { const corpo = pm.response.json(); pm.environment.set(\"token\", corpo.token); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Token do cliente pelo CPF (Lambda)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/auth"
+            },
+            "description": "Só na AWS. CPF inválido devolve 400; CPF sem cadastro, 401. O token do cliente fica em `tokenCliente`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documento\": \"{{cpf}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (pm.response.code < 300) { const corpo = pm.response.json(); pm.environment.set(\"tokenCliente\", corpo.token); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - Cadastro e abertura da OS",
+      "description": "Cliente e veículo (opcional: os environments já apontam para o seed) e abertura da OS com os itens do catálogo da Execução.",
+      "item": [
+        {
+          "name": "Criar cliente (opcional)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/Clientes"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Cliente Postman\",\n  \"cpfCnpj\": \"{{cpfNovoCliente}}\",\n  \"telefone\": \"11987654321\",\n  \"email\": \"cliente.postman@teste.com.br\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) { const corpo = pm.response.json(); pm.environment.set(\"clienteId\", corpo.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar veículo do cliente (opcional)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/Clientes/{{cpfNovoCliente}}/veiculos"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"placa\": \"PMN4F41\",\n  \"marca\": \"Fiat\",\n  \"modelo\": \"Argo\",\n  \"ano\": 2023\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) { const corpo = pm.response.json(); pm.environment.set(\"veiculoId\", corpo.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar catálogo da Execução",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{execucaoUrl}}/api/v1/catalogo/itens/consultar"
+            },
+            "description": "A mesma consulta que o OS Service faz, por HTTP, na abertura da OS.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"servicoIds\": [\n    1000\n  ],\n  \"pecaIds\": [\n    {{pecaId}}\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abrir OS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/ordens-servico"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": {{clienteId}},\n  \"veiculoId\": {{veiculoId}},\n  \"descricaoSolicitacao\": \"Barulho ao frear e carro puxando para a direita.\",\n  \"observacoesRecepcao\": \"Cliente aguarda o orçamento por mensagem.\",\n  \"servicos\": [ { \"servicoId\": 1000 } ],\n  \"pecas\": [ { \"pecaId\": {{pecaId}}, \"quantidade\": 2 } ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code < 300) { const corpo = pm.response.json(); pm.environment.set(\"ordemServicoId\", corpo.id); }",
+                  "if (pm.response.code < 300) { const corpo = pm.response.json(); pm.environment.set(\"codigoAcompanhamento\", corpo.codigoAcompanhamento); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar OS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/ordens-servico/{{ordemServicoId}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Diagnóstico (OS Service e Execução)",
+      "description": "O OS Service manda IniciarDiagnosticoMessage; a Execução abre o diagnóstico, o mecânico registra o resultado e conclui. A etapa anterior é assíncrona (SNS/SQS): se o status ainda não mudou, aguarde alguns segundos e repita.",
+      "item": [
+        {
+          "name": "Solicitar diagnóstico",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/ordens-servico/{{ordemServicoId}}/iniciar-diagnostico"
+            },
+            "description": "202: a saga começa e o comando vai para a fila da Execução."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 202\", () => pm.expect(pm.response.code).to.be.oneOf([202]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar diagnóstico (Execução)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{execucaoUrl}}/api/v1/diagnosticos/ordem-servico/{{ordemServicoId}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar resultado do diagnóstico",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{execucaoUrl}}/api/v1/diagnosticos/ordem-servico/{{ordemServicoId}}/resultado"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parecerTecnico\": \"Pastilhas no limite e geometria fora do padrão.\",\n  \"servicoIds\": [\n    1000\n  ],\n  \"pecas\": [\n    {\n      \"pecaId\": {{pecaId}},\n      \"quantidade\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Concluir diagnóstico",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{execucaoUrl}}/api/v1/diagnosticos/ordem-servico/{{ordemServicoId}}/concluir"
+            },
+            "description": "Publica DiagnosticoConcluidoMessage; o OS Service manda GerarOrcamentoMessage ao Billing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Orçamento (Billing)",
+      "description": "Orçamento gerado pelo Billing e decisão do cliente. Para a compensação, use Recusar em vez de Aprovar: a OS é cancelada. A etapa anterior é assíncrona (SNS/SQS): se o status ainda não mudou, aguarde alguns segundos e repita.",
+      "item": [
+        {
+          "name": "Consultar orçamento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{billingUrl}}/api/v1/orcamentos/ordem-servico/{{ordemServicoId}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (pm.response.code < 300) { const corpo = pm.response.json(); pm.environment.set(\"orcamentoId\", corpo.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Aprovar orçamento",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{billingUrl}}/api/v1/orcamentos/{{ordemServicoId}}/{{orcamentoId}}/aprovar"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Recusar orçamento (compensação)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{billingUrl}}/api/v1/orcamentos/{{ordemServicoId}}/{{orcamentoId}}/recusar"
+            },
+            "description": "Compensação: o OS Service cancela a OS e não reserva peças.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Cliente preferiu não fazer o serviço agora.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Reserva de peças e reparo (Execução)",
+      "description": "Depois da aprovação, o OS Service pede a reserva. Se faltar peça, a OS fica AguardandoEstoque até a reposição. A etapa anterior é assíncrona (SNS/SQS): se o status ainda não mudou, aguarde alguns segundos e repita.",
+      "item": [
+        {
+          "name": "Consultar OS (EmExecucao ou AguardandoEstoque)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/ordens-servico/{{ordemServicoId}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Repor estoque (retoma a saga)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{execucaoUrl}}/api/v1/estoque/pecas/{{pecaId}}/reposicoes"
+            },
+            "description": "Só é preciso se a OS ficou AguardandoEstoque: a reposição completa a reserva e publica PecasReservadasMessage.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantidade\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200 ou 201\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fila de execução",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{execucaoUrl}}/api/v1/execucoes/fila"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar execução da OS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{execucaoUrl}}/api/v1/execucoes/ordem-servico/{{ordemServicoId}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finalizar reparo",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{execucaoUrl}}/api/v1/execucoes/ordem-servico/{{ordemServicoId}}/finalizar"
+            },
+            "description": "Publica ExecucaoFinalizadaMessage; a OS fica Finalizada e o OS Service pede a cobrança ao Billing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Pagamento (Billing e Mercado Pago)",
+      "description": "O Billing cria a cobrança no Mercado Pago (link em linkPagamento). Fora da AWS, simule a confirmação ou a recusa. Pagamento recusado: a OS segue Finalizada e uma nova cobrança é pedida. A etapa anterior é assíncrona (SNS/SQS): se o status ainda não mudou, aguarde alguns segundos e repita.",
+      "item": [
+        {
+          "name": "Consultar pagamento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{billingUrl}}/api/v1/pagamentos/ordem-servico/{{ordemServicoId}}"
+            },
+            "description": "Na AWS, abra o `linkPagamento` e pague com um cartão de teste do Mercado Pago."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (pm.response.code < 300) { const corpo = pm.response.json(); pm.environment.set(\"pagamentoId\", corpo.id); }",
+                  "if (pm.response.code < 300) { console.log('Link do Checkout Pro:', pm.response.json().linkPagamento); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simular confirmação (só local)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{billingUrl}}/api/v1/pagamentos/ordem-servico/{{ordemServicoId}}/{{pagamentoId}}/simular-confirmacao"
+            },
+            "description": "Responde 404 fora de Development/Testing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simular recusa (só local)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{billingUrl}}/api/v1/pagamentos/ordem-servico/{{ordemServicoId}}/{{pagamentoId}}/simular-recusa?motivo=cartao%20sem%20saldo"
+            },
+            "description": "Compensação de pagamento. Responde 404 fora de Development/Testing."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pedir nova cobrança (após recusa)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/ordens-servico/{{ordemServicoId}}/pagamento/nova-tentativa"
+            },
+            "description": "Só depois de um pagamento recusado (senão, 400). O Billing cria o pagamento da próxima tentativa; consulte o pagamento de novo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 202\", () => pm.expect(pm.response.code).to.be.oneOf([202]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - Entrega e acompanhamento (OS Service)",
+      "description": "Entrega liberada só com o pagamento confirmado.",
+      "item": [
+        {
+          "name": "Entregar veículo",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/ordens-servico/{{ordemServicoId}}/entregar"
+            },
+            "description": "400 enquanto o pagamento não for confirmado."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Histórico da OS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/ordens-servico/{{ordemServicoId}}/historico"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Monitoramento da OS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/ordens-servico/{{ordemServicoId}}/monitoramento"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notificações ao cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/ordens-servico/{{ordemServicoId}}/notificacoes"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Acompanhamento pelo cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/acompanhamento-os/{{codigoAcompanhamento}}"
+            },
+            "description": "Use o token do cliente (`tokenCliente`) na aba Authorization para ver como o cliente acompanha a OS."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 - Consultas e cadastros",
+      "description": "Apoio para o fluxo.",
+      "item": [
+        {
+          "name": "Listar OS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/ordens-servico?page=1&pageSize=10"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resumo de monitoramento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/ordens-servico/monitoramento"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar clientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/Clientes?page=1&pageSize=10"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obter cliente pelo documento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/Clientes/documento/{{cpf}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Veículos do cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{osUrl}}/api/v1/Clientes/{{cpf}}/veiculos"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
