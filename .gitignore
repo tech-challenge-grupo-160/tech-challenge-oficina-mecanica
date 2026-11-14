@@ -31,3 +31,6 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 infra/*-config
+
+# Codigo gerado pelo Reqnroll a partir dos .feature (F4-36)
+*.feature.cs

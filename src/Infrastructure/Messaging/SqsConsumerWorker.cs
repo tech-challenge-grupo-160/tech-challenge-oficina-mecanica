@@ -66,32 +66,8 @@ public abstract class SqsConsumerWorker<TMessage>(
             if (evento.Versao != 1)
                 throw new InvalidOperationException($"Versao de evento nao suportada: {evento.Versao}.");
 
-            // correlationId e numero da OS em todos os logs do processamento.
-            using var contexto = logger.IniciarParaMensagem(evento, typeof(TMessage).Name);
-            await using var scope = scopeFactory.CreateAsyncScope();
-            var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
-            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-
-            if (await context.InboxMessages.AnyAsync(
-                    item => item.MessageId == evento.MessageId,
-                    cancellationToken))
-            {
-                await transaction.CommitAsync(cancellationToken);
-                await ExcluirAsync(message, cancellationToken);
-                return;
-            }
-
-            context.InboxMessages.Add(InboxMessage.Criar(
-                evento.MessageId,
-                evento.CorrelationId,
-                typeof(TMessage).Name,
-                DateTimeOffset.UtcNow));
-
-            await ProcessarEventoAsync(evento, scope.ServiceProvider, context, cancellationToken);
-            await context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            await ProcessarMensagemAsync(evento, cancellationToken);
             await ExcluirAsync(message, cancellationToken);
-            logger.LogInformation("Mensagem {TipoMensagem} processada.", typeof(TMessage).Name);
         }
         catch (Exception exception)
         {
@@ -101,6 +77,40 @@ public abstract class SqsConsumerWorker<TMessage>(
                 typeof(TMessage).Name,
                 message.MessageId);
         }
+    }
+
+    /// <summary>
+    /// Processa uma mensagem ja lida da fila: inbox (idempotencia), regra do
+    /// consumidor e gravacao, numa transacao. Fica separado do SQS para o BDD
+    /// (F4-36) entregar as mensagens de Billing e Execucao aos consumidores reais.
+    /// Uma mensagem repetida (mesmo MessageId) nao e processada de novo.
+    /// </summary>
+    internal async Task ProcessarMensagemAsync(TMessage evento, CancellationToken cancellationToken)
+    {
+        // correlationId e numero da OS em todos os logs do processamento.
+        using var contexto = logger.IniciarParaMensagem(evento, typeof(TMessage).Name);
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+
+        if (await context.InboxMessages.AnyAsync(
+                item => item.MessageId == evento.MessageId,
+                cancellationToken))
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return;
+        }
+
+        context.InboxMessages.Add(InboxMessage.Criar(
+            evento.MessageId,
+            evento.CorrelationId,
+            typeof(TMessage).Name,
+            DateTimeOffset.UtcNow));
+
+        await ProcessarEventoAsync(evento, scope.ServiceProvider, context, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        logger.LogInformation("Mensagem {TipoMensagem} processada.", typeof(TMessage).Name);
     }
 
     protected abstract Task ProcessarEventoAsync(
