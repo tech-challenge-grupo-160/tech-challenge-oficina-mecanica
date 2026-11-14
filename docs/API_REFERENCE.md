@@ -55,6 +55,7 @@ As demais rotas exigem JWT válido. A autenticação externa por CPF continua so
 | `PATCH` | `/ordens-servico/{id}/cancelar` | Cancelar OS |
 | `PATCH` | `/ordens-servico/{id}/iniciar-diagnostico` | Solicitar início do diagnóstico de forma assíncrona |
 | `PATCH` | `/ordens-servico/{id}/entregar` | Entregar veículo após finalização e pagamento |
+| `POST` | `/ordens-servico/{id}/pagamento/nova-tentativa` | Pedir nova cobrança depois de pagamento recusado (F4-27); a OS segue `Finalizada` |
 | `GET` | `/ordens-servico/{id}/historico` | Consultar trajetória da OS |
 | `GET` | `/ordens-servico/{id}/notificacoes` | Consultar notificações simuladas |
 | `GET` | `/ordens-servico/{id}/monitoramento` | Consultar monitoramento individual |

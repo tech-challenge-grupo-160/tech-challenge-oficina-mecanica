@@ -2,6 +2,7 @@ using Fiap.TechChallenge.OficinaMecanica.API.Mappers;
 using Fiap.TechChallenge.OficinaMecanica.API.Requests.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses;
 using Fiap.TechChallenge.OficinaMecanica.API.Responses.OrdensDeServico;
+using Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServico;
 using Fiap.TechChallenge.OficinaMecanica.Application.Queries.OrdensDeServico;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -116,6 +117,17 @@ public class OrdensDeServicoController : ControllerBase
     {
         var ordem = await _mediator.Send(id.ToEntregarOrdemDeServicoCommand(), cancellationToken);
         return Ok(ordem.ToResponse());
+    }
+
+    /// <summary>
+    /// Nova cobranca depois de um pagamento recusado (F4-27). A OS segue
+    /// Finalizada; o Billing cria o pagamento da proxima tentativa.
+    /// </summary>
+    [HttpPost("{id}/pagamento/nova-tentativa")]
+    public async Task<ActionResult<OrdemDeServicoResponse>> SolicitarNovaCobranca(int id, CancellationToken cancellationToken)
+    {
+        var ordem = await _mediator.Send(new SolicitarNovaCobrancaCommand { Id = id }, cancellationToken);
+        return AcceptedAtAction(nameof(Obter), new { id }, ordem.ToResponse());
     }
 
     [HttpPatch("{id}/cancelar")]

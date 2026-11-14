@@ -9,7 +9,7 @@ configuracao no AWS Secrets Manager. E a mesma topologia do LocalStack
 
 - Topico `tc-grupo160-<ambiente>-os-events`, criptografado com a chave gerenciada
   pela AWS para SNS.
-- Nove filas de eventos, uma por tipo, cada uma assinando o topico do produtor
+- Dez filas de eventos, uma por tipo, cada uma assinando o topico do produtor
   com filtro pelo atributo `tipo` (o nome da classe da mensagem):
 
   | Fila | Tipo | Produtor | Chave que o codigo le |
@@ -23,6 +23,7 @@ configuracao no AWS Secrets Manager. E a mesma topologia do LocalStack
   | `...-os-orcamento-aprovado` | `OrcamentoAprovadoMessage` | Billing | `OrcamentoAprovadoQueueUrl` |
   | `...-os-orcamento-recusado` | `OrcamentoRecusadoMessage` | Billing | `OrcamentoRecusadoQueueUrl` |
   | `...-os-pagamento-confirmado` | `PagamentoConfirmadoMessage` | Billing | `PagamentoConfirmadoQueueUrl` |
+  | `...-os-pagamento-recusado` | `PagamentoRecusadoMessage` | Billing | `PagamentoRecusadoQueueUrl` |
 
 - URLs dos cinco destinos de comando, montadas pelo nome (as filas sao do
   Terraform de Billing e Execucao): `ExecucaoCommandQueueUrl`,

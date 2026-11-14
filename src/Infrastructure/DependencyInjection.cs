@@ -72,6 +72,7 @@ public static class DependencyInjection
             configuration.GetSection(MessagingOptions.SectionName));
         services.AddSingleton<IAmazonSQS>(_ => AwsMessagingClientFactory.CreateSqs(messagingOptions));
         services.AddScoped<IInicioDiagnosticoScheduler, InicioDiagnosticoScheduler>();
+        services.AddScoped<ISagaPagamentoService, SagaPagamentoService>();
         services.AddHostedService<OutboxSqsPublisherWorker>();
         services.AddHostedService<DiagnosticoIniciadoConsumerWorker>();
         services.AddHostedService<DiagnosticoConcluidoConsumerWorker>();
@@ -82,6 +83,7 @@ public static class DependencyInjection
         services.AddHostedService<EstoqueInsuficienteConsumerWorker>();
         services.AddHostedService<ExecucaoFinalizadaConsumerWorker>();
         services.AddHostedService<PagamentoConfirmadoConsumerWorker>();
+        services.AddHostedService<PagamentoRecusadoConsumerWorker>();
         services.AddScoped<IOrdemDeServicoRepository, OrdemDeServicoRepository>();
         services.AddScoped<IOrdemServicoHistoricoRepository, OrdemServicoHistoricoRepository>();
         services.AddScoped<INotificacaoClienteRepository, NotificacaoClienteRepository>();

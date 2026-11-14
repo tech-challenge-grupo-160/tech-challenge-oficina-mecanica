@@ -177,5 +177,6 @@ create_event_queue "os-pecas-reservadas" "PecasReservadasMessage"
 create_event_queue "os-estoque-insuficiente" "EstoqueInsuficienteMessage"
 create_event_queue "os-execucao-finalizada" "ExecucaoFinalizadaMessage"
 create_event_queue "os-pagamento-confirmado" "PagamentoConfirmadoMessage"
+create_event_queue "os-pagamento-recusado" "PagamentoRecusadoMessage"
 
 echo "SNS/SQS locais configurados na regiao $REGION para a conta $ACCOUNT_ID."
