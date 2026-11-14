@@ -10,6 +10,7 @@ Este diretório reúne a documentação viva do projeto, alinhada ao código atu
 4. [Referência da API](API_REFERENCE.md)
 5. [Infraestrutura](INFRAESTRUTURA.md)
 6. [Catálogo de eventos e mensageria](mensageria/catalogo.md)
+7. [Relatório do BDD do fluxo completo da OS](bdd/relatorio-bdd.html) (HTML do Reqnroll; baixe e abra no navegador)
 
 ## Conteúdo
 

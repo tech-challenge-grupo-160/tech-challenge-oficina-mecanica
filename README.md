@@ -204,11 +204,17 @@ Como os cenários exercitam a Saga:
 dotnet test tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests --filter "Category=saga"
 ```
 
-**Relatório de execução:** o workflow
+**Relatório de execução:** [`docs/bdd/relatorio-bdd.html`](docs/bdd/relatorio-bdd.html)
+guarda o relatório HTML do Reqnroll gerado no CI em 14/11/2026, com os 6
+cenários aprovados. O GitHub mostra o HTML como código: baixe o arquivo
+(*Download raw file*) e abra no navegador.
+
+A cada PR, o workflow
 [Pipeline](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/actions/workflows/pipeline.yml)
-roda os cenários em todo PR. O job `BDD - relatorio` mostra a tabela de
-cenários no resumo da execução e publica o relatório HTML do Reqnroll no
-artefato `relatorio-bdd`. Localmente, o relatório sai em
+roda os cenários de novo. O job `BDD - relatorio` mostra a tabela de cenários no
+resumo da execução e publica o relatório atualizado no artefato
+`relatorio-bdd`. Para atualizar a cópia em `docs/bdd/`, baixe esse artefato.
+Localmente, o relatório sai em
 `tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/bin/<configuracao>/net10.0/TestResults/bdd/relatorio-bdd.html`.
 
 ## Logs e observabilidade
