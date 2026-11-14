@@ -5,22 +5,27 @@ Este diretório reúne a documentação viva do projeto, alinhada ao código atu
 ## Leitura recomendada
 
 1. [README principal](../README.md)
-2. [Setup e operação](SETUP.md)
-3. [Ciclo de vida dos ambientes na AWS](CICLO-DE-VIDA.md) (subir, conferir e derrubar)
-4. [Arquitetura](ARCHITECTURE.md)
-5. [Referência da API](API_REFERENCE.md)
-6. [Infraestrutura](INFRAESTRUTURA.md)
-7. [Catálogo de eventos e mensageria](mensageria/catalogo.md)
-8. [Relatório do BDD do fluxo completo da OS](bdd/relatorio-bdd.html) (HTML do Reqnroll; baixe e abra no navegador)
-9. [Diagramas da arquitetura](diagrams/README.md) (C4, implantação na AWS e sequência da Saga)
-10. [Contrato OpenAPI do OS Service](openapi/os-service.json) e [collection do Postman](postman/README.md)
-11. [Decisões (ADRs)](adrs/README.md) e [propostas (RFCs)](rfcs/README.md)
+2. [Rodar os três serviços localmente](EXECUCAO-LOCAL.md) (fluxo completo com LocalStack, sem AWS)
+3. [Setup e operação do OS Service](SETUP.md)
+4. [Ciclo de vida dos ambientes na AWS](CICLO-DE-VIDA.md) (subir, conferir e derrubar)
+5. [Arquitetura](ARCHITECTURE.md)
+6. [Referência da API](API_REFERENCE.md)
+7. [Infraestrutura](INFRAESTRUTURA.md)
+8. [Catálogo de eventos e mensageria](mensageria/catalogo.md)
+9. [Relatório do BDD do fluxo completo da OS](bdd/relatorio-bdd.html) (HTML do Reqnroll; baixe e abra no navegador)
+10. [Diagramas da arquitetura](diagrams/README.md) (C4, implantação na AWS e sequência da Saga)
+11. [Contrato OpenAPI do OS Service](openapi/os-service.json) e [collection do Postman](postman/README.md)
+12. [Decisões (ADRs)](adrs/README.md) e [propostas (RFCs)](rfcs/README.md)
 
 ## Conteúdo
 
+### [EXECUCAO-LOCAL.md](EXECUCAO-LOCAL.md)
+
+OS Service, Billing e Execução juntos na sua máquina, com LocalStack: subida na ordem certa, o fluxo completo pela collection do Postman (caminho feliz e compensações) e os problemas mais comuns.
+
 ### [SETUP.md](SETUP.md)
 
-Pré-requisitos, execução local, execução com Docker, testes e troubleshooting.
+Pré-requisitos, execução local, execução com Docker, testes e troubleshooting. Só do OS Service.
 
 ### [CICLO-DE-VIDA.md](CICLO-DE-VIDA.md)
 

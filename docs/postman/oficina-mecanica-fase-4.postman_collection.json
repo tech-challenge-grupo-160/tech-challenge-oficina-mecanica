@@ -103,10 +103,10 @@
     },
     {
       "name": "01 - Cadastro e abertura da OS",
-      "description": "Cliente e veículo (opcional: os environments já apontam para o seed) e abertura da OS com os itens do catálogo da Execução.",
+      "description": "Cliente e veículo novos a cada execução (CPF válido e placa gerados no pre-request), porque só pode haver uma OS ativa por cliente e veículo. Depois, a abertura da OS com os itens do catálogo da Execução.",
       "item": [
         {
-          "name": "Criar cliente (opcional)",
+          "name": "Criar cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -118,9 +118,10 @@
             "url": {
               "raw": "{{osUrl}}/api/v1/Clientes"
             },
+            "description": "Gera um CPF válido em `cpfNovoCliente` antes de enviar.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Cliente Postman\",\n  \"cpfCnpj\": \"{{cpfNovoCliente}}\",\n  \"telefone\": \"11987654321\",\n  \"email\": \"cliente.postman@teste.com.br\"\n}",
+              "raw": "{\n  \"nome\": \"Cliente Postman\",\n  \"cpfCnpj\": \"{{cpfNovoCliente}}\",\n  \"telefone\": \"11987654321\",\n  \"email\": \"cliente.{{cpfNovoCliente}}@teste.com.br\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -138,11 +139,23 @@
                   "if (pm.response.code < 300) { const corpo = pm.response.json(); pm.environment.set(\"clienteId\", corpo.id); }"
                 ]
               }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const n = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));",
+                  "const dv = (base) => { const s = base.reduce((a, d, i) => a + d * (base.length + 1 - i), 0); const r = (s * 10) % 11; return r === 10 ? 0 : r; };",
+                  "n.push(dv(n)); n.push(dv(n));",
+                  "pm.environment.set('cpfNovoCliente', n.join(''));"
+                ]
+              }
             }
           ]
         },
         {
-          "name": "Criar veículo do cliente (opcional)",
+          "name": "Criar veículo do cliente",
           "request": {
             "method": "POST",
             "header": [
@@ -154,9 +167,10 @@
             "url": {
               "raw": "{{osUrl}}/api/v1/Clientes/{{cpfNovoCliente}}/veiculos"
             },
+            "description": "Gera uma placa no padrão Mercosul em `placaNova` antes de enviar.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"placa\": \"PMN4F41\",\n  \"marca\": \"Fiat\",\n  \"modelo\": \"Argo\",\n  \"ano\": 2023\n}",
+              "raw": "{\n  \"placa\": \"{{placaNova}}\",\n  \"marca\": \"Fiat\",\n  \"modelo\": \"Argo\",\n  \"ano\": 2023\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -172,6 +186,17 @@
                 "exec": [
                   "pm.test(\"status 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
                   "if (pm.response.code < 300) { const corpo = pm.response.json(); pm.environment.set(\"veiculoId\", corpo.id); }"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const L = () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];",
+                  "const D = () => Math.floor(Math.random() * 10);",
+                  "pm.environment.set('placaNova', `${L()}${L()}${L()}${D()}${L()}${D()}${D()}`);"
                 ]
               }
             }
@@ -777,14 +802,24 @@
           ]
         },
         {
-          "name": "Acompanhamento pelo cliente",
+          "name": "Acompanhamento pelo cliente (só AWS)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{osUrl}}/api/v1/acompanhamento-os/{{codigoAcompanhamento}}"
             },
-            "description": "Use o token do cliente (`tokenCliente`) na aba Authorization para ver como o cliente acompanha a OS."
+            "description": "Usa o token do cliente (`tokenCliente`), emitido pela Lambda em `POST /auth`; por isso só roda na AWS. Com o token do funcionário a rota responde 403: ela é exclusiva do perfil Cliente.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            }
           },
           "event": [
             {

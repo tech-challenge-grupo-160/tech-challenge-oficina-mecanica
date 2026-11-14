@@ -118,10 +118,17 @@ saga, que também aparece nos logs dos três serviços.
 
 ## Início rápido
 
-### Com Docker
+### Os três serviços, com o fluxo completo
+
+Para rodar OS Service, Billing e Execução juntos na sua máquina, com a
+mensageria pelo LocalStack e o fluxo inteiro da OS (inclusive as compensações),
+siga [docs/EXECUCAO-LOCAL.md](docs/EXECUCAO-LOCAL.md). Não precisa de AWS.
+
+### Só o OS Service, com Docker
 
 ```bash
-docker-compose up --build
+cp .env.example .env
+docker compose up --build
 ```
 
 Endpoints padrão:
