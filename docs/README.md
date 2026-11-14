@@ -6,19 +6,25 @@ Este diretório reúne a documentação viva do projeto, alinhada ao código atu
 
 1. [README principal](../README.md)
 2. [Setup e operação](SETUP.md)
-3. [Arquitetura](ARCHITECTURE.md)
-4. [Referência da API](API_REFERENCE.md)
-5. [Infraestrutura](INFRAESTRUTURA.md)
-6. [Catálogo de eventos e mensageria](mensageria/catalogo.md)
-7. [Relatório do BDD do fluxo completo da OS](bdd/relatorio-bdd.html) (HTML do Reqnroll; baixe e abra no navegador)
-8. [Diagramas da arquitetura](diagrams/README.md) (C4, implantação na AWS e sequência da Saga)
-9. [Contrato OpenAPI do OS Service](openapi/os-service.json) e [collection do Postman](postman/README.md)
+3. [Ciclo de vida dos ambientes na AWS](CICLO-DE-VIDA.md) (subir, conferir e derrubar)
+4. [Arquitetura](ARCHITECTURE.md)
+5. [Referência da API](API_REFERENCE.md)
+6. [Infraestrutura](INFRAESTRUTURA.md)
+7. [Catálogo de eventos e mensageria](mensageria/catalogo.md)
+8. [Relatório do BDD do fluxo completo da OS](bdd/relatorio-bdd.html) (HTML do Reqnroll; baixe e abra no navegador)
+9. [Diagramas da arquitetura](diagrams/README.md) (C4, implantação na AWS e sequência da Saga)
+10. [Contrato OpenAPI do OS Service](openapi/os-service.json) e [collection do Postman](postman/README.md)
+11. [Decisões (ADRs)](adrs/README.md) e [propostas (RFCs)](rfcs/README.md)
 
 ## Conteúdo
 
 ### [SETUP.md](SETUP.md)
 
 Pré-requisitos, execução local, execução com Docker, testes e troubleshooting.
+
+### [CICLO-DE-VIDA.md](CICLO-DE-VIDA.md)
+
+Como subir e derrubar um ambiente completo (dev, hom ou prod) no Learner Lab com `sobe-tudo.sh` e `derruba-tudo.sh`: pré-requisitos, credenciais da AWS, do Datadog e do Mercado Pago, as dez etapas, a conferência e o que fazer quando dá errado.
 
 ### [ARCHITECTURE.md](ARCHITECTURE.md)
 
@@ -44,8 +50,13 @@ Como voltar atrás no banco gerenciado: por que `kubectl rollout undo` não desf
 
 Classificação das rotas atuais do OS Service entre anônimas, autenticadas e exclusivas do cliente.
 
+### [Histórico](historico/README.md)
+
+Documentos de fases anteriores que não descrevem mais o sistema atual, guardados como registro: a migração para Clean Architecture (Fases 1 e 2) e os relatórios de segurança da Fase 1.
+
 ## Convenções
 
 - a documentação deve refletir o estado atual do código;
+- documento que deixa de valer vai para `historico/` com uma linha no índice de lá; não fica misturado com os atuais;
 - `README.md` da raiz é o ponto de entrada para o projeto;
 - `docs/` deve conter documentação operacional e técnica, não anotações temporárias.

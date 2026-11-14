@@ -1,5 +1,11 @@
 # Evolucao para Clean Architecture com CQRS e MediatR
 
+> **Histórico (Fases 1 e 2).** Arquivado em 13/11/2026. Este documento registra a
+> migração do monólito e cita como atuais os módulos de peças, serviços e pedidos
+> de compra, que na Fase 4 saíram do OS Service para o serviço de Execução. O
+> padrão Controller → MediatR → Handler descrito aqui continua valendo nos três
+> serviços. A arquitetura atual está em [ARCHITECTURE.md](../ARCHITECTURE.md).
+
 Ultima atualizacao: 2026-07-10
 
 Este documento descreve o estado atual da migracao arquitetural do projeto. A base ja esta organizada em Clean Architecture com CQRS e MediatR: controllers enviam Commands e Queries por `IMediator`, handlers executam os casos de uso, validators rodam no pipeline do MediatR e a Infrastructure implementa detalhes tecnicos.

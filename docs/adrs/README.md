@@ -6,7 +6,7 @@ Decisões arquiteturais **permanentes** do projeto — aquelas que, uma vez toma
 
 | ADR | Título | Status | Data |
 |---|---|---|---|
-| [0001](0001-segregacao-em-quatro-repositorios.md) | Segregar o monorepo em quatro repositórios | Proposta | 2026-08-11 |
+| [0001](0001-segregacao-em-quatro-repositorios.md) | Segregar o monorepo em quatro repositórios (ampliada pela 0003) | Aceita | 2026-08-11 |
 | [0002](0002-estrategia-de-escalabilidade.md) | Escalar em duas camadas: HPA por utilização, Cluster Autoscaler por pod pendente | Aceita | 2026-09-04 |
 | [0003](0003-divisao-em-microsservicos.md) | Dividir a aplicação em três microsserviços por etapa do atendimento | Aceita | 2026-10-12 |
 | [0004](0004-saga-orquestrada.md) | Coordenar o fluxo da OS com uma Saga orquestrada no OS Service | Aceita | 2026-10-12 |

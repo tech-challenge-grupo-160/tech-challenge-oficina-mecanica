@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Rascunho |
+| **Status** | Aceita — Lambda de autenticação por CPF e API Gateway HTTP API com authorizer, implantados na Fase 3 |
 | **Autor** | Grupo 160 |
 | **Data** | 2026-08-26 |
 | **Issue** | [#35](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/35) |

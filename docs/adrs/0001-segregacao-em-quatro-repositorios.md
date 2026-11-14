@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Proposta |
+| **Status** | Aceita — implementada na Fase 3; ampliada pela [ADR-0003](0003-divisao-em-microsservicos.md), que somou Billing e Execução (6 repositórios) |
 | **Data** | 2026-08-11 |
 | **Decisores** | Grupo 160 |
 | **Issue** | [#47](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/47) |
