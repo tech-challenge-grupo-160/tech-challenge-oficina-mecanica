@@ -30,8 +30,12 @@ Saga.
 4. Preencha `senha` com a senha do usuário `admin` do seed (a mesma do README
    principal). Ela fica marcada como secreta e não vai para o arquivo exportado.
 5. Rode as pastas em ordem. Cada requisição guarda no environment os ids que a
-   próxima usa: `token`, `ordemServicoId`, `orcamentoId`, `pagamentoId` e
-   `codigoAcompanhamento`.
+   próxima usa: `token`, `clienteId`, `veiculoId`, `ordemServicoId`,
+   `orcamentoId`, `pagamentoId` e `codigoAcompanhamento`.
+
+Para rodar na sua máquina, sem AWS, siga [EXECUCAO-LOCAL.md](../EXECUCAO-LOCAL.md)
+e use o environment **local**. A collection foi validada assim em 14/11/2026,
+com o caminho feliz e as compensações.
 
 Os passos entre serviços são **assíncronos** (SNS/SQS). Quando o status da OS
 ainda não mudou, aguarde alguns segundos e repita a consulta.
@@ -41,7 +45,7 @@ ainda não mudou, aguarde alguns segundos e repita a consulta.
 | Pasta | O que mostra |
 |---|---|
 | 00 - Autenticação | JWT do funcionário (`POST /api/v1/auth/login`) e do cliente pelo CPF na Lambda (`POST /auth`, só na AWS) |
-| 01 - Cadastro e abertura da OS | Cliente e veículo (opcional), consulta ao catálogo da Execução e abertura da OS |
+| 01 - Cadastro e abertura da OS | Cliente e veículo novos a cada execução (CPF válido e placa gerados no pre-request, porque só pode haver uma OS ativa por cliente e veículo), consulta ao catálogo da Execução e abertura da OS |
 | 02 - Diagnóstico | O OS manda o comando; na Execução, resultado e conclusão do diagnóstico |
 | 03 - Orçamento | Orçamento gerado pelo Billing; aprovação, ou recusa como compensação (a OS é cancelada) |
 | 04 - Reserva de peças e reparo | Reserva, reposição de estoque (retoma a saga se faltou peça) e finalização do reparo |
@@ -62,8 +66,9 @@ encaminhar para o ALB, que escolhe o serviço pelo caminho
 `/api/v1/catalogo*`, `/api/v1/diagnosticos*`, `/api/v1/estoque*` e
 `/api/v1/execucoes*` vão para a Execução; o resto vai para o OS Service).
 
-Para ver o acompanhamento como o cliente, troque o token da requisição por
-`{{tokenCliente}}` na aba *Authorization*.
+O **Acompanhamento pelo cliente** usa o `{{tokenCliente}}`, emitido pela Lambda
+em `POST /auth`; por isso só roda na AWS. A rota é exclusiva do perfil Cliente:
+com o token do funcionário, responde 403.
 
 ## Contratos
 
