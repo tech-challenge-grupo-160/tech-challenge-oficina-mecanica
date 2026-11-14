@@ -78,6 +78,13 @@ locals {
       producer   = "billing"
       tipo       = "PagamentoConfirmadoMessage"
     }
+    # Compensacao de pagamento recusado (F4-27).
+    pagamento_recusado = {
+      name       = "${local.prefix}-os-pagamento-recusado"
+      config_key = "PagamentoRecusadoQueueUrl"
+      producer   = "billing"
+      tipo       = "PagamentoRecusadoMessage"
+    }
   }
 
   # Filas de comando que o OS Service alimenta por envio direto (SendMessage).

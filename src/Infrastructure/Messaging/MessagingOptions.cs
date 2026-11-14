@@ -21,4 +21,5 @@ public sealed class MessagingOptions
     public string ExecucaoFinalizadaQueueUrl { get; init; } = string.Empty;
     public string SolicitarPagamentoCommandQueueUrl { get; init; } = string.Empty;
     public string PagamentoConfirmadoQueueUrl { get; init; } = string.Empty;
+    public string PagamentoRecusadoQueueUrl { get; init; } = string.Empty;
 }

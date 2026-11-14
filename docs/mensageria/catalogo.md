@@ -27,7 +27,7 @@ própria no OS Service, que assina o tópico do produtor com filtro
 | `OrcamentoAprovadoMessage` | Billing | `...-os-orcamento-aprovado` |
 | `OrcamentoRecusadoMessage` | Billing | `...-os-orcamento-recusado` |
 | `PagamentoConfirmadoMessage` | Billing | `...-os-pagamento-confirmado` |
-| `PagamentoRecusadoMessage` | Billing | — ainda sem consumidor (compensação de pagamento, F4-27) |
+| `PagamentoRecusadoMessage` | Billing | `...-os-pagamento-recusado` (compensação de pagamento, F4-27) |
 
 | Produtor | Tópico por ambiente |
 |---|---|
@@ -52,7 +52,7 @@ sem tópico. Há uma fila por comando.
 
 | Serviço | Filas que consome | Chaves que o código lê (`Messaging__*`) |
 |---|---|---|
-| OS Service | as 9 de eventos acima | `DiagnosticoIniciadoQueueUrl`, `DiagnosticoConcluidoQueueUrl`, `PecasReservadasQueueUrl`, `EstoqueInsuficienteQueueUrl`, `ExecucaoFinalizadaQueueUrl`, `OrcamentoGeradoQueueUrl`, `OrcamentoAprovadoQueueUrl`, `OrcamentoRecusadoQueueUrl`, `PagamentoConfirmadoQueueUrl`; destinos de comando: `ExecucaoCommandQueueUrl`, `ReservaPecasCommandQueueUrl`, `IniciarExecucaoCommandQueueUrl`, `BillingCommandQueueUrl`, `SolicitarPagamentoCommandQueueUrl` |
+| OS Service | as 10 de eventos acima | `DiagnosticoIniciadoQueueUrl`, `DiagnosticoConcluidoQueueUrl`, `PecasReservadasQueueUrl`, `EstoqueInsuficienteQueueUrl`, `ExecucaoFinalizadaQueueUrl`, `OrcamentoGeradoQueueUrl`, `OrcamentoAprovadoQueueUrl`, `OrcamentoRecusadoQueueUrl`, `PagamentoConfirmadoQueueUrl`, `PagamentoRecusadoQueueUrl`; destinos de comando: `ExecucaoCommandQueueUrl`, `ReservaPecasCommandQueueUrl`, `IniciarExecucaoCommandQueueUrl`, `BillingCommandQueueUrl`, `SolicitarPagamentoCommandQueueUrl` |
 | Billing | `...-billing-gerar-orcamento`, `...-billing-solicitar-pagamento` | `GerarOrcamentoQueueUrl`, `SolicitarPagamentoQueueUrl`, `EventosTopicArn` |
 | Execução | `...-execucao-iniciar-diagnostico`, `...-execucao-reservar-pecas`, `...-execucao-iniciar-reparo` | `InicioDiagnosticoQueueUrl`, `ReservaPecasQueueUrl`, `InicioExecucaoQueueUrl`, `EventosTopicArn` |
 
@@ -223,8 +223,10 @@ pods EKS consigam acessar SNS/SQS com a LabRole: essa prova de acesso em runtime
 continua pertencendo ao spike F4-05.
 
 Esse registro é da topologia anterior ao adendo de 11/11. Com uma fila por
-tipo, o esperado em `dev` é 14 filas e 14 DLQs (28 no total) e 9 assinaturas
-SNS, todas com `FilterScope: MessageAttributes` e filtro `{"tipo": [...]}`.
+tipo, o esperado em `dev` é 15 filas e 15 DLQs (30 no total) e 10 assinaturas
+SNS, todas com `FilterScope: MessageAttributes` e filtro `{"tipo": [...]}`. A
+fila e a assinatura de `PagamentoRecusadoMessage` entraram com a compensação de
+pagamento (F4-27).
 
 ### Subir o ambiente completo
 

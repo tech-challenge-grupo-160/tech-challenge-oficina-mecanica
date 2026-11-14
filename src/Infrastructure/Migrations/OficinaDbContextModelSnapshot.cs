@@ -383,6 +383,11 @@ namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<int>("TentativaPagamento")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.HasKey("CorrelationId");
 
                     b.HasIndex("OrdemServicoId")

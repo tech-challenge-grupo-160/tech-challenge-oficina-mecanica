@@ -12,6 +12,7 @@ public sealed class SagaInicioDiagnosticoConfiguration
         builder.ToTable("SagaInicioDiagnostico");
         builder.HasKey(item => item.CorrelationId);
         builder.Property(item => item.Status).HasMaxLength(50).IsRequired();
+        builder.Property(item => item.TentativaPagamento).HasDefaultValue(1).IsRequired();
         builder.HasIndex(item => item.OrdemServicoId).IsUnique();
     }
 }

@@ -54,6 +54,7 @@ jobs:
         Messaging__ExecucaoFinalizadaQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__ExecucaoFinalizadaQueueUrl
         Messaging__SolicitarPagamentoCommandQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__SolicitarPagamentoCommandQueueUrl
         Messaging__PagamentoConfirmadoQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__PagamentoConfirmadoQueueUrl
+        Messaging__PagamentoRecusadoQueueUrl=tc-grupo160/{sufixo}/os/messaging#Messaging__PagamentoRecusadoQueueUrl
       nome_secret: api-secret
       cluster_autoscaler: true
       # Migrations do EF Core sao codigo gerado: fora da analise e da cobertura.

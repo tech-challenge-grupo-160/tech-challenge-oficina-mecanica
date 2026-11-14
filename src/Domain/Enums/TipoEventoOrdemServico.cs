@@ -23,5 +23,7 @@ public enum TipoEventoOrdemServico
     OrcamentoRecusado = 18,
     ReservaPecasSolicitada = 19,
     PecasReservadas = 20,
-    EstoqueInsuficiente = 21
+    EstoqueInsuficiente = 21,
+    PagamentoRecusado = 22,
+    NovaCobrancaSolicitada = 23
 }

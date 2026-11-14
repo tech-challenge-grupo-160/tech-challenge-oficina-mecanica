@@ -24,7 +24,8 @@ internal static class PagamentoOutboxFactory
             saga.CorrelationId,
             ocorridoEm,
             saga.OrcamentoId.Value,
-            saga.OrdemServicoId);
+            saga.OrdemServicoId,
+            Tentativa: saga.TentativaPagamento);
         context.OutboxMessages.Add(OutboxMessage.Criar(
             comando.MessageId,
             comando.CorrelationId,

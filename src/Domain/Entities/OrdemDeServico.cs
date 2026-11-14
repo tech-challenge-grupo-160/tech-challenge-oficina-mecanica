@@ -508,6 +508,56 @@ public class OrdemDeServico
             "Pagamento registrado para a ordem de servico.");
     }
 
+    /// <summary>
+    /// Compensacao de pagamento recusado (F4-27, ADR-0004): a execucao nao e
+    /// desfeita. A OS segue Finalizada, sem pagamento, e a entrega continua
+    /// bloqueada ate uma nova cobranca ser paga.
+    /// </summary>
+    public OrdemDeServicoEventoDominio RegistrarPagamentoRecusado(string motivo, int tentativa)
+    {
+        GarantirAguardandoPagamento("registrar recusa de pagamento");
+        if (string.IsNullOrWhiteSpace(motivo))
+        {
+            throw new ArgumentException("Motivo da recusa e obrigatorio.", nameof(motivo));
+        }
+
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.PagamentoRecusado,
+            Status,
+            Status,
+            $"Pagamento recusado na tentativa {tentativa}: {motivo}. OS segue finalizada; entrega bloqueada ate nova cobranca.");
+    }
+
+    public void ValidarNovaCobranca() => GarantirAguardandoPagamento("solicitar nova cobranca");
+
+    public OrdemDeServicoEventoDominio SolicitarNovaCobranca(int tentativa)
+    {
+        ValidarNovaCobranca();
+        if (tentativa <= 1)
+        {
+            throw new ArgumentException("Nova cobranca comeca na tentativa 2.", nameof(tentativa));
+        }
+
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.NovaCobrancaSolicitada,
+            Status,
+            Status,
+            $"Nova cobranca solicitada (tentativa {tentativa}).");
+    }
+
+    private void GarantirAguardandoPagamento(string operacao)
+    {
+        if (Status != StatusOrdemDeServico.Finalizada || !DataFinalizacao.HasValue)
+        {
+            throw new InvalidOperationException($"So e possivel {operacao} quando a ordem estiver finalizada.");
+        }
+
+        if (DataPagamento.HasValue)
+        {
+            throw new InvalidOperationException($"Nao e possivel {operacao}: o pagamento ja foi registrado.");
+        }
+    }
+
     public void Entregar(DateTime dataConclusao)
     {
         if (Status == StatusOrdemDeServico.Entregue)

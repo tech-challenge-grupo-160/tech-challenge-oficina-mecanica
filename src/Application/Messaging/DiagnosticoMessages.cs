@@ -173,7 +173,8 @@ public sealed record SolicitarPagamentoMessage(
     DateTimeOffset OcorridoEm,
     Guid OrcamentoId,
     int OrdemServicoId,
-    int Versao = 1) : IMensagemIntegracao;
+    int Versao = 1,
+    int Tentativa = 1) : IMensagemIntegracao;
 
 public sealed record PagamentoConfirmadoMessage(
     Guid MessageId,
@@ -185,4 +186,19 @@ public sealed record PagamentoConfirmadoMessage(
     decimal Valor,
     string Status,
     DateTimeOffset ConfirmadoEm,
-    int Versao = 1) : IMensagemIntegracao;
+    int Versao = 1,
+    int Tentativa = 1) : IMensagemIntegracao;
+
+public sealed record PagamentoRecusadoMessage(
+    Guid MessageId,
+    Guid CorrelationId,
+    DateTimeOffset OcorridoEm,
+    Guid PagamentoId,
+    Guid OrcamentoId,
+    int OrdemServicoId,
+    decimal Valor,
+    string Status,
+    string Motivo,
+    DateTimeOffset RecusadoEm,
+    int Versao = 1,
+    int Tentativa = 1) : IMensagemIntegracao;
