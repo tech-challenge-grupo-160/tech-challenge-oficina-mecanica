@@ -60,3 +60,46 @@ jobs:
       # Migrations do EF Core sao codigo gerado: fora da analise e da cobertura.
       sonar_exclusoes: "**/Migrations/**"
     secrets: inherit
+
+  # BDD do fluxo completo da OS (F4-36). Os cenarios tambem rodam no job acima,
+  # junto com os testes de integracao e na cobertura; este job existe para
+  # publicar o relatorio HTML do Reqnroll, que o pipeline reutilizavel nao
+  # publica (ele so sobe os .trx).
+  bdd:
+    name: BDD - relatorio
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Cenarios BDD (Reqnroll)
+        run: |
+          dotnet test tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests \
+            --configuration Release --filter "Category=saga" \
+            --logger "trx;LogFileName=bdd.trx" --results-directory TestResults
+
+      - name: Resumo dos cenarios
+        if: always()
+        run: |
+          {
+            echo "### BDD - fluxo completo da OS"
+            echo ""
+            echo "| Cenario | Resultado |"
+            echo "|---|---|"
+            perl -ne 'while (/<UnitTestResult [^>]*testName="([^"]+)"[^>]*outcome="(\w+)"/g) { print "| $1 | $2 |\n" }' TestResults/bdd.trx
+            echo ""
+            echo "Relatorio HTML no artefato \`relatorio-bdd\` desta execucao."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar relatorio
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-bdd
+          path: |
+            tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/bin/Release/net10.0/TestResults/bdd/relatorio-bdd.html
+            TestResults/bdd.trx
+          if-no-files-found: error

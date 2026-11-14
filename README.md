@@ -178,6 +178,39 @@ docs/
 dotnet test
 ```
 
+Os testes de integração e o BDD sobem um PostgreSQL com Testcontainers, então
+precisam do Docker rodando.
+
+### BDD do fluxo completo da OS (F4-36)
+
+Os cenários estão em Gherkin, em português, com [Reqnroll](https://reqnroll.net/),
+em `tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/Bdd/Features`:
+
+| Feature | Cenários |
+|---|---|
+| `FluxoCompletoOS.feature` | da abertura à entrega, passando por Execução e Billing; evento repetido não repete passo da Saga |
+| `CompensacoesSaga.feature` | orçamento recusado cancela a OS; falta de estoque segura a OS até a reposição; pagamento recusado não desfaz o reparo e permite nova cobrança; nova cobrança só depois de recusa |
+
+Como os cenários exercitam a Saga:
+
+- A recepção age pela API HTTP do OS Service.
+- Billing e Execução entram com os **mesmos eventos que publicam no SNS**,
+  entregues aos consumidores reais do OS Service, com inbox, saga, histórico e
+  outbox de verdade num PostgreSQL real.
+- Os comandos que o OS Service manda para Billing e Execução são conferidos no
+  outbox.
+
+```bash
+dotnet test tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests --filter "Category=saga"
+```
+
+**Relatório de execução:** o workflow
+[Pipeline](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/actions/workflows/pipeline.yml)
+roda os cenários em todo PR. O job `BDD - relatorio` mostra a tabela de
+cenários no resumo da execução e publica o relatório HTML do Reqnroll no
+artefato `relatorio-bdd`. Localmente, o relatório sai em
+`tests/Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests/bin/<configuracao>/net10.0/TestResults/bdd/relatorio-bdd.html`.
+
 ## Logs e observabilidade
 
 A API escreve um objeto JSON por linha no stdout, pronto para coleta pelo
