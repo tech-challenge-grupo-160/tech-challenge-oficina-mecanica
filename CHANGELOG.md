@@ -7,6 +7,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Dashboard da Saga e monitores no Datadog versionados em Terraform (`infra/datadog`, F4-37): sagas concluidas x compensadas, eventos por tipo, latencia por passo, profundidade das filas e DLQs; monitores de DLQ com mensagens e de taxa de compensacao; metrica de log `oficina_mecanica.saga.eventos.<ambiente>` derivada do log de mensagem processada, sem instrumentacao nova no codigo
 - Logs estruturados para seguir uma OS entre os servicos (F4-32): todo log JSON sai com `correlationId`, `ordemServicoId`, `trace_id`/`span_id` e bloco `dd` (`dd.trace_id`, `dd.span_id`) para o Datadog ligar log e trace; escopo aberto nas requisicoes HTTP, nos consumidores SQS e na Outbox; `DD_LOGS_INJECTION=true` na imagem; campos `level` e `message` reconhecidos pelo Datadog; mascara de CNPJ alem do CPF
 - Terraform de SNS, SQS e DLQs por microsserviço, com configuração no Secrets Manager, workflows independentes e runbook de validação AWS Academy (F4-11)
 
