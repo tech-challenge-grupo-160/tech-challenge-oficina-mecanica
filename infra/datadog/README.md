@@ -8,7 +8,7 @@ trava o apply das filas.
 
 | Recurso | O que é |
 |---|---|
-| `datadog_logs_metric.saga_eventos` | Métrica `oficina_mecanica.saga.eventos.<ambiente>`, contada a partir do log `Mensagem <Tipo> processada.` do `SqsConsumerWorker`, com a tag `tipo_mensagem` |
+| `datadog_logs_metric.saga_eventos` | Métrica `oficina_mecanica.saga.eventos.<ambiente>`, contada a partir do log `Mensagem <Tipo> processada.` do `SqsConsumerWorker`, com a tag `tipomensagem` |
 | `datadog_dashboard_json.saga` | Dashboard `[<ambiente>] Saga da OS - fluxo distribuido`, definido em [`dashboards/saga-os.json.tftpl`](dashboards/saga-os.json.tftpl) |
 | `datadog_monitor.dlq_com_mensagens` | Alerta por fila quando uma DLQ do ambiente tem mensagem |
 | `datadog_monitor.taxa_compensacao` | Alerta quando o percentual de sagas compensadas na última hora passa do limite (padrão: aviso em 15%, crítico em 30%) |
@@ -18,7 +18,7 @@ trava o apply das filas.
 | Grupo | Fonte |
 |---|---|
 | Saga: concluídas x compensadas, taxa de compensação, OS abertas | Métrica de log `saga.eventos` e `oficina_mecanica.orders.created` (DogStatsD) |
-| OS por status (eventos da saga) | Métrica de log `saga.eventos`, por `tipo_mensagem` |
+| OS por status (eventos da saga) | Métrica de log `saga.eventos`, por `tipomensagem` |
 | Latência por passo | `oficina_mecanica.orders.stage_duration` (p50/p95 por `stage`) e APM `trace.aspnet_core.request` dos três serviços |
 | Filas e DLQs | Integração AWS: `aws.sqs.approximate_number_of_messages_visible` e `approximate_age_of_oldest_message`, filtradas por `tc-grupo160-<ambiente>-*` |
 | Alertas | Status dos monitores com a tag `dashboard:saga-os` |

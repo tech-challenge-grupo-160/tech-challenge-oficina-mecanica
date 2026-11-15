@@ -22,9 +22,9 @@ locals {
   tipos_concluidas  = ["pagamentoconfirmadomessage"]
   tipos_compensadas = ["orcamentorecusadomessage", "pagamentorecusadomessage"]
 
-  consulta_concluidas  = "sum:${local.metrica_saga}{tipo_mensagem IN (${join(",", local.tipos_concluidas)})}.as_count()"
-  consulta_compensadas = "sum:${local.metrica_saga}{tipo_mensagem IN (${join(",", local.tipos_compensadas)})}.as_count()"
-  consulta_desfechos   = "sum:${local.metrica_saga}{tipo_mensagem IN (${join(",", concat(local.tipos_concluidas, local.tipos_compensadas))})}.as_count()"
+  consulta_concluidas  = "sum:${local.metrica_saga}{tipomensagem IN (${join(",", local.tipos_concluidas)})}.as_count()"
+  consulta_compensadas = "sum:${local.metrica_saga}{tipomensagem IN (${join(",", local.tipos_compensadas)})}.as_count()"
+  consulta_desfechos   = "sum:${local.metrica_saga}{tipomensagem IN (${join(",", concat(local.tipos_concluidas, local.tipos_compensadas))})}.as_count()"
 
   servicos_apm = join(",", var.servicos_apm)
 
@@ -56,7 +56,7 @@ resource "datadog_logs_metric" "saga_eventos" {
 
   group_by {
     path     = "@TipoMensagem"
-    tag_name = "tipo_mensagem"
+    tag_name = "tipomensagem"
   }
 }
 

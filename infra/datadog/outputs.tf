@@ -12,6 +12,6 @@ output "monitor_ids" {
 }
 
 output "metrica_saga" {
-  description = "Metrica derivada dos logs com os eventos da Saga, por tipo_mensagem."
+  description = "Metrica derivada dos logs com os eventos da Saga, por tipomensagem."
   value       = datadog_logs_metric.saga_eventos.name
 }
