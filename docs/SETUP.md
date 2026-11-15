@@ -1,5 +1,8 @@
 # Setup e Operação
 
+> Este guia cobre só o OS Service. Para subir os três serviços juntos e rodar o
+> fluxo completo da OS, veja [EXECUCAO-LOCAL.md](EXECUCAO-LOCAL.md).
+
 ## Pré-requisitos
 
 ### Execução com Docker

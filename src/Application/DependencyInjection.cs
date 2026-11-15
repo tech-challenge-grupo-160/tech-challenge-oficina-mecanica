@@ -21,8 +21,6 @@ public static class DependencyInjection
         services.AddScoped<OrdemDeServicoAcompanhamentoService>();
         services.AddScoped<OrdemDeServicoHistoricoService>();
         services.AddScoped<OrdemDeServicoNotificacaoService>();
-        services.AddScoped<OrdemDeServicoEstoqueService>();
-
         return services;
     }
 

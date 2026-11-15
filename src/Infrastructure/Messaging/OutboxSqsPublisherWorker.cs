@@ -1,0 +1,130 @@
+using System.Diagnostics.CodeAnalysis;
+using Amazon.SQS;
+using Amazon.SQS.Model;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Logging;
+using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Observability;
+using Fiap.TechChallenge.OficinaMecanica.Shared.Logging;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Fiap.TechChallenge.OficinaMecanica.Infrastructure.Messaging;
+
+[ExcludeFromCodeCoverage]
+public sealed class OutboxSqsPublisherWorker(
+    IServiceScopeFactory scopeFactory,
+    IAmazonSQS sqs,
+    IOptions<MessagingOptions> options,
+    ILogger<OutboxSqsPublisherWorker> logger) : BackgroundService
+{
+    private const string ExecucaoDestination = "ExecucaoIniciarDiagnostico";
+    private const string BillingDestination = "BillingGerarOrcamento";
+    private const string ReservaPecasDestination = "ExecucaoReservarPecas";
+    private const string IniciarExecucaoDestination = "ExecucaoIniciarReparo";
+    private const string SolicitarPagamentoDestination = "BillingSolicitarPagamento";
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        if (!options.Value.Enabled)
+            return;
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await PublicarPendentesAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, "Falha ao publicar comandos da Outbox no SQS.");
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+        }
+    }
+
+    private async Task PublicarPendentesAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<OficinaDbContext>();
+        var mensagens = await context.OutboxMessages
+            .Where(item => item.PublicadoEm == null &&
+                (item.Destino == ExecucaoDestination ||
+                 item.Destino == BillingDestination ||
+                 item.Destino == ReservaPecasDestination ||
+                 item.Destino == IniciarExecucaoDestination ||
+                 item.Destino == SolicitarPagamentoDestination))
+            .OrderBy(item => item.CriadoEm)
+            .Take(10)
+            .ToListAsync(cancellationToken);
+
+        foreach (var mensagem in mensagens)
+        {
+            var ordemServicoId = OutboxLogContexto.LerOrdemServicoId(mensagem.Payload);
+            // A publicacao continua o trace de quem gravou a mensagem (F4-31).
+            var contextoDaSaga = await context.InboxMessages
+                .AsNoTracking()
+                .Where(item => item.CorrelationId == mensagem.CorrelationId && item.TraceContext != null)
+                .OrderByDescending(item => item.ProcessadoEm)
+                .Select(item => item.TraceContext)
+                .FirstOrDefaultAsync(cancellationToken);
+            using var span = MensageriaTrace.IniciarPublicacao(
+                MensageriaTrace.EscolherContextoPai(mensagem.TraceContext, contextoDaSaga),
+                mensagem.Tipo,
+                MensageriaTrace.SistemaSqs,
+                mensagem.Destino,
+                mensagem.CorrelationId,
+                ordemServicoId);
+            using var contexto = logger.Iniciar(
+                mensagem.CorrelationId,
+                ordemServicoId,
+                mensagem.Id,
+                mensagem.Tipo);
+            try
+            {
+                var request = new SendMessageRequest
+                {
+                    QueueUrl = ObterQueueUrl(mensagem.Destino),
+                    MessageBody = mensagem.Payload
+                };
+                if (MensageriaTrace.CapturarContextoAtual() is { } traceContext)
+                {
+                    request.MessageAttributes = new Dictionary<string, MessageAttributeValue>
+                    {
+                        [MensageriaTrace.AtributoMensagem] = new() { DataType = "String", StringValue = traceContext }
+                    };
+                }
+
+                await sqs.SendMessageAsync(request, cancellationToken);
+                mensagem.MarcarPublicada(DateTimeOffset.UtcNow);
+                logger.LogInformation("Comando {TipoMensagem} enviado para {Destino}.", mensagem.Tipo, mensagem.Destino);
+            }
+            catch (Exception exception)
+            {
+                span.Span.SetException(exception);
+                mensagem.RegistrarFalha(exception.Message);
+                logger.LogWarning(exception, "Falha ao publicar mensagem {MessageId}.", mensagem.Id);
+            }
+        }
+
+        if (mensagens.Count > 0)
+            await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private string ObterQueueUrl(string destino) => destino switch
+    {
+        ExecucaoDestination => options.Value.ExecucaoCommandQueueUrl,
+        BillingDestination => options.Value.BillingCommandQueueUrl,
+        ReservaPecasDestination => options.Value.ReservaPecasCommandQueueUrl,
+        IniciarExecucaoDestination => options.Value.IniciarExecucaoCommandQueueUrl,
+        SolicitarPagamentoDestination => options.Value.SolicitarPagamentoCommandQueueUrl,
+        _ => throw new InvalidOperationException($"Destino de Outbox nao suportado: {destino}.")
+    };
+}

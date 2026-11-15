@@ -41,6 +41,8 @@ done
 RAIZ="$(descobrir_raiz)"
 K8S="$RAIZ/tech-challenge-infra-k8s"
 BANCO="$RAIZ/tech-challenge-infra-database"
+BILLING="$RAIZ/tech-challenge-oficina-mecanica-billing"
+EXECUCAO="$RAIZ/tech-challenge-oficina-mecanica-execucao"
 
 # ================================================== varredura do que cobra
 
@@ -126,14 +128,14 @@ avisar_se_a_branch_diverge "$RAIZ" "$AMBIENTE" "DESTRUIR"
 if [ "$SEM_PERGUNTAR" -eq 0 ]; then
   echo
   amarelo "Isto DESTROI o ambiente '$AMBIENTE' inteiro, sem volta:"
-  echo "  cluster, nodes, NAT, balanceador, banco, gateway, secrets, imagens"
+  echo "  cluster, nodes, NAT, balanceador, banco, gateway, mensageria, secrets, imagens"
   [ "$COM_BOOTSTRAP" -eq 1 ] && vermelho "  e TAMBEM o bucket de state, com todo o historico"
   echo
   confirmar "Destruir?" || { echo "Cancelado."; exit 0; }
 fi
 
-TOTAL=4
-[ "$COM_BOOTSTRAP" -eq 1 ] && TOTAL=5
+TOTAL=5
+[ "$COM_BOOTSTRAP" -eq 1 ] && TOTAL=6
 
 # ---------------------------------------------------------------- lambdas
 #
@@ -151,13 +153,41 @@ for f in "tc-grupo160-auth-${AMBIENTE}" "tc-grupo160-authorizer-${AMBIENTE}"; do
   fi
 done
 
+# ------------------------------------------------------------- mensageria
+#
+# Remova as assinaturas antes dos topicos: cada servico mantem seu proprio
+# state, mas as assinaturas apontam entre states de produtores e consumidores.
+
+etapa 2 "$TOTAL" "Mensageria SNS/SQS dos microsservicos"
+MENSAGERIA_DIRS=(
+  "$RAIZ/tech-challenge-oficina-mecanica/infra"
+  "$BILLING/infra"
+  "$EXECUCAO/infra"
+)
+MENSAGERIA_STATES=("messaging-os.tfstate" "messaging-billing.tfstate" "messaging-execucao.tfstate")
+
+for i in "${!MENSAGERIA_DIRS[@]}"; do
+  tf_init "${MENSAGERIA_DIRS[$i]}" "$AMBIENTE/${MENSAGERIA_STATES[$i]}" "$BUCKET" "$REGIAO"
+  terraform -chdir="${MENSAGERIA_DIRS[$i]}" destroy -auto-approve -input=false \
+    -target=aws_sns_topic_subscription.events \
+    -var="environment=$AMBIENTE" -var="region=$REGIAO"
+done
+
+for i in "${!MENSAGERIA_DIRS[@]}"; do
+  tf_init "${MENSAGERIA_DIRS[$i]}" "$AMBIENTE/${MENSAGERIA_STATES[$i]}" "$BUCKET" "$REGIAO"
+  terraform -chdir="${MENSAGERIA_DIRS[$i]}" destroy -auto-approve -input=false \
+    -var="environment=$AMBIENTE" -var="region=$REGIAO"
+  cinza "  removida: ${MENSAGERIA_STATES[$i]}"
+done
+verde "  Mensageria destruida."
+
 # ------------------------------------------------------------------ banco
 #
 # Antes da rede: o Terraform do banco le vpc_id e security group do state da
 # rede. Se a rede sair primeiro, o destroy do banco falha ao resolver as
 # referencias e a instancia fica para tras, cobrando.
 
-etapa 2 "$TOTAL" "Banco de dados"
+etapa 3 "$TOTAL" "Banco de dados"
 if tf_init "$BANCO" "$AMBIENTE/banco.tfstate" "$BUCKET" "$REGIAO" 2>/dev/null; then
   terraform -chdir="$BANCO" destroy -auto-approve -input=false \
     -var-file="inventories/$AMBIENTE/terraform.tfvars"
@@ -168,7 +198,7 @@ fi
 
 # ------------------------------------------------------------------- rede
 
-etapa 3 "$TOTAL" "Cluster, rede, gateway e balanceador"
+etapa 4 "$TOTAL" "Cluster, rede, gateway e balanceador"
 if tf_init "$K8S/infra" "$AMBIENTE/rede.tfstate" "$BUCKET" "$REGIAO" 2>/dev/null; then
   terraform -chdir="$K8S/infra" destroy -auto-approve -input=false \
     -var-file="inventories/$AMBIENTE/terraform.tfvars"
@@ -180,12 +210,12 @@ fi
 # -------------------------------------------------------------- bootstrap
 
 if [ "$COM_BOOTSTRAP" -eq 1 ]; then
-  etapa 4 "$TOTAL" "Backend de state"
+  etapa 5 "$TOTAL" "Backend de state"
   # Via AWS CLI, nao Terraform: ver destruir_backend_state em comum.sh.
   destruir_backend_state "$BUCKET"
-  PASSO=5
+  PASSO=6
 else
-  PASSO=4
+  PASSO=5
 fi
 
 # ============================================================= conferencia

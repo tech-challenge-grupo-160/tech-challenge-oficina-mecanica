@@ -26,6 +26,12 @@ Mensageria sem cuidado gera dois problemas clássicos que a Saga não tolera:
 
 Usar **Amazon SNS** (tópicos) e **Amazon SQS** (filas), com **outbox transacional** na publicação e **consumo idempotente**, usando **MassTransit** como biblioteca no .NET.
 
+> **Nota de implementação (2026-11-01):** o primeiro corte vertical, início do
+> diagnóstico, usa diretamente o AWS SDK for .NET v4. Outbox, Inbox, entrega
+> *at-least-once*, SNS/SQS e DLQ permanecem conforme esta decisão. A adoção do
+> MassTransit fica para reavaliação antes de ampliar a Saga; não é necessário
+> misturar dois mecanismos enquanto este corte estiver isolado.
+
 ### Topologia
 
 - **Eventos** (algo aconteceu): publicados num **tópico SNS do produtor**. Cada interessado tem **sua própria fila SQS** assinada no tópico. Quem publica não sabe quem consome.
@@ -155,8 +161,8 @@ Não atende o enunciado e acoplaria a disponibilidade dos serviços: se o Billin
 
 | Risco | Mitigação |
 |---|---|
-| Pods sem credencial para acessar SNS/SQS (hop limit do IMDS, como no Cluster Autoscaler da Fase 3) | Spike [F4-05](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/136) antes de construir; launch template com hop limit 2 |
-| SCP do Learner Lab bloquear alguma ação de SNS/SQS | Validado no spike; plano B é RabbitMQ no cluster |
+| Pods sem credencial para acessar SNS/SQS (hop limit do IMDS, como no Cluster Autoscaler da Fase 3) | **Resolvido** no spike [F4-05](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/136): launch template com hop limit 2 (ver abaixo) |
+| SCP do Learner Lab bloquear alguma ação de SNS/SQS | **Descartado** no spike: nenhuma ação usada foi negada. RabbitMQ deixa de ser plano B |
 | Contrato de mensagem quebrado entre serviços | Campo `version`, catálogo versionado e testes de contrato no CI |
 | Filas acumulando mensagens sem ninguém perceber | Monitores no Datadog para idade da mensagem mais antiga e DLQ não vazia |
 
@@ -165,6 +171,74 @@ Não atende o enunciado e acoplaria a disponibilidade dos serviços: se o Billin
 1. **SNS + SQS**, com RabbitMQ no cluster como plano B se o spike ([F4-05](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/136)) falhar.
 2. **MassTransit**, condicionado a confirmar que a versão adotada é open source; se não for, AWS SDK direto.
 3. Quem cria a topologia (Terraform ou biblioteca) fica para a [F4-11](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/142).
+
+## Resultado do spike F4-05 (2026-11-07)
+
+Ambiente `dev` no Learner Lab (EKS 1.33), com o launch template do node group
+definindo `http_put_response_hop_limit = 2` e IMDSv2 obrigatório
+([infra-k8s#55](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s/pull/55)).
+
+Um pod **na rede de pods**, sem `hostNetwork` e sem credencial injetada, usando só
+a cadeia padrão do SDK:
+
+| Passo | Resultado |
+|---|---|
+| Token IMDSv2 e role da instância | OK, o hop limit 2 chegou às instâncias |
+| `sts get-caller-identity` | OK, `assumed-role/LabRole/<instância>` |
+| SNS: criar tópico, assinar fila, publicar | OK |
+| SQS: criar fila, policy para o SNS, receber a mensagem publicada | OK, com `RawMessageDelivery` |
+| DynamoDB: criar tabela, `PutItem`, `GetItem`, `TransactWriteItems` | OK, a transação é a mesma que o Billing usa (orçamento + Inbox + Outbox) |
+| `ec2:CreateLaunchTemplate` pelo Terraform | OK, o SCP permite |
+
+Consequências:
+
+- Os serviços usam a **cadeia padrão de credenciais** do SDK. Não é preciso
+  injetar chave da AWS nos pods (ela expiraria com a sessão do lab).
+- O **Cluster Autoscaler** também passou a rodar na rede de pods: subiu e
+  registrou o ASG sem `hostNetwork`.
+- **RabbitMQ sai como plano B**: SNS + SQS funcionam no lab.
+
+## Adendo: uma fila por tipo de mensagem (2026-11-11)
+
+**O que mudou.** A topologia da seção [Topologia](#topologia) previa uma fila de
+comandos por serviço e uma fila de eventos por consumidor, com o tipo no campo
+`type` do envelope roteando as mensagens dentro do serviço. A implementação dos
+três serviços seguiu outro desenho, o mesmo que o ambiente local
+(LocalStack, `docker/localstack/init-aws.sh`) monta desde o início:
+
+| | Desenho original | Desenho implementado |
+|---|---|---|
+| Filas | uma de comandos por serviço, uma de eventos por consumidor | **uma por tipo de mensagem**, cada uma com DLQ própria |
+| Roteamento | campo `type` no corpo, despachado no consumidor | **a própria fila**: cada worker consome um único tipo |
+| Filtro SNS | `type` no corpo (`billing.pagamento-confirmado`) | atributo **`tipo`** com o nome da classe (`PagamentoConfirmadoMessage`) |
+| Tópicos | um por produtor | **sem mudança**: um por produtor |
+
+Até 11/11 o Terraform da AWS seguia o desenho original, e o código seguia o
+implementado. Na nuvem nenhum consumidor tinha fila configurada, e a Saga não
+trocava mensagens. O mesmo código funcionava no LocalStack.
+
+**Decisão.** A infraestrutura da AWS passa a seguir o código, com as mesmas 14
+filas do LocalStack (5 de comando e 9 de evento do OS). O código das aplicações
+não muda. O detalhe por fila está no [catálogo](../mensageria/catalogo.md).
+
+**Por quê.**
+- A cinco dias da entrega, alinhar a infra é uma mudança verificável com
+  `terraform plan`. Alinhar o código mexeria nos consumidores dos três
+  serviços, nos testes e no ambiente local.
+- O código e o LocalStack já foram exercitados juntos. Levar o mesmo desenho
+  para a nuvem elimina a diferença entre o ambiente local e a AWS.
+- Uma DLQ por tipo deixa evidente qual passo da Saga falhou, sem abrir as
+  mensagens.
+
+**Consequências.**
+- Mais filas: 14 no total, mais as DLQs. SQS parada não cobra.
+- Um tipo novo exige uma fila nova no Terraform do consumidor, em vez de só uma
+  linha no filtro.
+- O contrato de tipo deixa de ser o nome do catálogo (`billing.pagamento-confirmado`)
+  e passa a ser o nome da classe. O catálogo foi atualizado.
+- Os eventos `os.aberta` e `os.cancelada` e as filas de eventos do OS para
+  Billing e Execução saem: nenhum serviço os consome hoje. O tópico do OS fica,
+  para quando o OS passar a publicar eventos.
 
 ## Referências
 

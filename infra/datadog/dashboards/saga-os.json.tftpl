@@ -1,0 +1,378 @@
+{
+  "title": "[${env}] Saga da OS - fluxo distribuido",
+  "description": "F4-37: sagas concluidas x compensadas, eventos por passo, latencia por passo e filas/DLQs do ambiente ${env}. Gerenciado por Terraform (infra/datadog) - alteracoes feitas na interface sao sobrescritas no proximo apply.",
+  "layout_type": "ordered",
+  "reflow_type": "auto",
+  "notify_list": [],
+  "template_variables": [],
+  "widgets": [
+    {
+      "definition": {
+        "type": "group",
+        "title": "Saga: concluidas x compensadas",
+        "layout_type": "ordered",
+        "show_title": true,
+        "widgets": [
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "OS abertas",
+              "autoscale": true,
+              "precision": 0,
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "abertas",
+                      "query": "sum:oficina_mecanica.orders.created{${filtro_os}}.as_count()",
+                      "aggregator": "sum"
+                    }
+                  ],
+                  "formulas": [{ "formula": "abertas" }]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "Sagas concluidas",
+              "autoscale": true,
+              "precision": 0,
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "concluidas",
+                      "query": "${consulta_concluidas}",
+                      "aggregator": "sum"
+                    }
+                  ],
+                  "formulas": [{ "formula": "concluidas" }],
+                  "conditional_formats": [
+                    { "comparator": ">=", "value": 0, "palette": "white_on_green" }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "Sagas compensadas",
+              "autoscale": true,
+              "precision": 0,
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "compensadas",
+                      "query": "${consulta_compensadas}",
+                      "aggregator": "sum"
+                    }
+                  ],
+                  "formulas": [{ "formula": "compensadas" }],
+                  "conditional_formats": [
+                    { "comparator": ">", "value": 0, "palette": "white_on_yellow" },
+                    { "comparator": "<=", "value": 0, "palette": "white_on_green" }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "query_value",
+              "title": "Taxa de compensacao",
+              "autoscale": false,
+              "precision": 1,
+              "custom_unit": "%",
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "compensadas",
+                      "query": "${consulta_compensadas}",
+                      "aggregator": "sum"
+                    },
+                    {
+                      "data_source": "metrics",
+                      "name": "desfechos",
+                      "query": "${consulta_desfechos}",
+                      "aggregator": "sum"
+                    }
+                  ],
+                  "formulas": [{ "formula": "100 * compensadas / desfechos" }],
+                  "conditional_formats": [
+                    { "comparator": ">", "value": ${taxa_critica}, "palette": "white_on_red" },
+                    { "comparator": ">", "value": ${taxa_alerta}, "palette": "white_on_yellow" },
+                    { "comparator": "<=", "value": ${taxa_alerta}, "palette": "white_on_green" }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Sagas concluidas x compensadas",
+              "show_legend": true,
+              "legend_layout": "horizontal",
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "display_type": "bars",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "concluidas",
+                      "query": "${consulta_concluidas}"
+                    },
+                    {
+                      "data_source": "metrics",
+                      "name": "compensadas",
+                      "query": "${consulta_compensadas}"
+                    }
+                  ],
+                  "formulas": [
+                    { "formula": "concluidas", "alias": "Concluidas" },
+                    { "formula": "compensadas", "alias": "Compensadas" }
+                  ],
+                  "style": { "palette": "semantic" }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "group",
+        "title": "OS por status (eventos da saga)",
+        "layout_type": "ordered",
+        "show_title": true,
+        "widgets": [
+          {
+            "definition": {
+              "type": "toplist",
+              "title": "Eventos processados pelo OS Service, por tipo (cada um muda o status da OS)",
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "eventos",
+                      "query": "sum:${metrica_saga}{*} by {tipomensagem}.as_count()",
+                      "aggregator": "sum"
+                    }
+                  ],
+                  "formulas": [
+                    { "formula": "eventos", "limit": { "count": 20, "order": "desc" } }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Eventos da saga ao longo do tempo, por tipo",
+              "show_legend": true,
+              "legend_layout": "auto",
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "display_type": "bars",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "eventos",
+                      "query": "sum:${metrica_saga}{*} by {tipomensagem}.as_count()"
+                    }
+                  ],
+                  "formulas": [{ "formula": "eventos" }],
+                  "style": { "palette": "dog_classic" }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "group",
+        "title": "Latencia por passo",
+        "layout_type": "ordered",
+        "show_title": true,
+        "widgets": [
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Tempo em cada etapa da OS - p50 e p95 (segundos)",
+              "show_legend": true,
+              "legend_layout": "auto",
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "display_type": "line",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "p50",
+                      "query": "p50:oficina_mecanica.orders.stage_duration{${filtro_os}} by {stage}"
+                    },
+                    {
+                      "data_source": "metrics",
+                      "name": "p95",
+                      "query": "p95:oficina_mecanica.orders.stage_duration{${filtro_os}} by {stage}"
+                    }
+                  ],
+                  "formulas": [
+                    { "formula": "p50", "alias": "p50" },
+                    { "formula": "p95", "alias": "p95" }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Latencia p95 das APIs (APM)",
+              "show_legend": true,
+              "legend_layout": "auto",
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "display_type": "line",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "p95",
+                      "query": "p95:trace.aspnet_core.request{service IN (${servicos_apm}),env:${env},span.kind:server} by {service}"
+                    }
+                  ],
+                  "formulas": [{ "formula": "p95" }]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "group",
+        "title": "Filas e DLQs (SQS)",
+        "layout_type": "ordered",
+        "show_title": true,
+        "widgets": [
+          {
+            "definition": {
+              "type": "toplist",
+              "title": "Mensagens nas DLQs",
+              "requests": [
+                {
+                  "response_format": "scalar",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "dlq",
+                      "query": "max:aws.sqs.approximate_number_of_messages_visible{${filtro_dlqs}} by {queuename}",
+                      "aggregator": "last"
+                    }
+                  ],
+                  "formulas": [
+                    { "formula": "dlq", "limit": { "count": 20, "order": "desc" } }
+                  ],
+                  "conditional_formats": [
+                    { "comparator": ">", "value": 0, "palette": "white_on_red" },
+                    { "comparator": "<=", "value": 0, "palette": "white_on_green" }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Profundidade das filas (mensagens visiveis)",
+              "show_legend": true,
+              "legend_layout": "auto",
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "display_type": "line",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "visiveis",
+                      "query": "max:aws.sqs.approximate_number_of_messages_visible{${filtro_filas}} by {queuename}"
+                    }
+                  ],
+                  "formulas": [{ "formula": "visiveis" }]
+                }
+              ]
+            }
+          },
+          {
+            "definition": {
+              "type": "timeseries",
+              "title": "Idade da mensagem mais antiga por fila (segundos)",
+              "show_legend": true,
+              "legend_layout": "auto",
+              "requests": [
+                {
+                  "response_format": "timeseries",
+                  "display_type": "line",
+                  "queries": [
+                    {
+                      "data_source": "metrics",
+                      "name": "idade",
+                      "query": "max:aws.sqs.approximate_age_of_oldest_message{${filtro_filas}} by {queuename}"
+                    }
+                  ],
+                  "formulas": [{ "formula": "idade" }]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "definition": {
+        "type": "group",
+        "title": "Alertas",
+        "layout_type": "ordered",
+        "show_title": true,
+        "widgets": [
+          {
+            "definition": {
+              "type": "manage_status",
+              "title": "Monitores da saga (${env})",
+              "summary_type": "monitors",
+              "display_format": "countsAndList",
+              "color_preference": "text",
+              "hide_zero_counts": true,
+              "show_last_triggered": true,
+              "query": "tag:\"dashboard:saga-os\" tag:\"env:${env}\"",
+              "sort": "status,asc"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

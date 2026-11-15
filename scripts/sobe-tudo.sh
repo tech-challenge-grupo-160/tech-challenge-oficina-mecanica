@@ -15,8 +15,8 @@
 #   ./scripts/sobe-tudo.sh --sem-datadog      # sobe sem Agent nem chave do Datadog
 #
 # CUSTO: o cluster EKS cobra US$ 0,10/hora enquanto existir e NAO e suspenso
-# junto com a sessao do lab, diferente das instancias EC2. Com o NAT Gateway,
-# ~US$ 3,50/dia por ambiente. Rode derruba-tudo.sh ao terminar.
+# junto com a sessao do lab, diferente das instancias EC2. Com NAT, ALB e os dois RDS,
+# ~US$ 5,40/dia por ambiente. Rode derruba-tudo.sh ao terminar.
 
 if [ -z "${BASH_VERSION:-}" ]; then exec bash "$0" "$@"; fi
 set -euo pipefail
@@ -53,10 +53,12 @@ K8S="$RAIZ/tech-challenge-infra-k8s"
 BANCO="$RAIZ/tech-challenge-infra-database"
 LAMBDA="$RAIZ/tech-challenge-lambda-auth"
 APP="$RAIZ/tech-challenge-oficina-mecanica"
+BILLING="$RAIZ/tech-challenge-oficina-mecanica-billing"
+EXECUCAO="$RAIZ/tech-challenge-oficina-mecanica-execucao"
 
-TOTAL=8
-# Com --so-infra a etapa 2 e pulada, mas o fluxo vai ate a 5.
-[ "$SO_INFRA" -eq 1 ] && TOTAL=5
+TOTAL=10
+# Com --so-infra a etapa 2 e pulada, mas o fluxo vai ate a 6.
+[ "$SO_INFRA" -eq 1 ] && TOTAL=6
 
 # ============================================================ verificacoes
 
@@ -85,8 +87,10 @@ if [ "$SEM_PERGUNTAR" -eq 0 ]; then
   amarelo "Isto cria infraestrutura que COBRA:"
   echo "  - cluster EKS       ~US\$ 2,40/dia (nao para com a sessao do lab)"
   echo "  - NAT Gateway       ~US\$ 1,08/dia"
-  echo "  - RDS multi-AZ      ~US\$ 0,90/dia"
+  echo "  - RDS multi-AZ (OS) ~US\$ 0,90/dia"
+  echo "  - RDS da Execucao   ~US\$ 0,45/dia (Single-AZ em dev e hom)"
   echo "  - ALB               ~US\$ 0,54/dia"
+  echo "  - SNS/SQS           cobranca por uso"
   echo
   confirmar "Continuar?" || { echo "Cancelado."; exit 0; }
 fi
@@ -126,7 +130,9 @@ if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
     cinza   "  Para assumir as pipelines: --assumir-pipelines"
   else
     for r in tech-challenge-oficina-mecanica tech-challenge-lambda-auth \
-             tech-challenge-infra-k8s tech-challenge-infra-database; do
+             tech-challenge-infra-k8s tech-challenge-infra-database \
+             tech-challenge-oficina-mecanica-billing \
+             tech-challenge-oficina-mecanica-execucao; do
       gh variable set TF_STATE_BUCKET --body "$BUCKET" \
         --repo "tech-challenge-grupo-160/$r" >/dev/null 2>&1 || true
     done
@@ -227,6 +233,42 @@ if [ "$SEM_DATADOG" -eq 0 ] \
   exit 1
 fi
 
+# Credenciais do Mercado Pago (F4-06/F4-39): do ambiente ou, na falta, do
+# segredo que um apply anterior (da pipeline ou daqui) ja gravou nesta conta.
+#
+# O infra-k8s grava o segredo tc-grupo160/<amb>/mercadopago a partir de
+# TF_VAR_mercadopago_access_token e TF_VAR_mercadopago_webhook_secret. Um apply
+# sem elas cria o segredo vazio, ou APAGA o valor que ja estava la, e o Billing
+# nao sobe. Por isso o script reaproveita o valor existente antes de aplicar.
+#
+# Sem valor em lugar nenhum o script so avisa, sem parar: o resto do ambiente
+# sobe, mas a etapa de pagamento da OS fica indisponivel na nuvem. O Billing roda
+# em Production, onde a confirmacao simulada responde 404, e sem credencial nao
+# ha Checkout Pro.
+# Variavel de ambiente, e nao -var, pelo mesmo motivo da chave do Datadog.
+if [ -z "${TF_VAR_mercadopago_access_token:-}" ]; then
+  MP_SEGREDO="$(aws secretsmanager get-secret-value --secret-id "tc-grupo160/${AMBIENTE}/mercadopago" \
+    --region "$REGIAO" --query SecretString --output text 2>/dev/null || echo '')"
+  mp_valor() { printf '%s\n' "$MP_SEGREDO" | sed -n "s/.*\"$1\" *: *\"\\([^\"]*\\)\".*/\\1/p"; }
+  MP_TOKEN="$(mp_valor access_token)"
+  MP_WEBHOOK="$(mp_valor webhook_secret)"
+  if [ -n "$MP_TOKEN" ] && [ -n "$MP_WEBHOOK" ]; then
+    export TF_VAR_mercadopago_access_token="$MP_TOKEN"
+    export TF_VAR_mercadopago_webhook_secret="$MP_WEBHOOK"
+    cinza "  Credenciais do Mercado Pago reaproveitadas do Secrets Manager."
+  fi
+  unset MP_SEGREDO MP_TOKEN MP_WEBHOOK
+fi
+
+if [ -z "${TF_VAR_mercadopago_access_token:-}" ]; then
+  amarelo "  Sem credenciais do Mercado Pago: o segredo tc-grupo160/$AMBIENTE/mercadopago fica vazio."
+  cinza   "  O ambiente sobe, mas a OS nao passa da etapa de pagamento: na nuvem nao ha"
+  cinza   "  pagamento simulado. Para o fluxo completo, carregue e rode de novo:"
+  cinza   "    read -rsp 'Access token: ' TF_VAR_mercadopago_access_token && echo && export TF_VAR_mercadopago_access_token"
+  cinza   "    read -rsp 'Webhook secret: ' TF_VAR_mercadopago_webhook_secret && echo && export TF_VAR_mercadopago_webhook_secret"
+  cinza   "  As credenciais de teste estao com quem cuida da F4-06 (issue #137)."
+fi
+
 # shellcheck disable=SC2086
 terraform -chdir="$K8S/infra" apply -auto-approve -input=false \
   -var-file="inventories/$AMBIENTE/terraform.tfvars" $VAR_LAMBDAS $VAR_DATADOG
@@ -244,9 +286,32 @@ terraform -chdir="$BANCO" apply -auto-approve -input=false \
   -var-file="inventories/$AMBIENTE/terraform.tfvars"
 verde "  RDS aplicado."
 
+# -------------------------------------------------------------- mensageria
+#
+# Cada servico e dono do seu topico e das filas que consome. Os tres topicos
+# precisam existir antes de qualquer assinatura; por isso o bootstrap aplica
+# primeiro so os topicos, depois a configuracao completa de cada servico.
+
+etapa 5 "$TOTAL" "Topicos, filas e DLQs SNS/SQS por servico"
+MENSAGERIA_DIRS=("$APP/infra" "$BILLING/infra" "$EXECUCAO/infra")
+MENSAGERIA_STATES=("messaging-os.tfstate" "messaging-billing.tfstate" "messaging-execucao.tfstate")
+
+for i in "${!MENSAGERIA_DIRS[@]}"; do
+  tf_init "${MENSAGERIA_DIRS[$i]}" "$AMBIENTE/${MENSAGERIA_STATES[$i]}" "$BUCKET" "$REGIAO"
+  terraform -chdir="${MENSAGERIA_DIRS[$i]}" apply -auto-approve -input=false \
+    -target=aws_sns_topic.events \
+    -var="environment=$AMBIENTE" -var="region=$REGIAO"
+done
+
+for i in "${!MENSAGERIA_DIRS[@]}"; do
+  terraform -chdir="${MENSAGERIA_DIRS[$i]}" apply -auto-approve -input=false \
+    -var="environment=$AMBIENTE" -var="region=$REGIAO"
+done
+verde "  Mensageria aplicada nos tres servicos."
+
 GATEWAY="$(terraform -chdir="$K8S/infra" output -raw gateway_url 2>/dev/null || echo '')"
 
-etapa 5 "$TOTAL" "Conferindo o que subiu"
+etapa 6 "$TOTAL" "Conferindo o que subiu"
 CLUSTER="$(terraform -chdir="$K8S/infra" output -raw cluster_nome 2>/dev/null || echo '')"
 if [ -z "$CLUSTER" ] || [ "$CLUSTER" = "null" ]; then
   amarelo "  criar_cluster esta desligado em inventories/$AMBIENTE."
@@ -281,7 +346,7 @@ ECR="$(terraform -chdir="$K8S/infra" output -raw ecr_api_url)"
 # disputarem o mesmo recurso. Por isso tambem nao somem no `terraform destroy` -
 # ver derruba-tudo.sh.
 
-etapa 6 "$TOTAL" "Rede e variaveis das funcoes"
+etapa 7 "$TOTAL" "Rede e variaveis das funcoes"
 
 SEGREDO_JWT="tc-grupo160/${SUFIXO}/jwt-signing-key"
 SEGREDO_BANCO="tc-grupo160/${SUFIXO}/banco"
@@ -325,7 +390,7 @@ if [ -n "$DATADOG_SECRET_ARN" ] && [ "$DATADOG_SECRET_ARN" != "null" ]; then
 fi
 # -------------------------------------------------------------------- API
 
-etapa 7 "$TOTAL" "API no cluster"
+etapa 8 "$TOTAL" "API no cluster"
 aws eks update-kubeconfig --region "$REGIAO" --name "$CLUSTER" >/dev/null
 
 SHA="$(git -C "$APP" rev-parse --short=12 HEAD)"
@@ -346,11 +411,38 @@ CONN="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_BANCO" --regio
   | grep -o '"connectionString":"[^"]*"' | sed 's/^"connectionString":"//; s/"$//')"
 JWT="$(aws secretsmanager get-secret-value --secret-id "$SEGREDO_JWT" --region "$REGIAO" \
   --query SecretString --output text)"
+# Mensageria: todas as chaves Messaging__* do segredo de cada servico viram
+# variaveis do pod, com o nome que o codigo le - o Terraform de mensageria ja
+# grava assim (uma fila por tipo, adendo de 11/11 a ADR-0005). Ler o segredo
+# inteiro, e nao uma lista fixa, evita que o script quebre quando uma fila
+# entra ou sai. Messaging__Enabled vem junto e liga os workers.
+literais_mensageria() {
+  local segredo="$1" json
+  json="$(aws secretsmanager get-secret-value --secret-id "$segredo" --region "$REGIAO" \
+    --query SecretString --output text)"
+  printf '%s' "$json" | grep -oE '"Messaging__[A-Za-z]+": *"[^"]*"' \
+    | sed -E 's/^"([^"]+)": *"([^"]*)"$/--from-literal=\1=\2/'
+}
+
+exigir_mensageria() {
+  local segredo="$1"; shift
+  if ! printf '%s\n' "$@" | grep -q '^--from-literal=Messaging__Enabled=true$'; then
+    vermelho "ERRO: configuracao de mensageria ausente ou antiga em $segredo (falta Messaging__Enabled)."
+    vermelho "      Rode de novo a etapa 5 (mensageria) ou confira o infra/ do servico."
+    exit 1
+  fi
+}
+
+SEGREDO_MENSAGERIA="tc-grupo160/${SUFIXO}/os/messaging"
+mapfile -t MSG_ARGS < <(literais_mensageria "$SEGREDO_MENSAGERIA")
+exigir_mensageria "$SEGREDO_MENSAGERIA" "${MSG_ARGS[@]}"
 
 kubectl create secret generic api-secret --namespace oficina-mecanica \
   --from-literal=ConnectionStrings__DefaultConnection="$CONN" \
   --from-literal=Jwt__SecretKey="$JWT" \
+  "${MSG_ARGS[@]}" \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+cinza "  api-secret com ${#MSG_ARGS[@]} chaves de mensageria."
 
 TMP="$(mktemp -d)"
 cp -r "$K8S/k8s/." "$TMP/"
@@ -377,9 +469,79 @@ kubectl rollout status deployment/oficina-mecanica-api \
   --namespace oficina-mecanica --timeout=420s
 verde "  API no ar."
 
+# ------------------------------------------------------ Billing e Execucao
+#
+# O mesmo deploy que a pipeline reutilizavel faz (tech-challenge-pipelines,
+# F4-08), a partir das pastas locais: imagem no ECR com o SHA do repositorio,
+# Secret montado do Secrets Manager e os manifests k8s/ de cada servico.
+#
+# As chaves do Secret sao as do segredo de mensageria da F4-11 e as mesmas do
+# input `segredos` da pipeline de cada servico (F4-38). A Execucao recebe
+# tambem a connection string do RDS proprio (F4-12), aplicado na etapa 4 pelo
+# infra-database. O DynamoDB do Billing entra quando a F4-13 existir.
+#
+# Rollout que nao fica pronto so gera aviso, sem parar o script: um servico
+# fora do ar nao pode impedir o OS Service e o teste de fumaca.
+
+etapa 9 "$TOTAL" "Billing e Execucao no cluster"
+REGISTRY="${ECR%%/*}"
+
+deploy_servico() {
+  local servico="$1" pasta="$2"
+  local nome="oficina-mecanica-${servico}"
+  local imagem="${REGISTRY}/tc-grupo160-${AMBIENTE}-${servico}"
+  local sha segredo json chave valor tmp
+  local args=()
+
+  sha="$(git -C "$pasta" rev-parse --short=12 HEAD)"
+  docker build -q -f "$pasta/docker/backend/Dockerfile" \
+    -t "${imagem}:${sha}" -t "${imagem}:latest" "$pasta" >/dev/null
+  docker push -q "${imagem}:${sha}" >/dev/null
+  docker push -q "${imagem}:latest" >/dev/null
+
+  segredo="tc-grupo160/${SUFIXO}/${servico}/messaging"
+  mapfile -t args < <(literais_mensageria "$segredo")
+  exigir_mensageria "$segredo" "${args[@]}"
+
+  # So a Execucao tem banco relacional proprio, e so ela recebe esta credencial.
+  if [ "$servico" = "execucao" ]; then
+    segredo="tc-grupo160/${SUFIXO}/execucao/banco"
+    json="$(aws secretsmanager get-secret-value --secret-id "$segredo" --region "$REGIAO" \
+      --query SecretString --output text)"
+    valor="$(printf '%s\n' "$json" | sed -n 's/.*"connectionString":"\([^"]*\)".*/\1/p')"
+    if [ -z "$valor" ]; then
+      vermelho "ERRO: connectionString ausente em $segredo."
+      exit 1
+    fi
+    args+=(--from-literal="ConnectionStrings__DefaultConnection=${valor}")
+  fi
+
+  kubectl create secret generic "${nome}-secret" --namespace oficina-mecanica \
+    "${args[@]}" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+
+  tmp="$(mktemp -d)"
+  cp -r "$pasta/k8s/." "$tmp/"
+  # Aspas no newTag pelo mesmo motivo do OS Service: SHA so de algarismos.
+  sed -i "s|newTag: .*|newTag: \"${sha}\"|; s|newName: .*|newName: ${imagem}|" "$tmp/kustomization.yaml"
+  grep -rl "__AMBIENTE__" "$tmp" | xargs -r sed -i "s|__AMBIENTE__|${AMBIENTE}|g"
+  kubectl apply -k "$tmp" >/dev/null
+  rm -rf "$tmp"
+
+  if kubectl rollout status "deployment/$nome" --namespace oficina-mecanica --timeout=300s >/dev/null 2>&1; then
+    verde "  $nome no ar."
+  else
+    amarelo "  $nome nao ficou pronto em 5 min. Diagnostico:"
+    cinza   "    kubectl describe pods -n oficina-mecanica -l app=$nome | tail -30"
+    cinza   "    kubectl logs -n oficina-mecanica -l app=$nome --tail=80"
+  fi
+}
+
+deploy_servico billing  "$BILLING"
+deploy_servico execucao "$EXECUCAO"
+
 # ============================================================= verificacao
 
-etapa 8 "$TOTAL" "Teste de fumaca"
+etapa 10 "$TOTAL" "Teste de fumaca"
 sleep 10
 CODIGO="$(curl -s -o /dev/null -w '%{http_code}' -X POST "$GATEWAY/auth" \
   -H 'Content-Type: application/json' -d '{"documento":"476.548.668-01"}' || echo 000)"
@@ -393,5 +555,11 @@ fi
 titulo "Pronto"
 echo "Gateway:  $GATEWAY"
 echo "Cluster:  $CLUSTER"
+echo "Webhook:  $GATEWAY/api/v1/pagamentos/webhook"
+echo
+# O id do gateway muda a cada subida, e o Mercado Pago so avisa o Billing pela
+# URL cadastrada no painel. Sem atualizar, o pagamento e feito e a OS nao anda.
+amarelo "Mercado Pago: cole a URL do Webhook no painel (Webhooks > URL modo teste)"
+amarelo "antes de testar um pagamento. Ver docs/CICLO-DE-VIDA.md#credenciais-do-mercado-pago."
 echo
 amarelo "Lembre de rodar ./scripts/derruba-tudo.sh ao terminar."
