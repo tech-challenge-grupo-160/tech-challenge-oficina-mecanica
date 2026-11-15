@@ -13,6 +13,8 @@ public sealed class OutboxMessage
     public DateTimeOffset? PublicadoEm { get; private set; }
     public int Tentativas { get; private set; }
     public string? UltimoErro { get; private set; }
+    /// <summary>Contexto do trace do Datadog de quem gerou a mensagem (F4-31).</summary>
+    public string? TraceContext { get; private set; }
 
     public static OutboxMessage Criar(
         Guid id,
@@ -29,6 +31,8 @@ public sealed class OutboxMessage
             Payload = payload,
             CriadoEm = criadoEm
         };
+
+    public void RegistrarTraceContext(string? traceContext) => TraceContext ??= traceContext;
 
     public void MarcarPublicada(DateTimeOffset publicadoEm)
     {

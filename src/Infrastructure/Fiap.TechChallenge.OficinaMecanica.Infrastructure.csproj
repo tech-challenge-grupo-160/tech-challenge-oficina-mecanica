@@ -26,6 +26,10 @@
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="DogStatsD-CSharp-Client" Version="9.2.1" />
+    <!-- API manual do tracer (SpanContextInjector/Extractor) para propagar o trace
+         pela Outbox e pelo SQS (F4-31). Mesma versao do tracer da imagem
+         (DD_TRACE_VERSION no Dockerfile): sem o profiler a API nao faz nada. -->
+    <PackageReference Include="Datadog.Trace" Version="3.53.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
       <PrivateAssets>all</PrivateAssets>
