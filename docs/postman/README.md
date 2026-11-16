@@ -20,7 +20,10 @@ Saga.
    arquivos).
 2. Selecione o environment.
 3. Nos environments da AWS, preencha `gatewayUrl` com a URL do API Gateway do
-   ambiente. Ela é o output `gateway_url` do Terraform do
+   ambiente, **terminando no nome do ambiente** (`.../dev`, `.../hom` ou
+   `.../prod`). Sem ele, toda requisição volta `404 {"message":"Not Found"}`. É a
+   linha `Gateway:` que o `sobe-tudo.sh` imprime no fim, e também o output
+   `gateway_url` do Terraform do
    [infra-k8s](https://github.com/tech-challenge-grupo-160/tech-challenge-infra-k8s):
 
    ```bash
