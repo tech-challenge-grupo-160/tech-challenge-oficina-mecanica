@@ -52,9 +52,5 @@ public sealed class OrdemDeServicoConfiguration : IEntityTypeConfiguration<Ordem
             .HasForeignKey(n => n.OrdemDeServicoId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        entity.HasMany<PedidoCompra>()
-            .WithOne(pc => pc.OrdemDeServico)
-            .HasForeignKey(pc => pc.OrdemDeServicoId)
-            .OnDelete(DeleteBehavior.Cascade);
     }
 }

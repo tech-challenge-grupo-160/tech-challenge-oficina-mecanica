@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Fiap.TechChallenge.OficinaMecanica.Domain.Entities;
 using Fiap.TechChallenge.OficinaMecanica.Domain.ValueObjects;
+using Fiap.TechChallenge.OficinaMecanica.Application.Abstractions;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Data;
 using Fiap.TechChallenge.OficinaMecanica.Infrastructure.Security;
 using Fiap.TechChallenge.OficinaMecanica.Shared.Helpers;
@@ -43,15 +44,14 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         context.ChangeTracker.Clear();
         context.Database.ExecuteSqlRaw("""
             TRUNCATE TABLE
-                "MovimentacaoEstoque",
-                "PedidoCompra",
+                "InboxMessage",
+                "OutboxMessage",
+                "SagaInicioDiagnostico",
                 "NotificacaoCliente",
                 "OrdemServicoHistorico",
                 "OrdemServicoItemPeca",
                 "OrdemServicoItemServico",
                 "OrdemServico",
-                "Peca",
-                "Servico",
                 "Veiculo",
                 "Cliente",
                 "Usuario"
@@ -111,6 +111,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             services.RemoveAll<OficinaDbContext>();
             services.AddDbContext<OficinaDbContext>(options =>
                 options.UseNpgsql(GetTestConnectionString()));
+            services.RemoveAll<ICatalogoExecucao>();
+            services.AddScoped<ICatalogoExecucao, CatalogoExecucaoLocal>();
+            services.RemoveAll<IInicioDiagnosticoScheduler>();
+            services.AddScoped<IInicioDiagnosticoScheduler, InicioDiagnosticoSchedulerLocal>();
 
             ConfigureAuthenticationForTests(services);
         });
@@ -139,11 +143,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         context.OrdemDeServicoPecas.RemoveRange(context.OrdemDeServicoPecas);
         context.OrdemDeServicoServicos.RemoveRange(context.OrdemDeServicoServicos);
         context.OrdemServicoHistoricos.RemoveRange(context.OrdemServicoHistoricos);
-        context.MovimentacoesEstoque.RemoveRange(context.MovimentacoesEstoque);
-        context.PedidosCompra.RemoveRange(context.PedidosCompra);
         context.OrdensDeServico.RemoveRange(context.OrdensDeServico);
-        context.Pecas.RemoveRange(context.Pecas);
-        context.Servicos.RemoveRange(context.Servicos);
         context.Veiculos.RemoveRange(context.Veiculos);
         context.Clientes.RemoveRange(context.Clientes);
         context.Usuarios.RemoveRange(context.Usuarios);
@@ -188,22 +188,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             Veiculo.Criar(PlacaVeiculo.Parse("XYZ9A88"), "Fiat", "Argo", 2022, PessoaJuridicaClienteId),
             SegundoVeiculoExistenteId);
 
-        AddWithId(
-            context,
-            Servico.Criar("Alinhamento", "Servico de alinhamento", 150m, 30),
-            ServicoExistenteId);
-
-        AddWithId(
-            context,
-            Peca.Criar("Pastilha de Freio", "Cobreq", "N-1234", 45m, 100),
-            PecaExistenteId);
-
         context.SaveChanges();
         context.Database.ExecuteSqlRaw("""
             SELECT setval(pg_get_serial_sequence('"Cliente"', 'Id'), MAX("Id"), true) FROM "Cliente";
             SELECT setval(pg_get_serial_sequence('"Veiculo"', 'Id'), MAX("Id"), true) FROM "Veiculo";
-            SELECT setval(pg_get_serial_sequence('"Servico"', 'Id'), MAX("Id"), true) FROM "Servico";
-            SELECT setval(pg_get_serial_sequence('"Peca"', 'Id'), MAX("Id"), true) FROM "Peca";
             SELECT setval(pg_get_serial_sequence('"Usuario"', 'Id'), MAX("Id"), true) FROM "Usuario";
             """);
     }

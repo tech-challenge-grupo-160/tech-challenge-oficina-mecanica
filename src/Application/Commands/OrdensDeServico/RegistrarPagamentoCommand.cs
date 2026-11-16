@@ -6,5 +6,6 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Commands.OrdensDeServic
 public sealed class RegistrarPagamentoCommand : IRequest<OrdemDeServicoResult>
 {
     public int Id { get; init; }
+    public DateTime? DataPagamento { get; init; }
 }
 

@@ -17,7 +17,7 @@ namespace Fiap.TechChallenge.OficinaMecanica.Test.IntegrationTests.Endpoints.Aut
 /// </summary>
 public class LambdaJwtContractTests : IClassFixture<JwtWebApplicationFactory>
 {
-    private const string RotaAutenticada = "/api/v1/pecas";
+    private const string RotaAutenticada = "/api/v1/clientes?page=1&pageSize=1";
     private const string RotaDeCliente = "/api/v1/acompanhamento-os/OS-INEXISTENTE";
 
     private readonly JwtWebApplicationFactory _factory;

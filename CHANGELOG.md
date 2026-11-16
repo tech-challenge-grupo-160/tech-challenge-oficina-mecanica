@@ -6,6 +6,30 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-11-15
+
+### Added
+- Saga orquestrada pelo OS Service (ADR-0004), com estado persistido, Outbox transacional e consumidor idempotente; o OS publica comandos e consome os eventos do Billing e da Execucao (F4-15, F4-17, F4-25)
+- Mensageria SNS/SQS com uma fila por tipo de mensagem e DLQ por fila, igual ao LocalStack (adendo a ADR-0005), com retry e redrive (F4-29)
+- Compensacoes: orcamento recusado cancela a OS; pagamento recusado bloqueia a entrega ate uma nova cobranca (F4-27); falta de estoque deixa a OS aguardando e a reposicao retoma a saga
+- Trace do Datadog propagado pela Outbox e pelo SNS/SQS: o fluxo de uma OS aparece como um unico trace no APM (F4-31)
+- BDD do fluxo completo da OS com Reqnroll e relatorio no pipeline (F4-36)
+- Billing e Execucao no sobe-tudo.sh e no derruba-tudo.sh, com RDS da Execucao, tabela DynamoDB e credenciais do Mercado Pago (F4-39)
+- ADRs 0003 a 0006 (microsservicos, Saga orquestrada, SNS+SQS, banco por servico), diagramas da Fase 4, OpenAPI, collection do Postman e guia de execucao local (F4-01 a F4-04, F4-40, F4-41, F4-44)
+- Dashboard da Saga e monitores no Datadog versionados em Terraform (`infra/datadog`, F4-37): sagas concluidas x compensadas, eventos por tipo, latencia por passo, profundidade das filas e DLQs; monitores de DLQ com mensagens e de taxa de compensacao; metrica de log `oficina_mecanica.saga.eventos.<ambiente>` derivada do log de mensagem processada, sem instrumentacao nova no codigo
+- Logs estruturados para seguir uma OS entre os servicos (F4-32): todo log JSON sai com `correlationId`, `ordemServicoId`, `trace_id`/`span_id` e bloco `dd` (`dd.trace_id`, `dd.span_id`) para o Datadog ligar log e trace; escopo aberto nas requisicoes HTTP, nos consumidores SQS e na Outbox; `DD_LOGS_INJECTION=true` na imagem; campos `level` e `message` reconhecidos pelo Datadog; mascara de CNPJ alem do CPF
+- Terraform de SNS, SQS e DLQs por microsserviço, com configuração no Secrets Manager, workflows independentes e runbook de validação AWS Academy (F4-11)
+
+### Changed
+- Campo `status` do log de requisicao HTTP renomeado para `statusHttp`, para o Datadog nao ler o codigo HTTP como nivel do log (F4-32)
+- O inicio do diagnostico passa a ser orquestrado pelo OS Service na Execucao, com chave idempotente, resiliencia HTTP e transacao local aplicada somente apos a confirmacao remota.
+- A abertura da OS consulta o catalogo da Execucao por HTTP resiliente via `ICatalogoExecucao`, preserva o contrato e as regras de itens e grava OS, itens, historico e notificacao em uma unica transacao local.
+- CI/CD pelo pipeline reutilizavel `servico-dotnet.yml@v1` do `tech-challenge-pipelines`, no lugar do `deploy-eks.yml` e do `pr-develop-ci.yml`. Mesmo comportamento: build e testes em todo PR (agora tambem para `homolog` e `master`), deploy no push da `homolog` e da `master`, dev pelo disparo manual (F4-08)
+- Ciclo de vida passa a provisionar/remover mensageria dos três serviços; deploy do OS injeta configuração Messaging do Secrets Manager
+
+### Removed
+- Catalogo e estoque saem do OS Service e passam a viver na Execucao (F4-16)
+
 ## [3.1.0] - 2026-10-10
 
 Metricas de negocio e APM do Datadog na API. A telemetria chega ao Agent com

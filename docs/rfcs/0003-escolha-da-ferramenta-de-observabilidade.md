@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Em revisão |
+| **Status** | Aceita — Datadog adotado na Fase 3 |
 | **Autor** | Grupo 160 |
 | **Data** | 2026-09-10 |
 | **Issue** | [#66](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/66) |

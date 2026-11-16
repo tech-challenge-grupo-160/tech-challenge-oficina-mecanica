@@ -5,8 +5,41 @@ projeto para outra conta da AWS trocando apenas a credencial.
 
 > **O cluster cobra sozinho.** O control plane do EKS custa US$ 0,10/hora
 > **enquanto existir** e não é suspenso junto com a sessão do Learner Lab —
-> diferente das instâncias EC2. Somando o NAT, o balanceador e o RDS, um
-> ambiente de pé custa cerca de **US$ 5/dia**. Derrube ao terminar.
+> diferente das instâncias EC2. Somando o NAT, o balanceador e os dois RDS
+> (o do OS e o da Execução, da Fase 4), um ambiente de pé custa cerca de
+> **US$ 5,40/dia**. Derrube ao terminar.
+
+## Roteiro rápido
+
+Para quem vai subir pela primeira vez. Cada passo aponta para a seção com os
+detalhes.
+
+1. **Repositórios e ferramentas.** Os seis repositórios lado a lado, em
+   `develop` para testar o que está em desenvolvimento, e as ferramentas da
+   tabela. Ver [Pré-requisitos](#pré-requisitos).
+2. **Credencial da AWS.** No Learner Lab: Start Lab → AWS Details → copie o
+   bloco para `~/.aws/credentials`, perfil `[default]`. Confira com
+   `aws sts get-caller-identity`. Ela dura cerca de 4 horas.
+3. **Datadog.** Com a chave da organização, carregue-a no terminal (ver
+   [Chave do Datadog](#chave-do-datadog)). Sem ela, suba com `--sem-datadog`.
+4. **Mercado Pago.** Peça o access token e a assinatura do webhook a quem cuida
+   da F4-06 e carregue os dois no terminal. Sem eles, o ambiente sobe, mas a OS
+   não passa da etapa de pagamento. Ver
+   [Credenciais do Mercado Pago](#credenciais-do-mercado-pago).
+5. **Pipelines.** Se elas não são suas, **não** use `--assumir-pipelines` nem
+   rode o `renova-secrets.sh`. Se são, não deixe nenhum merge nos repositórios
+   de infra rodar enquanto o script roda. Ver
+   [Mais de uma pessoa subindo ambiente](#mais-de-uma-pessoa-subindo-ambiente).
+6. **Subir.** `bash scripts/sobe-tudo.sh --ambiente dev --sem-datadog` (sem o
+   último parâmetro se tiver a chave). São dez etapas e cerca de 40 minutos.
+7. **Conferir.** A etapa 10 testa o `POST /auth`. Para o resto, ver
+   [Conferindo que subiu](#conferindo-que-subiu).
+8. **Apontar o webhook.** O script termina imprimindo a URL do webhook do
+   Mercado Pago. Ela muda a cada subida: cole-a no painel do Mercado Pago antes
+   de testar um pagamento. Ver [passo 4](#4-apontar-o-webhook-para-o-ambiente).
+9. **Derrubar ao terminar.** `bash scripts/derruba-tudo.sh --ambiente dev`.
+   Comece com pelo menos meia hora de credencial sobrando. Ele termina com
+   `Nada cobrando por hora nesta conta.`
 
 ## Os dois comandos
 
@@ -48,12 +81,18 @@ bash scripts/sobe-tudo.sh --ambiente hom --sim
 
 ### Quanto tempo leva
 
-Medido em 15/09, num ciclo completo do `dev`:
+Medido em 15/09, antes da infraestrutura de mensageria da Fase 4, num ciclo
+completo do `dev`:
 
 | Comando | Duração |
 |---|---|
 | `derruba-tudo.sh` | ~18 min |
 | `sobe-tudo.sh`, do zero | ~40 min: ~16 na rede e no cluster, ~16 no RDS, o resto nas Lambdas e na API |
+
+A Fase 4 acrescentou a mensageria, o RDS da Execução e a publicação do Billing e
+da Execução, e o ciclo ainda não foi medido de novo. O RDS da Execução nasce no
+mesmo apply do banco do OS, em paralelo, então o tempo do banco não deve dobrar.
+Conte com alguns minutos a mais na etapa 9, que compila e publica as duas imagens.
 
 A sessão do Learner Lab dura cerca de **4 horas**, e a credencial morre junto.
 Comece com folga. Se ela expirar no meio de um apply, o Terraform pode não
@@ -66,14 +105,14 @@ conseguir liberar o lock do state, e a execução seguinte para em
 
 Cada membro tem a sua conta do Learner Lab, e portanto o seu bucket de state —
 os ambientes são independentes e não se atrapalham. O que **é** compartilhado
-são os quatro repositórios da organização.
+são os seis repositórios da organização.
 
 Dois scripts escrevem neles:
 
 | Script | O que grava | Onde |
 |---|---|---|
-| `sobe-tudo.sh` | `TF_STATE_BUCKET` | variável dos 4 repositórios |
-| `renova-secrets.sh` | credenciais da AWS | secrets dos 4 repositórios |
+| `sobe-tudo.sh` | `TF_STATE_BUCKET` | variável dos 6 repositórios |
+| `renova-secrets.sh` | credenciais da AWS | secrets dos 6 repositórios (os 4 da Fase 3, mais Billing e Execução) |
 
 Se duas pessoas rodarem, **a última ganha**: as pipelines passam a aplicar na
 conta dela. Os merges de todo o time vão para o ambiente de uma pessoa só — sem
@@ -107,52 +146,53 @@ lugar que eles não esperam.
 Vale para quem é **dono das pipelines** — quando elas aplicam na sua conta.
 
 Enquanto um `sobe-tudo.sh` ou `derruba-tudo.sh` estiver rodando, **não mergeie
-nem abra PR** no `infra-k8s` e no `infra-database`, nem que seja só de
-documentação: os workflows não filtram por caminho. Todo push em `develop`,
-`homolog` ou `main` desses repositórios aplica um ambiente, e todo PR roda plan
-nos três. Plan e apply pegam o lock do state, e o Terraform não espera — quem
-chega depois falha na hora. Um push na `develop` no meio de um derruba do `dev`
-pode até recriar o ambiente pela pipeline.
+nem abra PR** nos repositórios de infraestrutura, inclusive nos três serviços,
+nem que seja só de documentação: os workflows não filtram por caminho. Plan e
+apply pegam o lock do state, e o Terraform não espera — quem chega depois falha
+na hora. Um push numa branch de ambiente durante o ciclo pode até recriar
+recursos pela pipeline.
 
 Quem sobe ambiente na **própria** conta, sem ser dono das pipelines, não tem
 esse problema: elas não enxergam a conta dessa pessoa.
 
 ## Por que os scripts vivem aqui
 
-Eles orquestram os **quatro** repositórios: leem o Terraform do `infra-k8s`,
-aplicam o do `infra-database`, publicam as Lambdas do `lambda-auth` e constroem
-a imagem daqui.
+Eles orquestram os **seis** repositórios: leem o Terraform do `infra-k8s`,
+aplicam o do `infra-database`, provisionam os três roots de mensageria (primeiro
+os tópicos, depois filas e assinaturas), publicam as Lambdas do `lambda-auth` e
+constroem a imagem daqui.
 
-Um repositório de infraestrutura dirigindo os outros três inverteria a
-separação que o [ADR-0001](adrs/0001-segregacao-em-quatro-repositorios.md)
-criou — os quatro são pares, nenhum é dono dos demais.
+Um repositório de infraestrutura centralizando os outros cinco inverteria a
+separação entre serviços que o
+[ADR-0001](adrs/0001-segregacao-em-quatro-repositorios.md) iniciou. Hoje os
+seis repositórios são pares: nenhum serviço é dono dos demais.
 
 Este repositório já é o ponto de coordenação do projeto: guarda os ADRs, as
 RFCs, a matriz de autorização, o board e todas as issues. Um runbook que
 atravessa fronteiras pertence ao mesmo lugar que a documentação que atravessa
 fronteiras.
 
-O `renova-secrets.sh` veio junto pelo mesmo motivo. Ele também mexe nos quatro,
+O `renova-secrets.sh` veio junto pelo mesmo motivo. Ele também mexe nos seis,
 e deixá-lo para trás espalharia a ferramenta operacional entre dois
 repositórios — pior que qualquer das duas escolhas.
 
 ## Pré-requisitos
 
-Os **quatro repositórios lado a lado**, na mesma pasta:
+Os **seis repositórios lado a lado**, na mesma pasta:
 
 ```bash
 mkdir -p ~/source/repos/tech-challenge && cd ~/source/repos/tech-challenge
-for r in oficina-mecanica lambda-auth infra-k8s infra-database; do
+for r in oficina-mecanica lambda-auth infra-k8s infra-database oficina-mecanica-billing oficina-mecanica-execucao; do
   git clone https://github.com/tech-challenge-grupo-160/tech-challenge-$r.git
 done
 ```
 
-Os scripts descobrem os outros três a partir da própria localização — não há
+Os scripts descobrem os outros cinco a partir da própria localização — não há
 variável de ambiente para configurar.
 
 **Os scripts usam o código que está na pasta.** O clone traz a branch padrão
 (`master` no repositório principal, `main` nos outros), que é a versão entregue.
-Para subir o que está em desenvolvimento, faça `git switch develop` nos quatro.
+Para subir o que está em desenvolvimento, faça `git switch develop` nos seis.
 Com os clones em `master`/`main`, o script avisa que a branch "sugere `prod`" —
 é esperado: o ambiente é sempre o do `--ambiente`.
 
@@ -167,7 +207,7 @@ Com os clones em `master`/`main`, o script avisa que a branch "sugere `prod`" �
 Com `--so-infra`, apenas AWS CLI e Terraform bastam.
 
 > **Confira o `npx` antes de começar.** O `sobe-tudo.sh` só procura por ele na
-> etapa 6, depois de uns 30 minutos criando infraestrutura. No Windows, depois
+> etapa 7, depois de criar a infraestrutura. No Windows, depois
 > de instalar o Node.js, abra um terminal novo: o `npx` só entra no PATH dos
 > terminais abertos depois da instalação.
 >
@@ -340,20 +380,128 @@ Para religar, carregue a chave (passos 2 e 3) e rode o `sobe-tudo.sh` de novo,
 sem o parâmetro. Um merge no `infra-k8s` também religa: a pipeline aplica o
 inventory como está no Git, com o secret do GitHub.
 
+### Credenciais do Mercado Pago
+
+O Billing cobra pelo Checkout Pro do Mercado Pago e precisa de dois valores da
+aplicação do grupo, ambos de **teste** (o projeto nunca processa pagamento real):
+
+| Valor | Para quê |
+|---|---|
+| **Access token** (`APP_USR-...`) | o Billing cria a cobrança e consulta o pagamento na API |
+| **Assinatura secreta do webhook** | o Billing confere o `x-signature` de cada notificação |
+
+Como a chave do Datadog, eles passam por vários lugares:
+
+| Onde | Quem grava | Quem usa |
+|---|---|---|
+| Variáveis `TF_VAR_mercadopago_access_token` e `TF_VAR_mercadopago_webhook_secret`, no seu terminal | você | o Terraform, no apply local da etapa 3 |
+| Segredo `tc-grupo160/<ambiente>/mercadopago`, no Secrets Manager | o apply do `infra-k8s`, com o valor das variáveis | o Billing, no startup; o `sobe-tudo.sh`, quando as variáveis não foram exportadas |
+| Secrets `MERCADOPAGO_ACCESS_TOKEN_<AMB>` e `MERCADOPAGO_WEBHOOK_SECRET_<AMB>` do GitHub, no `infra-k8s` | quem cuida da F4-06 | o apply pelas pipelines |
+
+#### 1. Conseguir os valores
+
+Os dois são gerados no painel de desenvolvedores do Mercado Pago
+(<https://www.mercadopago.com.br/developers/panel/app>), na aplicação do grupo:
+
+- **Access token:** *Credenciais* → ambiente **Teste** → *Access Token*;
+- **Assinatura:** *Webhooks* → *Configurar notificações* → só o evento
+  *Pagamentos (legacy)* → *Salvar*, e revele a assinatura secreta.
+
+O passo a passo completo, com a criação da aplicação e das contas de teste
+(vendedor e comprador), está no
+[MERCADO-PAGO.md do Billing](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica-billing/blob/develop/docs/MERCADO-PAGO.md).
+**Não crie outra aplicação:** peça os dois valores a quem cuida da F4-06
+([#137](https://github.com/tech-challenge-grupo-160/tech-challenge-oficina-mecanica/issues/137)),
+por um canal privado. Os secrets do GitHub não podem ser lidos de volta.
+
+#### 2. Carregar no terminal sem deixar rastro
+
+```bash
+read -rsp 'Access token do Mercado Pago: ' TF_VAR_mercadopago_access_token && echo && export TF_VAR_mercadopago_access_token
+```
+
+```bash
+read -rsp 'Assinatura do webhook: ' TF_VAR_mercadopago_webhook_secret && echo && export TF_VAR_mercadopago_webhook_secret
+```
+
+No mesmo terminal em que vai rodar o `sobe-tudo.sh`, como a chave do Datadog.
+O script confirma na etapa 3 se pegou as credenciais. Se aparecer
+`Sem credenciais do Mercado Pago`, as variáveis não chegaram.
+
+#### 3. Conferir o que está gravado, sem exibir os valores
+
+Depois da subida, o segredo deve ter as duas chaves preenchidas. O comando mostra
+só os nomes das chaves e o tamanho dos valores:
+
+```bash
+aws secretsmanager get-secret-value --secret-id tc-grupo160/dev/mercadopago \
+  --query SecretString --output text \
+  | grep -oE '"[a-z_]+" *: *"[^"]*"' | awk -F'"' '{print $2": "length($4)" caracteres"}'
+```
+
+Um `ResourceNotFoundException` com a mensagem de que não há valor no estágio
+`AWSCURRENT` significa que o segredo foi criado vazio: carregue as variáveis e
+rode o `sobe-tudo.sh` de novo.
+
+#### 4. Apontar o webhook para o ambiente
+
+O Mercado Pago avisa o Billing de cada pagamento pela URL cadastrada no painel.
+Ela é o endereço do gateway mais a rota do Billing, e **muda a cada subida**,
+porque o API Gateway ganha um id novo:
+
+```text
+https://<id>.execute-api.us-east-1.amazonaws.com/<ambiente>/api/v1/pagamentos/webhook
+```
+
+O `sobe-tudo.sh` imprime essa URL no fim. No painel: *Webhooks* → *Configurar
+notificações* → **URL modo teste** → cole a URL → *Salvar*. A assinatura não muda
+quando a URL muda, então os valores dos passos 1 e 2 continuam valendo.
+
+Para conferir sem fazer um pagamento, use **Simular notificação** no painel
+(evento Pagamentos, qualquer id). Com a cobrança do F4-20 no ar, o Billing
+responde `200` com desfecho `Ignorada`, porque o id não existe. Um `401` indica
+assinatura errada.
+
+#### Secrets das pipelines
+
+Para as pipelines aplicarem `hom` e `prod`, o `infra-k8s` precisa do par de cada
+ambiente: `MERCADOPAGO_ACCESS_TOKEN_HOM`/`_PROD` e
+`MERCADOPAGO_WEBHOOK_SECRET_HOM`/`_PROD`. Como tudo é credencial de teste, podem
+ser os mesmos valores do `dev`:
+
+```bash
+gh secret set MERCADOPAGO_ACCESS_TOKEN_HOM --repo tech-challenge-grupo-160/tech-challenge-infra-k8s
+```
+
+O `gh` pede o valor sem mostrar. Repita para os outros três nomes.
+
+> **Não rode o "Terraform CI → Run workflow" do `infra-k8s` para gravar as
+> credenciais** com o ambiente derrubado. Ele aplica o ambiente inteiro: sobe o
+> EKS, falha no meio por falta das Lambdas e deixa recurso cobrando. Cadastrar os
+> secrets já basta. Quem aplica é o `sobe-tudo.sh` ou a promoção.
+
+#### Depois de derrubar
+
+O `derruba-tudo.sh` destrói o segredo junto com o ambiente. Na subida seguinte,
+repita os passos 2 e 4. O passo 4 é necessário mesmo que nada tenha mudado,
+porque a URL é nova.
+
 ## Subindo
 
-O `sobe-tudo.sh` executa oito etapas, nesta ordem:
+O `sobe-tudo.sh` executa dez etapas, nesta ordem:
 
 | # | Etapa | Por que nesta posição |
 |---|---|---|
 | 1 | Backend de state (S3 + DynamoDB) | tudo mais guarda state nele |
 | 2 | **Funções Lambda (código)** | o gateway não sobe sem elas |
-| 3 | Rede, cluster, ECR, gateway, ALB, Datadog Agent | base de todo o resto |
-| 4 | Banco gerenciado | lê a rede pelo state remoto |
-| 5 | Conferência | para cedo se o cluster estiver desligado |
-| 6 | Rede e variáveis das funções, instrumentação do Datadog | dependem de subnets, SGs e segredos |
-| 7 | API no cluster | precisa do cluster e do ECR |
-| 8 | Teste de fumaça | `POST /auth` deve responder 200 |
+| 3 | Rede, cluster, ECR, gateway, ALB com as regras por serviço, Datadog Agent | base de todo o resto |
+| 4 | Bancos gerenciados: o RDS do OS e o da Execução | leem a rede pelo state remoto |
+| 5 | Tópicos, filas e DLQs SNS/SQS dos três serviços, e a tabela DynamoDB do Billing | tópicos são criados antes das assinaturas entre serviços; a tabela está no mesmo state da mensageria do Billing |
+| 6 | Conferência | para cedo se o cluster estiver desligado |
+| 7 | Rede e variáveis das funções, instrumentação do Datadog | dependem de subnets, SGs e segredos |
+| 8 | API (OS Service) no cluster | precisa do cluster e do ECR |
+| 9 | Billing e Execução no cluster | precisam dos segredos da mensageria (5) e do banco da Execução (4) |
+| 10 | Teste de fumaça | `POST /auth` deve responder 200 |
 
 Duas dessas posições **não são preferência**.
 
@@ -364,20 +512,48 @@ aparece, porque as funções foram publicadas muito antes — numa conta do zero
 aparece sempre.
 
 Só o **código** entra na etapa 2. Rede, variáveis de ambiente e VPC ficam para a
-etapa 6, quando subnets, security groups e segredos já existem.
+etapa 7, quando subnets, security groups e segredos já existem.
 
 **O banco vem depois da rede (4 depois de 3).** O Terraform do banco lê
 `vpc_id`, subnets e o security group do state da rede. Invertendo, ele falha
 procurando um state que ainda não existe.
 
-Na etapa 6, o `datadog-ci` imprime `❌ Configuration error: Missing DD_API_KEY`.
+Na etapa 7, o `datadog-ci` imprime `❌ Configuration error: Missing DD_API_KEY`.
 É só aviso: a chave chega às funções pelo ARN do segredo, e a instrumentação
 acontece mesmo assim.
+
+### Billing e Execução (etapa 9)
+
+Para cada serviço, a etapa 9 faz o mesmo que o deploy da pipeline:
+
+1. Compila a imagem, que vai para o ECR com a tag do SHA do commit.
+2. Monta o secret `oficina-mecanica-<serviço>-secret` com o que está no Secrets
+   Manager: os endereços da mensageria (`tc-grupo160/<ambiente>/<serviço>/messaging`)
+   e, só na Execução, a connection string do RDS próprio
+   (`tc-grupo160/<ambiente>/execucao/banco`).
+3. Aplica os manifests `k8s/` do repositório do serviço.
+
+Se o rollout de um dos dois não termina em 5 minutos, o script **avisa e segue**,
+mostrando os comandos de diagnóstico. A API e o teste de fumaça não dependem
+deles. Já faltar a connection string da Execução para o script, porque aí o
+banco da etapa 4 não subiu.
+
+As credenciais do Mercado Pago, que o Billing usa, entram antes, na etapa 3. O
+script usa `TF_VAR_mercadopago_access_token` e `TF_VAR_mercadopago_webhook_secret`
+se estiverem no terminal. Senão, reaproveita o segredo
+`tc-grupo160/<ambiente>/mercadopago` da conta. Sem nenhum dos dois, ele **avisa e
+segue**, e o segredo fica sem valor. Nesse caso **não há pagamento na nuvem**: o
+Billing roda em `Production`, onde a confirmação simulada
+(`PATCH /api/v1/pagamentos/ordem-servico/{id}/{pagamentoId}/simular-confirmacao`)
+responde 404 de propósito, e sem credencial não há Checkout Pro. A OS para na
+etapa de pagamento. A confirmação simulada só vale rodando o Billing localmente.
+Como conseguir e carregar as credenciais:
+[Credenciais do Mercado Pago](#credenciais-do-mercado-pago).
 
 ### Se o cluster não subir
 
 Se `criar_cluster` estiver `false` no inventory do ambiente, o script avisa e
-para depois da etapa 4. Sem cluster não há onde publicar a aplicação. Para
+para depois da etapa 6. Sem cluster não há onde publicar a aplicação. Para
 ligar, edite `tech-challenge-infra-k8s/infra/inventories/<ambiente>/terraform.tfvars`.
 
 ### Conferindo que subiu
@@ -421,19 +597,40 @@ DaemonSet aparecem com `3/3`:
 kubectl get pods -n datadog
 ```
 
+Os três serviços ficam no namespace `oficina-mecanica`, cada um num Service
+NodePort (OS 30080, Billing 30081, Execução 30082). O ALB os separa pelo caminho:
+`/api/v1/orcamentos*` e `/api/v1/pagamentos*` vão para o Billing,
+`/api/v1/catalogo*`, `/api/v1/diagnosticos*`, `/api/v1/estoque*` e `/api/v1/execucoes*` para a
+Execução, e o resto para o OS. Os target groups devem estar `healthy`:
+
+```bash
+kubectl get pods,svc -n oficina-mecanica
+for tg in $(aws elbv2 describe-target-groups --query "TargetGroups[?starts_with(TargetGroupName,'tc-grupo160-dev')].TargetGroupArn" --output text); do
+  aws elbv2 describe-target-health --target-group-arn "$tg" --query "TargetHealthDescriptions[].TargetHealth.State" --output text
+done
+```
+
+O webhook do Mercado Pago (`POST /api/v1/pagamentos/webhook`) é a única rota
+de negócio que chega sem JWT: quem a autentica é o Billing, pela assinatura.
+
 ## Derrubando
 
 O `derruba-tudo.sh` desfaz na ordem inversa, e a inversão importa:
 
 1. **Funções Lambda** — primeiro, e não por acaso
-2. **Banco** — antes da rede, senão o destroy não resolve as referências
-3. **Cluster, rede, gateway, balanceador**
-4. **Backend de state** — só com `--com-bootstrap`
-5. **Conferência** do que ficou cobrando
+2. **Mensageria SNS/SQS dos três serviços e a tabela DynamoDB do Billing** —
+   primeiro as assinaturas entre serviços, depois tópicos, filas e DLQs, porque
+   cada serviço assina o tópico dos outros. A tabela do Billing está no mesmo
+   state e sai junto, **com os dados**: fora de `prod` não há backup
+3. **Bancos** (o RDS do OS e o da Execução) — antes da rede, senão o destroy não
+   resolve as referências
+4. **Cluster, rede, gateway, balanceador**
+5. **Backend de state** — só com `--com-bootstrap`
+6. **Conferência** do que ficou cobrando
 
-> **O banco sai sem deixar cópia.** A instância é criada com
-> `skip_final_snapshot = true`, então o passo 2 apaga os dados e pronto. Se
-> houver algo no RDS que você queira de volta, tire um snapshot manual **antes**
+> **Os bancos saem sem deixar cópia.** As duas instâncias são criadas com
+> `skip_final_snapshot = true`, então o passo 3 apaga os dados e pronto. Se
+> houver algo num RDS que você queira de volta, tire um snapshot manual **antes**
 > de rodar o script — o procedimento está em
 > [ROLLBACK-BANCO.md](ROLLBACK-BANCO.md).
 
@@ -540,7 +737,7 @@ Se usar as pipelines, rode também:
 bash scripts/renova-secrets.sh
 ```
 
-O `sobe-tudo.sh` já atualiza a variável `TF_STATE_BUCKET` nos quatro
+O `sobe-tudo.sh` já atualiza a variável `TF_STATE_BUCKET` nos seis
 repositórios quando o `gh` está autenticado — sem isso as pipelines apontariam
 para o bucket da conta antiga.
 
@@ -558,9 +755,12 @@ para o bucket da conta antiga.
 | `Datadog ligado em inventories/<ambiente>, mas sem chave real` | conta nova, ou subida logo depois de um derruba | carregue a chave ([Chave do Datadog](#chave-do-datadog), passos 2 e 3) e rode de novo, ou suba com `--sem-datadog` |
 | `ResourceExistsException` ao criar `tc-grupo160/<ambiente>/datadog-api-key` | segredo criado à mão antes do primeiro apply | `aws secretsmanager delete-secret --secret-id tc-grupo160/<ambiente>/datadog-api-key --force-delete-without-recovery` e suba com a variável |
 | `helm_release.datadog_agent`: `context deadline exceeded` | o Agent não consegue falar com o Datadog: chave inválida ou dummy, ou `datadog_site` diferente de `datadoghq.com` | corrija a chave ou o site. Se o release ficou travado, `aws eks update-kubeconfig --name tc-grupo160-<ambiente>`, `helm uninstall datadog -n datadog` e rode de novo. Sem chave válida, rode com `--sem-datadog`: o apply remove o release travado |
-| `ERRO: 'npx' nao encontrado no PATH` na etapa 6 | Node.js ausente, ou terminal aberto antes da instalação | instale o Node.js LTS, abra um terminal novo e rode de novo |
+| `ERRO: 'npx' nao encontrado no PATH` na etapa 7 | Node.js ausente, ou terminal aberto antes da instalação | instale o Node.js LTS, abra um terminal novo e rode de novo |
 | `404 {"message":"Not Found"}` no `/auth` ou no `/health/live` | endereço sem o nome do ambiente | use `https://<id>.execute-api.us-east-1.amazonaws.com/<ambiente>/auth` |
 | `POST /auth` devolve 503 logo após subir | VPC Link ainda propagando | espere ~3 min |
+| `oficina-mecanica-<serviço> nao ficou pronto em 5 min` na etapa 9 | pod do Billing ou da Execução sem subir: imagem, secret ou banco | rode os dois comandos de diagnóstico que o script imprime (`kubectl describe pods` e `kubectl logs`) |
+| `ERRO: connectionString ausente em tc-grupo160/<ambiente>/execucao/banco` | o RDS da Execução não subiu na etapa 4 | confira o apply do `infra-database` e rode de novo |
+| Rota do Billing ou da Execução devolve 503 pelo gateway | target group do serviço sem alvo `healthy`: pod fora do ar ou NodePort diferente do `alb-servicos.tf` | `kubectl get pods,svc -n oficina-mecanica` e confira a porta (30081 no Billing, 30082 na Execução) |
 | `POST /auth` devolve 500 e a Lambda não registra invocação | o gateway perdeu a permissão de invocar a Lambda: apply do `infra-k8s` com `lambdas_publicadas = false` | aplique de novo sem essa variável — o padrão é `true` |
 | Pipeline de infra falha com 403 ao ler o `.tfstate` | secrets com credencial de sessão encerrada ou de outra conta | quem é dono das pipelines roda `renova-secrets.sh` |
 | Nodes ficam `NotReady` | subnet privada sem saída | confirme que o NAT Gateway existe |

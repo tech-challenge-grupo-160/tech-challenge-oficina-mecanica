@@ -7,7 +7,7 @@
 # em nenhum momento imprimir os valores.
 #
 # Uso:
-#   ./scripts/renova-secrets.sh              # renova nos 4 repositorios
+#   ./scripts/renova-secrets.sh              # renova nos 6 repositorios
 #   ./scripts/renova-secrets.sh --check      # so mostra o estado atual
 #   ./scripts/renova-secrets.sh --dry-run    # mostra o que faria
 #
@@ -31,6 +31,8 @@ REPOS=(
   tech-challenge-lambda-auth
   tech-challenge-infra-k8s
   tech-challenge-infra-database
+  tech-challenge-oficina-mecanica-billing
+  tech-challenge-oficina-mecanica-execucao
 )
 PERFIL="${AWS_PROFILE:-default}"
 REGIAO="${AWS_REGION:-us-east-1}"

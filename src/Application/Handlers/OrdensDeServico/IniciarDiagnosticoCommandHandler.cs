@@ -18,16 +18,16 @@ namespace Fiap.TechChallenge.OficinaMecanica.Application.Handlers.OrdensDeServic
 public sealed class IniciarDiagnosticoCommandHandler : IRequestHandler<IniciarDiagnosticoCommand, OrdemDeServicoResult>
 {
     private const string LoggerName = nameof(IniciarDiagnosticoCommandHandler);
-    private readonly OrdemDeServicoHistoricoService _historicoService;
+    private readonly IInicioDiagnosticoScheduler _inicioDiagnosticoScheduler;
     private readonly IOrdemDeServicoRepository _ordemRepository;
     private readonly ILogger _logger;
 
     public IniciarDiagnosticoCommandHandler(
-        OrdemDeServicoHistoricoService historicoService,
+        IInicioDiagnosticoScheduler inicioDiagnosticoScheduler,
         IOrdemDeServicoRepository ordemRepository,
         ILoggerFactory loggerFactory)
     {
-        _historicoService = historicoService;
+        _inicioDiagnosticoScheduler = inicioDiagnosticoScheduler;
         _ordemRepository = ordemRepository;
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
@@ -50,18 +50,28 @@ public sealed class IniciarDiagnosticoCommandHandler : IRequestHandler<IniciarDi
                 throw new ServiceNotFoundException($"Ordem de servico com ID {id} nao encontrada.");
             }
 
-            _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(IniciarDiagnosticoAsync), "Alterando status da ordem para EmDiagnostico");
-            var eventoDiagnosticoIniciado = ordem.IniciarDiagnostico();
-            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
-            await _historicoService.RegistrarAsync(
-                ordemAtualizada,
-                eventoDiagnosticoIniciado.TipoEvento,
-                eventoDiagnosticoIniciado.StatusAnterior,
-                eventoDiagnosticoIniciado.StatusNovo,
-                eventoDiagnosticoIniciado.Descricao,
+            var repeticaoIdempotente = ordem.Status == StatusOrdemDeServico.EmDiagnostico;
+            if (!repeticaoIdempotente)
+            {
+                ordem.ValidarInicioDiagnostico();
+            }
+
+            if (repeticaoIdempotente)
+            {
+                _logger.LogInformation(LogTemplate.End, LoggerName, $"Diagnostico ja iniciado para a ordem {ordem.Numero}");
+                return OrdemDeServicoMapper.ToResult(ordem);
+            }
+
+            await _inicioDiagnosticoScheduler.AgendarAsync(
+                ordem.Id,
+                ordem.VeiculoId,
+                ordem.DescricaoSolicitacao,
+                ordem.Servicos.Select(servico => servico.ServicoId).ToArray(),
+                ordem.Pecas.Select(peca => peca.PecaId).ToArray(),
                 cancellationToken);
-            _logger.LogInformation(LogTemplate.End, LoggerName, $"Diagnostico iniciado com sucesso para a ordem {ordemAtualizada.Numero}");
-            return OrdemDeServicoMapper.ToResult(ordemAtualizada);
+
+            _logger.LogInformation(LogTemplate.End, LoggerName, $"Inicio do diagnostico agendado para a ordem {ordem.Numero}");
+            return OrdemDeServicoMapper.ToResult(ordem);
         }
         catch (Exception ex)
         {

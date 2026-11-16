@@ -40,10 +40,13 @@ public sealed class FinalizarOrdemDeServicoCommandHandler : IRequestHandler<Fina
 
     public Task<OrdemDeServicoResult> Handle(FinalizarOrdemDeServicoCommand command, CancellationToken cancellationToken)
     {
-        return FinalizarAsync(command.Id, cancellationToken);
+        return FinalizarAsync(command.Id, command.DataFinalizacao, cancellationToken);
     }
 
-    private async Task<OrdemDeServicoResult> FinalizarAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoResult> FinalizarAsync(
+        int id,
+        DateTime? dataFinalizacao,
+        CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -57,7 +60,7 @@ public sealed class FinalizarOrdemDeServicoCommandHandler : IRequestHandler<Fina
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(FinalizarAsync), "Finalizando servico e alterando status para Finalizada");
-            var eventoFinalizacao = ordem.FinalizarServicoComEvento(_clock.Now);
+            var eventoFinalizacao = ordem.FinalizarServicoComEvento(dataFinalizacao ?? _clock.Now);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
             await _historicoService.RegistrarAsync(
                 ordemAtualizada,

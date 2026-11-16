@@ -124,6 +124,7 @@ public class OrdemDeServico
 
     public OrdemDeServicoEventoDominio IniciarDiagnostico()
     {
+        ValidarInicioDiagnostico();
         var statusAnterior = Status;
         AlterarStatus(StatusOrdemDeServico.EmDiagnostico);
         return new OrdemDeServicoEventoDominio(
@@ -133,121 +134,174 @@ public class OrdemDeServico
             "Diagnostico iniciado.");
     }
 
-    public void AdicionarServico(Servico servico)
+    public void ValidarInicioDiagnostico()
+    {
+        if (Status != StatusOrdemDeServico.Recebida)
+        {
+            throw new InvalidOperationException(
+                $"Nao e possivel iniciar o diagnostico no status atual: {Status}.");
+        }
+    }
+
+    public OrdemDeServicoEventoDominio ConfirmarDiagnosticoConcluido(
+        IEnumerable<ServicoDiagnosticoSnapshot> servicos,
+        IEnumerable<PecaDiagnosticoSnapshot> pecas)
     {
         if (Status != StatusOrdemDeServico.EmDiagnostico)
         {
-            throw new InvalidOperationException("So e possivel adicionar servicos durante o diagnostico. Nao e possivel neste status: " + Status);
+            throw new InvalidOperationException(
+                $"Nao e possivel concluir o diagnostico no status atual: {Status}.");
         }
 
-        if (Servicos.Any(x => x.ServicoId == servico.Id))
+        var servicosFinais = servicos?.ToArray()
+            ?? throw new ArgumentNullException(nameof(servicos));
+        var pecasFinais = pecas?.ToArray()
+            ?? throw new ArgumentNullException(nameof(pecas));
+
+        if (servicosFinais.Length == 0)
+            throw new InvalidOperationException("O diagnostico deve possuir ao menos um servico.");
+        if (servicosFinais.Any(item =>
+                item.ServicoId <= 0 || item.Preco < 0 || item.TempoEstimado <= 0))
+            throw new ArgumentException("Dados de servico do diagnostico invalidos.");
+        if (servicosFinais.Select(item => item.ServicoId).Distinct().Count() != servicosFinais.Length)
+            throw new ArgumentException("O diagnostico possui servicos duplicados.");
+        if (pecasFinais.Any(item => item.PecaId <= 0 || item.Quantidade <= 0 || item.Preco < 0))
+            throw new ArgumentException("Dados de peca do diagnostico invalidos.");
+        if (pecasFinais.Select(item => item.PecaId).Distinct().Count() != pecasFinais.Length)
+            throw new ArgumentException("O diagnostico possui pecas duplicadas.");
+
+        var servicoIdsFinais = servicosFinais.Select(item => item.ServicoId).ToHashSet();
+        foreach (var servicoRemovido in Servicos
+                     .Where(item => !servicoIdsFinais.Contains(item.ServicoId))
+                     .ToArray())
         {
-            throw new InvalidOperationException("O servico informado ja foi adicionado a ordem de servico.");
+            Servicos.Remove(servicoRemovido);
         }
 
-        Servicos.Add(OrdemDeServicoServico.Criar(Id, servico.Id, servico.Preco, servico.TempoEstimado));
+        foreach (var servico in servicosFinais)
+        {
+            var existente = Servicos.FirstOrDefault(item => item.ServicoId == servico.ServicoId);
+            if (existente is null)
+            {
+                Servicos.Add(OrdemDeServicoServico.Criar(
+                    Id,
+                    servico.ServicoId,
+                    servico.Preco,
+                    servico.TempoEstimado));
+            }
+            else
+            {
+                existente.AtualizarSnapshot(servico.Preco, servico.TempoEstimado);
+            }
+        }
 
+        var pecaIdsFinais = pecasFinais.Select(item => item.PecaId).ToHashSet();
+        foreach (var pecaRemovida in Pecas
+                     .Where(item => !pecaIdsFinais.Contains(item.PecaId))
+                     .ToArray())
+        {
+            Pecas.Remove(pecaRemovida);
+        }
+
+        foreach (var peca in pecasFinais)
+        {
+            var existente = Pecas.FirstOrDefault(item => item.PecaId == peca.PecaId);
+            if (existente is null)
+            {
+                Pecas.Add(OrdemDeServicoPeca.Criar(
+                    Id,
+                    peca.PecaId,
+                    peca.Quantidade,
+                    peca.Preco));
+            }
+            else
+            {
+                existente.AtualizarSnapshot(peca.Quantidade, peca.Preco);
+            }
+        }
         RecalcularTotal();
-    }
 
-    public OrdemDeServicoEventoDominio AdicionarServicoComEvento(Servico servico)
-    {
-        AdicionarServico(servico);
+        var statusAnterior = Status;
+        AlterarStatus(StatusOrdemDeServico.AguardandoOrcamento);
         return new OrdemDeServicoEventoDominio(
-            TipoEventoOrdemServico.ServicoAdicionado,
+            TipoEventoOrdemServico.DiagnosticoFinalizado,
+            statusAnterior,
             Status,
-            Status,
-            $"Servico adicionado ao orcamento: {servico.Nome}.");
+            "Diagnostico concluido; aguardando geracao do orcamento.");
     }
 
-    public OrdemDeServicoEventoDominio AdicionarServicoNaAberturaComEvento(Servico servico)
+    public OrdemDeServicoEventoDominio ConfirmarOrcamentoGerado(
+        Guid orcamentoId,
+        decimal valorTotal,
+        DateTime orcamentoGeradoEm)
     {
+        if (orcamentoId == Guid.Empty)
+            throw new ArgumentException("Identificador do orcamento e obrigatorio.");
+
+        if (valorTotal < 0)
+            throw new ArgumentException("Valor total do orcamento nao pode ser negativo.");
+
+        if (orcamentoGeradoEm == default)
+            throw new ArgumentException("Data de geracao do orcamento e obrigatoria.");
+
+        if (Status != StatusOrdemDeServico.AguardandoOrcamento)
+        {
+            throw new InvalidOperationException(
+                $"Nao e possivel confirmar o orcamento no status atual: {Status}.");
+        }
+
+        if (ValorTotal != valorTotal)
+        {
+            throw new InvalidOperationException(
+                $"Valor do orcamento ({valorTotal}) difere do total da ordem ({ValorTotal}).");
+        }
+
+        var statusAnterior = Status;
+        AlterarStatus(StatusOrdemDeServico.AguardandoAprovacao);
+        OrcamentoEnviadoEm = orcamentoGeradoEm;
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.OrcamentoGerado,
+            statusAnterior,
+            Status,
+            $"Orcamento {orcamentoId} gerado; aguardando aprovacao do cliente.");
+    }
+
+    public OrdemDeServicoEventoDominio AdicionarServicoNaAberturaComEvento(
+        int servicoId, string nome, decimal preco, int tempoEstimado)
+    {
+        if (servicoId <= 0 || string.IsNullOrWhiteSpace(nome) || preco < 0 || tempoEstimado <= 0)
+        {
+            throw new ArgumentException("Dados do servico de catalogo invalidos.");
+        }
+
         if (Status != StatusOrdemDeServico.Recebida)
         {
             throw new InvalidOperationException("So e possivel adicionar servicos na abertura quando a ordem estiver recebida.");
         }
 
-        if (Servicos.Any(x => x.ServicoId == servico.Id))
+        if (Servicos.Any(x => x.ServicoId == servicoId))
         {
             throw new InvalidOperationException("O servico informado ja foi adicionado a ordem de servico.");
         }
 
-        Servicos.Add(OrdemDeServicoServico.Criar(Id, servico.Id, servico.Preco, servico.TempoEstimado));
+        Servicos.Add(OrdemDeServicoServico.Criar(Id, servicoId, preco, tempoEstimado));
         RecalcularTotal();
 
         return new OrdemDeServicoEventoDominio(
             TipoEventoOrdemServico.ServicoAdicionado,
             Status,
             Status,
-            $"Servico adicionado na abertura: {servico.Nome}.");
+            $"Servico adicionado na abertura: {nome}.");
     }
 
-    public void RemoverServico(int servicoId)
+    public OrdemDeServicoEventoDominio AdicionarPecaNaAberturaComEvento(
+        int pecaId, string nome, decimal preco, int quantidade)
     {
-        if (Status != StatusOrdemDeServico.EmDiagnostico)
+        if (pecaId <= 0 || string.IsNullOrWhiteSpace(nome) || preco < 0)
         {
-            throw new InvalidOperationException("So e possivel remover servicos durante o diagnostico. Nao e possivel neste status: " + Status);
+            throw new ArgumentException("Dados da peca de catalogo invalidos.");
         }
 
-        var item = Servicos.FirstOrDefault(x => x.ServicoId == servicoId);
-        if (item == null)
-        {
-            throw new KeyNotFoundException($"Servico com ID {servicoId} nao encontrado na ordem de servico.");
-        }
-
-        Servicos.Remove(item);
-        RecalcularTotal();
-    }
-
-    public OrdemDeServicoEventoDominio RemoverServicoComEvento(int servicoId, string nomeServico)
-    {
-        RemoverServico(servicoId);
-        return new OrdemDeServicoEventoDominio(
-            TipoEventoOrdemServico.ServicoRemovido,
-            Status,
-            Status,
-            $"Servico removido do orcamento: {nomeServico}.");
-    }
-
-    public void AdicionarPeca(Peca peca, int quantidade)
-    {
-        if (Status != StatusOrdemDeServico.EmDiagnostico &&
-            Status != StatusOrdemDeServico.AguardandoAprovacao &&
-            Status != StatusOrdemDeServico.AguardandoEstoque)
-        {
-            throw new InvalidOperationException($"Nao e possivel adicionar pecas neste status: {Status}");
-        }
-
-        if (quantidade <= 0)
-        {
-            throw new InvalidOperationException("A quantidade da peca deve ser maior que zero.");
-        }
-
-        var itemExistente = Pecas.FirstOrDefault(item => item.PecaId == peca.Id);
-        if (itemExistente == null)
-        {
-            Pecas.Add(OrdemDeServicoPeca.Criar(Id, peca.Id, quantidade, peca.Preco));
-        }
-        else
-        {
-            itemExistente.SomarQuantidade(quantidade, peca.Preco);
-        }
-
-        RecalcularTotal();
-    }
-
-    public OrdemDeServicoEventoDominio AdicionarPecaComEvento(Peca peca, int quantidade)
-    {
-        AdicionarPeca(peca, quantidade);
-        return new OrdemDeServicoEventoDominio(
-            TipoEventoOrdemServico.PecaAdicionada,
-            Status,
-            Status,
-            $"Peca adicionada ao orcamento: {peca.Nome}. Quantidade: {quantidade}.");
-    }
-
-    public OrdemDeServicoEventoDominio AdicionarPecaNaAberturaComEvento(Peca peca, int quantidade)
-    {
         if (Status != StatusOrdemDeServico.Recebida)
         {
             throw new InvalidOperationException("So e possivel adicionar pecas na abertura quando a ordem estiver recebida.");
@@ -258,14 +312,14 @@ public class OrdemDeServico
             throw new InvalidOperationException("A quantidade da peca deve ser maior que zero.");
         }
 
-        var itemExistente = Pecas.FirstOrDefault(item => item.PecaId == peca.Id);
+        var itemExistente = Pecas.FirstOrDefault(item => item.PecaId == pecaId);
         if (itemExistente == null)
         {
-            Pecas.Add(OrdemDeServicoPeca.Criar(Id, peca.Id, quantidade, peca.Preco));
+            Pecas.Add(OrdemDeServicoPeca.Criar(Id, pecaId, quantidade, preco));
         }
         else
         {
-            itemExistente.SomarQuantidade(quantidade, peca.Preco);
+            itemExistente.SomarQuantidade(quantidade, preco);
         }
 
         RecalcularTotal();
@@ -274,34 +328,7 @@ public class OrdemDeServico
             TipoEventoOrdemServico.PecaAdicionada,
             Status,
             Status,
-            $"Peca adicionada na abertura: {peca.Nome}. Quantidade: {quantidade}.");
-    }
-
-    public void RemoverPeca(int pecaId)
-    {
-        if (Status != StatusOrdemDeServico.EmDiagnostico)
-        {
-            throw new InvalidOperationException("So e possivel remover pecas durante o diagnostico. Nao e possivel neste status: " + Status);
-        }
-
-        var item = Pecas.FirstOrDefault(x => x.PecaId == pecaId);
-        if (item == null)
-        {
-            throw new KeyNotFoundException($"Peca com ID {pecaId} nao encontrada na ordem de servico.");
-        }
-
-        Pecas.Remove(item);
-        RecalcularTotal();
-    }
-
-    public OrdemDeServicoEventoDominio RemoverPecaComEvento(int pecaId, string nomePeca)
-    {
-        RemoverPeca(pecaId);
-        return new OrdemDeServicoEventoDominio(
-            TipoEventoOrdemServico.PecaRemovida,
-            Status,
-            Status,
-            $"Peca removida do orcamento: {nomePeca}.");
+            $"Peca adicionada na abertura: {nome}. Quantidade: {quantidade}.");
     }
 
     public void AlterarStatus(StatusOrdemDeServico novoStatus, DateTime? dataConclusao = null)
@@ -318,38 +345,6 @@ public class OrdemDeServico
             DataConclusao = dataConclusao
                 ?? throw new InvalidOperationException("Data de conclusao e obrigatoria para entregar a ordem de servico.");
         }
-    }
-
-    public void FinalizarDiagnostico(DateTime dataOrcamentoEnviado)
-    {
-        if (Status != StatusOrdemDeServico.EmDiagnostico)
-        {
-            throw new InvalidOperationException("So e possivel finalizar o diagnostico quando a ordem estiver em diagnostico.");
-        }
-
-        if (!Servicos.Any())
-        {
-            throw new InvalidOperationException("A ordem de servico deve possuir ao menos um servico antes de aguardar aprovacao.");
-        }
-
-        if (ValorTotal <= 0)
-        {
-            throw new InvalidOperationException("O orcamento da ordem de servico nao pode ser zerado.");
-        }
-
-        AlterarStatus(StatusOrdemDeServico.AguardandoAprovacao);
-        OrcamentoEnviadoEm = dataOrcamentoEnviado;
-    }
-
-    public OrdemDeServicoEventoDominio FinalizarDiagnosticoComEvento(DateTime dataOrcamentoEnviado)
-    {
-        var statusAnterior = Status;
-        FinalizarDiagnostico(dataOrcamentoEnviado);
-        return new OrdemDeServicoEventoDominio(
-            TipoEventoOrdemServico.DiagnosticoFinalizado,
-            statusAnterior,
-            Status,
-            "Diagnostico finalizado e orcamento enviado para aprovacao.");
     }
 
     public void Cancelar(string motivoCancelamento)
@@ -382,6 +377,31 @@ public class OrdemDeServico
         }
     }
 
+    public OrdemDeServicoEventoDominio RegistrarAprovacaoAguardandoReserva()
+    {
+        AprovarOrcamento();
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.ReservaPecasSolicitada,
+            Status,
+            Status,
+            "Orcamento aprovado pelo cliente; reserva de pecas solicitada.");
+    }
+
+    public OrdemDeServicoEventoDominio RecusarOrcamento(string motivo)
+    {
+        if (Status != StatusOrdemDeServico.AguardandoAprovacao)
+            throw new InvalidOperationException(
+                "So e possivel recusar o orcamento quando a ordem estiver aguardando aprovacao.");
+
+        var statusAnterior = Status;
+        Cancelar(motivo);
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.OrcamentoRecusado,
+            statusAnterior,
+            Status,
+            $"Orcamento recusado pelo cliente. Motivo: {MotivoCancelamento}");
+    }
+
     public void BloquearPorFaltaEstoque()
     {
         AlterarStatus(StatusOrdemDeServico.AguardandoEstoque);
@@ -398,6 +418,17 @@ public class OrdemDeServico
             $"Execucao bloqueada por falta de estoque: {descricaoFaltas}");
     }
 
+    public OrdemDeServicoEventoDominio ConfirmarEstoqueInsuficiente(string descricaoFaltas)
+    {
+        var statusAnterior = Status;
+        BloquearPorFaltaEstoque();
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.EstoqueInsuficiente,
+            statusAnterior,
+            Status,
+            $"Reserva parcial realizada; aguardando reposicao: {descricaoFaltas}");
+    }
+
     public void LiberarExecucaoAposValidacaoEstoque()
     {
         AlterarStatus(StatusOrdemDeServico.EmExecucao);
@@ -412,6 +443,17 @@ public class OrdemDeServico
             statusAnterior,
             Status,
             "Orcamento aprovado pelo cliente e estoque validado com sucesso.");
+    }
+
+    public OrdemDeServicoEventoDominio ConfirmarPecasReservadas()
+    {
+        var statusAnterior = Status;
+        LiberarExecucaoAposValidacaoEstoque();
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.PecasReservadas,
+            statusAnterior,
+            Status,
+            "Pecas reservadas com sucesso; execucao liberada.");
     }
 
     public void FinalizarServico(DateTime dataFinalizacao)
@@ -466,6 +508,56 @@ public class OrdemDeServico
             "Pagamento registrado para a ordem de servico.");
     }
 
+    /// <summary>
+    /// Compensacao de pagamento recusado (F4-27, ADR-0004): a execucao nao e
+    /// desfeita. A OS segue Finalizada, sem pagamento, e a entrega continua
+    /// bloqueada ate uma nova cobranca ser paga.
+    /// </summary>
+    public OrdemDeServicoEventoDominio RegistrarPagamentoRecusado(string motivo, int tentativa)
+    {
+        GarantirAguardandoPagamento("registrar recusa de pagamento");
+        if (string.IsNullOrWhiteSpace(motivo))
+        {
+            throw new ArgumentException("Motivo da recusa e obrigatorio.", nameof(motivo));
+        }
+
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.PagamentoRecusado,
+            Status,
+            Status,
+            $"Pagamento recusado na tentativa {tentativa}: {motivo}. OS segue finalizada; entrega bloqueada ate nova cobranca.");
+    }
+
+    public void ValidarNovaCobranca() => GarantirAguardandoPagamento("solicitar nova cobranca");
+
+    public OrdemDeServicoEventoDominio SolicitarNovaCobranca(int tentativa)
+    {
+        ValidarNovaCobranca();
+        if (tentativa <= 1)
+        {
+            throw new ArgumentException("Nova cobranca comeca na tentativa 2.", nameof(tentativa));
+        }
+
+        return new OrdemDeServicoEventoDominio(
+            TipoEventoOrdemServico.NovaCobrancaSolicitada,
+            Status,
+            Status,
+            $"Nova cobranca solicitada (tentativa {tentativa}).");
+    }
+
+    private void GarantirAguardandoPagamento(string operacao)
+    {
+        if (Status != StatusOrdemDeServico.Finalizada || !DataFinalizacao.HasValue)
+        {
+            throw new InvalidOperationException($"So e possivel {operacao} quando a ordem estiver finalizada.");
+        }
+
+        if (DataPagamento.HasValue)
+        {
+            throw new InvalidOperationException($"Nao e possivel {operacao}: o pagamento ja foi registrado.");
+        }
+    }
+
     public void Entregar(DateTime dataConclusao)
     {
         if (Status == StatusOrdemDeServico.Entregue)
@@ -502,6 +594,8 @@ public class OrdemDeServico
         return (statusAtual, novoStatus) switch
         {
             (StatusOrdemDeServico.Recebida, StatusOrdemDeServico.EmDiagnostico) => true,
+            (StatusOrdemDeServico.EmDiagnostico, StatusOrdemDeServico.AguardandoOrcamento) => true,
+            (StatusOrdemDeServico.AguardandoOrcamento, StatusOrdemDeServico.AguardandoAprovacao) => true,
             (StatusOrdemDeServico.EmDiagnostico, StatusOrdemDeServico.AguardandoAprovacao) => true,
             (StatusOrdemDeServico.AguardandoAprovacao, StatusOrdemDeServico.EmExecucao) => true,
             (StatusOrdemDeServico.AguardandoAprovacao, StatusOrdemDeServico.AguardandoEstoque) => true,
@@ -511,6 +605,7 @@ public class OrdemDeServico
             (StatusOrdemDeServico.Finalizada, StatusOrdemDeServico.Entregue) => true,
             (StatusOrdemDeServico.Recebida, StatusOrdemDeServico.Cancelada) => true,
             (StatusOrdemDeServico.EmDiagnostico, StatusOrdemDeServico.Cancelada) => true,
+            (StatusOrdemDeServico.AguardandoOrcamento, StatusOrdemDeServico.Cancelada) => true,
             (StatusOrdemDeServico.AguardandoAprovacao, StatusOrdemDeServico.Cancelada) => true,
             (StatusOrdemDeServico.AguardandoEstoque, StatusOrdemDeServico.Cancelada) => true,
             _ => false
@@ -570,6 +665,16 @@ public sealed record OrdemDeServicoEventoDominio(
     StatusOrdemDeServico? StatusNovo,
     string Descricao);
 
+public sealed record ServicoDiagnosticoSnapshot(
+    int ServicoId,
+    decimal Preco,
+    int TempoEstimado);
+
+public sealed record PecaDiagnosticoSnapshot(
+    int PecaId,
+    int Quantidade,
+    decimal Preco);
+
 public class OrdemDeServicoServico
 {
     private OrdemDeServicoServico()
@@ -582,7 +687,6 @@ public class OrdemDeServicoServico
     public int TempoEstimado { get; private set; }
 
     public OrdemDeServico? OrdemDeServico { get; private set; }
-    public Servico? Servico { get; private set; }
 
     public static OrdemDeServicoServico Criar(int ordemDeServicoId, int servicoId, decimal preco, int tempoEstimado)
     {
@@ -593,6 +697,12 @@ public class OrdemDeServicoServico
             Preco = preco,
             TempoEstimado = tempoEstimado
         };
+    }
+
+    public void AtualizarSnapshot(decimal preco, int tempoEstimado)
+    {
+        Preco = preco;
+        TempoEstimado = tempoEstimado;
     }
 }
 
@@ -608,7 +718,6 @@ public class OrdemDeServicoPeca
     public decimal Preco { get; private set; }
 
     public OrdemDeServico? OrdemDeServico { get; private set; }
-    public Peca? Peca { get; private set; }
 
     public static OrdemDeServicoPeca Criar(int ordemDeServicoId, int pecaId, int quantidade, decimal preco)
     {
@@ -619,6 +728,12 @@ public class OrdemDeServicoPeca
             Quantidade = quantidade,
             Preco = preco
         };
+    }
+
+    public void AtualizarSnapshot(int quantidade, decimal preco)
+    {
+        Quantidade = quantidade;
+        Preco = preco;
     }
 
     public void SomarQuantidade(int quantidade, decimal preco)

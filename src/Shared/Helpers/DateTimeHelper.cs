@@ -16,4 +16,19 @@ public static class DateTimeHelper
         var local = utc + BrazilOffset;
         return DateTime.SpecifyKind(local, DateTimeKind.Unspecified);
     }
+
+    public static DateTimeOffset BrazilToUtc(DateTime brazilDateTime)
+    {
+        if (brazilDateTime.Kind == DateTimeKind.Utc)
+        {
+            return new DateTimeOffset(brazilDateTime);
+        }
+
+        if (brazilDateTime.Kind == DateTimeKind.Local)
+        {
+            return new DateTimeOffset(brazilDateTime.ToUniversalTime());
+        }
+
+        return new DateTimeOffset(brazilDateTime, BrazilOffset).ToUniversalTime();
+    }
 }

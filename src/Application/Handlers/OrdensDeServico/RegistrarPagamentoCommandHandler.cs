@@ -37,10 +37,13 @@ public sealed class RegistrarPagamentoCommandHandler : IRequestHandler<Registrar
 
     public Task<OrdemDeServicoResult> Handle(RegistrarPagamentoCommand command, CancellationToken cancellationToken)
     {
-        return RegistrarPagamentoAsync(command.Id, cancellationToken);
+        return RegistrarPagamentoAsync(command.Id, command.DataPagamento, cancellationToken);
     }
 
-    private async Task<OrdemDeServicoResult> RegistrarPagamentoAsync(int id, CancellationToken cancellationToken)
+    private async Task<OrdemDeServicoResult> RegistrarPagamentoAsync(
+        int id,
+        DateTime? dataPagamento,
+        CancellationToken cancellationToken)
     {
         _logger.LogInformation(LogTemplate.Start, LoggerName);
         try
@@ -54,7 +57,7 @@ public sealed class RegistrarPagamentoCommandHandler : IRequestHandler<Registrar
             }
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(RegistrarPagamentoAsync), "Registrando pagamento da ordem de servico");
-            var eventoPagamento = ordem.RegistrarPagamentoComEvento(_clock.Now);
+            var eventoPagamento = ordem.RegistrarPagamentoComEvento(dataPagamento ?? _clock.Now);
             var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordem, cancellationToken);
             await _historicoService.RegistrarAsync(
                 ordemAtualizada,

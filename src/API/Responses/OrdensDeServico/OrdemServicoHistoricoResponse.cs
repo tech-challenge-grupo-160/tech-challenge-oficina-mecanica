@@ -10,5 +10,5 @@ public sealed class OrdemServicoHistoricoResponse
     public string? StatusNovo { get; init; }
     public string TipoEvento { get; init; } = null!;
     public string Descricao { get; init; } = null!;
-    public DateTime DataEvento { get; init; }
+    public DateTimeOffset DataEvento { get; init; }
 }

@@ -25,8 +25,8 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
     private readonly OrdemDeServicoHistoricoService _historicoService;
     private readonly OrdemDeServicoNotificacaoService _notificacaoService;
     private readonly IOrdemDeServicoRepository _ordemRepository;
-    private readonly IPecaRepository _pecaRepository;
-    private readonly IServicoRepository _servicoRepository;
+    private readonly ICatalogoExecucao _catalogo;
+    private readonly ITransactionManager _transactionManager;
     private readonly IVeiculoRepository _veiculoRepository;
     private readonly ILogger _logger;
 
@@ -37,8 +37,8 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
         OrdemDeServicoHistoricoService historicoService,
         OrdemDeServicoNotificacaoService notificacaoService,
         IOrdemDeServicoRepository ordemRepository,
-        IPecaRepository pecaRepository,
-        IServicoRepository servicoRepository,
+        ICatalogoExecucao catalogo,
+        ITransactionManager transactionManager,
         IVeiculoRepository veiculoRepository,
         ILoggerFactory loggerFactory,
         IBusinessMetrics businessMetrics)
@@ -50,8 +50,8 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
         _historicoService = historicoService;
         _notificacaoService = notificacaoService;
         _ordemRepository = ordemRepository;
-        _pecaRepository = pecaRepository;
-        _servicoRepository = servicoRepository;
+        _catalogo = catalogo;
+        _transactionManager = transactionManager;
         _veiculoRepository = veiculoRepository;
         _logger = loggerFactory.CreateLogger(LoggerName);
     }
@@ -95,7 +95,9 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
             }
 
             var servicoIds = command.Servicos.Select(s => s.ServicoId).ToList();
-            var servicosEncontrados = await _servicoRepository.ObterPorIdsAsync(servicoIds, cancellationToken);
+            var pecaIds = command.Pecas.Select(p => p.PecaId).ToList();
+            var catalogo = await _catalogo.ObterItensAsync(servicoIds, pecaIds, cancellationToken);
+            var servicosEncontrados = catalogo.Servicos;
             var servicosDict = servicosEncontrados.ToDictionary(s => s.Id);
             foreach (var id in servicoIds)
             {
@@ -108,10 +110,7 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
 
             var servicos = servicoIds.Select(id => servicosDict[id]).ToList();
 
-            var pecaIds = command.Pecas.Select(p => p.PecaId).ToList();
-            var pecasEncontradas = pecaIds.Count > 0
-                ? await _pecaRepository.ObterPorIdsAsync(pecaIds, cancellationToken)
-                : [];
+            var pecasEncontradas = catalogo.Pecas;
             var pecasDict = pecasEncontradas.ToDictionary(p => p.Id);
             foreach (var id in pecaIds)
             {
@@ -125,59 +124,67 @@ public sealed class CriarOrdemDeServicoCommandHandler : IRequestHandler<CriarOrd
             var pecas = command.Pecas.Select(p => (Peca: pecasDict[p.PecaId], p.Quantidade)).ToList();
 
             _logger.LogDebug(LogTemplate.Trace, LoggerName, nameof(CriarOrdemDeServicoAsync), "Persistindo ordem de servico em status Recebida");
-            var (codigoAcompanhamento, _, tokenAcompanhamentoHash) =
-                await _acompanhamentoService.GerarCredenciaisAsync(cancellationToken);
-
-            var ordem = OrdemDeServico.Criar(
-                OrdemDeServicoAcompanhamentoService.GerarNumeroTemporario(),
-                codigoAcompanhamento,
-                tokenAcompanhamentoHash,
-                command.ClienteId,
-                command.VeiculoId,
-                command.DescricaoSolicitacao,
-                command.ObservacoesRecepcao,
-                _clock.Now);
-
-            var ordemCriada = await _ordemRepository.CriarAsync(ordem, cancellationToken);
-            ordemCriada.DefinirNumero(OrdemDeServicoAcompanhamentoService.GerarNumeroOrdem(ordemCriada.Id, ordemCriada.DataAbertura));
-
-            var eventosItens = new List<OrdemDeServicoEventoDominio>();
-            foreach (var servico in servicos)
+            // A consulta ao catalogo termina antes da transacao de escrita local.
+            var ordemAtualizada = await _transactionManager.ExecuteAsync(async token =>
             {
-                eventosItens.Add(ordemCriada.AdicionarServicoNaAberturaComEvento(servico));
-            }
+                var (codigoAcompanhamento, _, tokenAcompanhamentoHash) =
+                    await _acompanhamentoService.GerarCredenciaisAsync(token);
 
-            foreach (var item in pecas)
-            {
-                eventosItens.Add(ordemCriada.AdicionarPecaNaAberturaComEvento(item.Peca, item.Quantidade));
-            }
+                var ordem = OrdemDeServico.Criar(
+                    OrdemDeServicoAcompanhamentoService.GerarNumeroTemporario(),
+                    codigoAcompanhamento,
+                    tokenAcompanhamentoHash,
+                    command.ClienteId,
+                    command.VeiculoId,
+                    command.DescricaoSolicitacao,
+                    command.ObservacoesRecepcao,
+                    _clock.Now);
 
-            var ordemAtualizada = await _ordemRepository.AtualizarAsync(ordemCriada, cancellationToken);
-            var eventoCriacao = ordemAtualizada.CriarEventoOrdemCriada();
-            await _historicoService.RegistrarAsync(
-                ordemAtualizada,
-                eventoCriacao.TipoEvento,
-                eventoCriacao.StatusAnterior,
-                eventoCriacao.StatusNovo,
-                eventoCriacao.Descricao,
-                cancellationToken);
-            foreach (var eventoItem in eventosItens)
-            {
+                var ordemCriada = await _ordemRepository.CriarAsync(ordem, token);
+                ordemCriada.DefinirNumero(OrdemDeServicoAcompanhamentoService.GerarNumeroOrdem(ordemCriada.Id, ordemCriada.DataAbertura));
+
+                var eventosItens = new List<OrdemDeServicoEventoDominio>();
+                foreach (var servico in servicos)
+                {
+                    eventosItens.Add(ordemCriada.AdicionarServicoNaAberturaComEvento(
+                        servico.Id, servico.Nome, servico.Preco, servico.TempoEstimado));
+                }
+
+                foreach (var item in pecas)
+                {
+                    eventosItens.Add(ordemCriada.AdicionarPecaNaAberturaComEvento(
+                        item.Peca.Id, item.Peca.Nome, item.Peca.Preco, item.Quantidade));
+                }
+
+                var ordemPersistida = await _ordemRepository.AtualizarAsync(ordemCriada, token);
+                var eventoCriacao = ordemPersistida.CriarEventoOrdemCriada();
                 await _historicoService.RegistrarAsync(
-                    ordemAtualizada,
-                    eventoItem.TipoEvento,
-                    eventoItem.StatusAnterior,
-                    eventoItem.StatusNovo,
-                    eventoItem.Descricao,
-                    cancellationToken);
-            }
+                    ordemPersistida,
+                    eventoCriacao.TipoEvento,
+                    eventoCriacao.StatusAnterior,
+                    eventoCriacao.StatusNovo,
+                    eventoCriacao.Descricao,
+                    token);
+                foreach (var eventoItem in eventosItens)
+                {
+                    await _historicoService.RegistrarAsync(
+                        ordemPersistida,
+                        eventoItem.TipoEvento,
+                        eventoItem.StatusAnterior,
+                        eventoItem.StatusNovo,
+                        eventoItem.Descricao,
+                        token);
+                }
 
-            await _notificacaoService.RegistrarAsync(
-                ordemAtualizada.Id,
-                TipoNotificacaoCliente.LinkAcompanhamentoEnviado,
-                CanalNotificacaoCliente.Email,
-                $"Link de acompanhamento da ordem {ordemAtualizada.Numero} enviado para o e-mail {cliente.Email}. Acesso requer autenticacao do cliente por CPF/CNPJ. Endpoint: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemAtualizada.CodigoAcompanhamento)}",
-                cancellationToken);
+                await _notificacaoService.RegistrarAsync(
+                    ordemPersistida.Id,
+                    TipoNotificacaoCliente.LinkAcompanhamentoEnviado,
+                    CanalNotificacaoCliente.Email,
+                    $"Link de acompanhamento da ordem {ordemPersistida.Numero} enviado para o e-mail {cliente.Email}. Acesso requer autenticacao do cliente por CPF/CNPJ. Endpoint: {OrdemDeServicoAcompanhamentoService.MontarEndpointAcompanhamento(ordemPersistida.CodigoAcompanhamento)}",
+                    token);
+
+                return ordemPersistida;
+            }, cancellationToken);
             _businessMetrics.RecordOrderCreated();
             _logger.LogInformation(LogTemplate.End, LoggerName, $"Ordem de servico aberta com sucesso. Numero: {ordemAtualizada.Numero}");
             return OrdemDeServicoMapper.ToResult(ordemAtualizada);
