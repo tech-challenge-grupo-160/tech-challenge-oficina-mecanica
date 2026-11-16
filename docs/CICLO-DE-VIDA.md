@@ -37,6 +37,8 @@ detalhes.
 8. **Apontar o webhook.** O script termina imprimindo a URL do webhook do
    Mercado Pago. Ela muda a cada subida: cole-a no painel do Mercado Pago antes
    de testar um pagamento. Ver [passo 4](#4-apontar-o-webhook-para-o-ambiente).
+   O painel aceita uma URL só para o grupo todo: combine antes quem está
+   testando pagamento ([O que continua compartilhado](#o-que-continua-compartilhado)).
 9. **Derrubar ao terminar.** `bash scripts/derruba-tudo.sh --ambiente dev`.
    Comece com pelo menos meia hora de credencial sobrando. Ele termina com
    `Nada cobrando por hora nesta conta.`
@@ -81,18 +83,16 @@ bash scripts/sobe-tudo.sh --ambiente hom --sim
 
 ### Quanto tempo leva
 
-Medido em 15/09, antes da infraestrutura de mensageria da Fase 4, num ciclo
-completo do `dev`:
+Medido em 15/11, com tudo da Fase 4 (mensageria, RDS da Execução e os três
+serviços), em ciclos completos de `dev`, `hom` e `prod`:
 
 | Comando | Duração |
 |---|---|
-| `derruba-tudo.sh` | ~18 min |
-| `sobe-tudo.sh`, do zero | ~40 min: ~16 na rede e no cluster, ~16 no RDS, o resto nas Lambdas e na API |
+| `derruba-tudo.sh` | ~18 a 20 min por ambiente |
+| `sobe-tudo.sh`, do zero | ~35 min. O RDS (Multi-AZ em `prod`) é a etapa mais longa; os dois bancos nascem em paralelo |
 
-A Fase 4 acrescentou a mensageria, o RDS da Execução e a publicação do Billing e
-da Execução, e o ciclo ainda não foi medido de novo. O RDS da Execução nasce no
-mesmo apply do banco do OS, em paralelo, então o tempo do banco não deve dobrar.
-Conte com alguns minutos a mais na etapa 9, que compila e publica as duas imagens.
+Para subir **e** derrubar na mesma sessão do lab, comece com pelo menos uma hora
+de credencial sobrando além do tempo que vai usar o ambiente.
 
 A sessão do Learner Lab dura cerca de **4 horas**, e a credencial morre junto.
 Comece com folga. Se ela expirar no meio de um apply, o Terraform pode não
@@ -154,6 +154,23 @@ recursos pela pipeline.
 
 Quem sobe ambiente na **própria** conta, sem ser dono das pipelines, não tem
 esse problema: elas não enxergam a conta dessa pessoa.
+
+### O que continua compartilhado
+
+As contas da AWS são separadas, mas duas coisas de fora delas são uma só para o
+grupo inteiro:
+
+- **O webhook do Mercado Pago.** O painel aceita **uma** URL de modo teste, e
+  ela aponta para o gateway de uma pessoa só. Quem cadastrar por último recebe
+  as notificações de todos: o pagamento dos outros fica `Pendente` para sempre.
+  Combine no grupo quem está testando pagamento, cadastre a sua URL antes de
+  pagar ([passo 4](#4-apontar-o-webhook-para-o-ambiente)) e avise ao terminar.
+  O resto do fluxo, inclusive a recusa de orçamento, não depende do webhook.
+- **A organização do Datadog.** Todo mundo que sobe com a chave do grupo manda
+  dados para a mesma organização, separados só pela tag `env`. Dois `dev` de pé
+  ao mesmo tempo, em contas diferentes, se misturam no APM e no dashboard. Para
+  testar sem atrapalhar, suba com `--sem-datadog`. Ver também
+  [Dashboard da Saga](#dashboard-da-saga-no-datadog).
 
 ## Por que os scripts vivem aqui
 
@@ -613,6 +630,32 @@ done
 O webhook do Mercado Pago (`POST /api/v1/pagamentos/webhook`) é a única rota
 de negócio que chega sem JWT: quem a autentica é o Billing, pela assinatura.
 
+Para exercitar o fluxo completo da OS pelo gateway, use a collection de
+[docs/postman](postman/README.md), com o `gatewayUrl` do ambiente.
+
+### Dashboard da Saga no Datadog
+
+O `sobe-tudo.sh` instala o Agent, mas **não** cria o dashboard nem os monitores
+da Saga (F4-37). Eles são um Terraform à parte, em [infra/datadog](../infra/datadog/README.md),
+aplicado por ambiente e com a Application Key do Datadog além da API key.
+
+A organização do Datadog é do grupo, não da conta da AWS. Por isso:
+
+- **Uma pessoa só aplica, por ambiente.** O dashboard e os monitores de um
+  ambiente existem uma vez na organização, não uma vez por conta. Se outra
+  pessoa aplicar o mesmo ambiente com o state da própria conta, o Terraform não
+  enxerga o que já existe: a métrica de log falha com `409 Conflict` e os
+  monitores ficam duplicados.
+- **O `dev` já existe**, com o state no bucket do dono das pipelines
+  (`dev/datadog-os.tfstate`). Antes de aplicar outro ambiente, confira no
+  Datadog se `[<ambiente>] Saga da OS - fluxo distribuido` já não está lá.
+- **O dashboard sobrevive ao `derruba-tudo.sh`**: ele não está na AWS. Só os
+  painéis ficam sem dados até a próxima subida.
+- **Os painéis de filas e DLQs dependem de métricas `aws.sqs.*`**, que chegam pela
+  integração AWS do Datadog. O Learner Lab não deixa criar a role dessa
+  integração. Se esses painéis mostrarem dados, confira a tag `host`: métrica de
+  um LocalStack publicada com `env:<ambiente>` aparece ali como se fosse da AWS.
+
 ## Derrubando
 
 O `derruba-tudo.sh` desfaz na ordem inversa, e a inversão importa:
@@ -764,6 +807,7 @@ para o bucket da conta antiga.
 | `POST /auth` devolve 500 e a Lambda não registra invocação | o gateway perdeu a permissão de invocar a Lambda: apply do `infra-k8s` com `lambdas_publicadas = false` | aplique de novo sem essa variável — o padrão é `true` |
 | Pipeline de infra falha com 403 ao ler o `.tfstate` | secrets com credencial de sessão encerrada ou de outra conta | quem é dono das pipelines roda `renova-secrets.sh` |
 | Nodes ficam `NotReady` | subnet privada sem saída | confirme que o NAT Gateway existe |
+| Depois de renovar a sessão do lab, `kubectl get nodes` responde `No resources found` e os pods ficam `Pending` | a sessão expirou com o ambiente de pé: o lab encerrou os nodes, e o Auto Scaling, que tentou repor com a credencial revogada, entrou em espera entre tentativas. O node group aparece `DEGRADED` com `AsgInstanceLaunchFailures` | com a sessão renovada, force uma nova tentativa: `aws eks update-nodegroup-config --cluster-name tc-grupo160-<ambiente> --nodegroup-name tc-grupo160-<ambiente>-nodes --scaling-config minSize=2,maxSize=4,desiredSize=3`. Os nodes ficam `Ready` em ~1 min e o Cluster Autoscaler devolve para 2. Rode `renova-secrets.sh` se as pipelines forem suas |
 | Destroy da rede falha citando o authorizer | rota ainda referencia o authorizer | rode o destroy de novo; a ordem se resolve na segunda passada |
 | Sobrou EIP na conferência | destroy interrompido | `aws ec2 release-address --allocation-id <id>` |
 

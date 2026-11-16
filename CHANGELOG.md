@@ -6,6 +6,9 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- Guia do ciclo de vida com o que os ensaios da Fase 4 ensinaram: tempos medidos, o que continua compartilhado entre contas (webhook do Mercado Pago e Datadog), dashboard da Saga, sessao do lab expirada com o ambiente de pe e `gatewayUrl` do Postman com o nome do ambiente (#230)
+
 ## [4.0.0] - 2026-11-15
 
 ### Added
